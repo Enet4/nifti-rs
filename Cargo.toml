@@ -1,0 +1,8 @@
+[package]
+authors = ["Eduardo Pinho <enet4mikeenet@gmail.com>"]
+name = "nifti"
+version = "0.1.0"
+[dependencies]
+acc_reader = "*"
+byteorder = "^1.0.0"
+seek_bufread = "*"
