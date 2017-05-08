@@ -1,38 +1,27 @@
 extern crate byteorder;
 extern crate acc_reader;
 extern crate seek_bufread;
+#[macro_use]
+extern crate quick_error;
+extern crate flate2;
 
 pub mod header;
+pub mod object;
 pub mod volume;
 pub mod error;
+pub mod typedef;
 mod util;
 
 use std::fs::File;
 use std::path::Path;
 use util::ReadSeek;
 
+use header::MAGIC_CODE_NI1;
 
-#[derive(Debug)]
-pub struct NIFTIObject<R: ReadSeek> {
-    header: header::NIFTIHeader,
-    volume: volume::NIFTIVolume<R>,
-}
-
-impl NIFTIObject<File> {
-    pub fn from_file<P: AsRef<Path>>(&self, path: P) -> NIFTIObject<File> {
-        unimplemented!()
-    }
-}
-
-impl<R: ReadSeek> NIFTIObject<R> {
-    pub fn from_stream(&self, source: R) -> NIFTIObject<R> {
-        unimplemented!()
-    }
-}
+pub use header::NiftiHeader;
+pub use volume::NiftiVolume;
+pub use util::Endianness;
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn it_works() {
-    }
 }

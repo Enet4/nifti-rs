@@ -1,0 +1,1 @@
+The datasets in this folder are publicly available in the Neuroimaging Informatics Technology Initiative website: <https://nifti.nimh.nih.gov/nifti-1/data>

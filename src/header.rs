@@ -1,20 +1,21 @@
-use error::Result;
+use error::{NiftiError, Result};
 use util::{ReadSeek, Endianness};
 use std::fs::File;
 use std::io::SeekFrom;
-use std::io::BufReader;
+use std::io::{Read, BufReader, BufRead};
 use std::path::Path;
-use byteorder::{ByteOrder, ReadBytesExt, LittleEndian, BigEndian};
+use byteorder::{ByteOrder, ReadBytesExt, LittleEndian, BigEndian, NativeEndian};
+use flate2::bufread::GzDecoder;
 
 pub const MAGIC_CODE_NI1 : &'static [u8; 4] = b"ni1\0";
 pub const MAGIC_CODE_NIP1 : &'static [u8; 4] = b"n+1\0";
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct NIFTIHeader {
+pub struct NiftiHeader {
 
     pub sizeof_hdr: i32,
     pub data_type: [u8; 10],
-    pub db_name: [u8; 10],
+    pub db_name: [u8; 18],
     pub extents: i32,
     pub session_error: i16,
     pub regular: u8,
@@ -61,12 +62,12 @@ pub struct NIFTIHeader {
     pub magic: [u8; 4],
 }
 
-impl Default for NIFTIHeader {
-    fn default() -> NIFTIHeader {
-        NIFTIHeader {
+impl Default for NiftiHeader {
+    fn default() -> NiftiHeader {
+        NiftiHeader {
             sizeof_hdr: 348,
             data_type: [0; 10],
-            db_name: [0; 10],
+            db_name: [0; 18],
             extents: 0,
             session_error: 0,
             regular: 0,
@@ -81,7 +82,7 @@ impl Default for NIFTIHeader {
             slice_start: 0,
             pixdim: [0.; 8],
             vox_offset: 352.,
-            scl_slope: 1.,
+            scl_slope: 0.,
             scl_inter: 0.,
             slice_end: 0,
             slice_code: 0,
@@ -118,54 +119,137 @@ impl Default for NIFTIHeader {
 
 
 #[derive(Debug, Default, Clone, Copy)]
-struct NIFTIExtender {
+struct NiftiExtender {
     extension: [u8; 4],
 }
 
-impl NIFTIHeader {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<NIFTIHeader> {
-        let file = File::open(path)?;
-        NIFTIHeader::from_stream(file)
-    }
-
-    pub fn from_stream<S: ReadSeek>(mut input: S) -> Result<NIFTIHeader> {
-        match detect_endianness_seekable(&mut input)? {
-            Endianness::LE => parse_header::<LittleEndian, _>(input),
-            Endianness::BE => parse_header::<BigEndian, _>(input),
+impl NiftiHeader {
+    /// Retrieve a NIFTI header, along with its byte order, from a file in the file system.
+    /// If the file's name ends with ".gz", the file is assumed to need GZip decoding.
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<(NiftiHeader, Endianness)> {
+        let gz = path.as_ref().extension()
+            .map(|a| a.to_string_lossy() == "gz")
+            .unwrap_or(false);
+        let file = BufReader::new(File::open(path)?);
+        if gz {
+            NiftiHeader::from_stream(GzDecoder::new(file)?)
+        } else {
+            NiftiHeader::from_stream(file)
         }
     }
+    
+    /// Read a NIfTI-1 header, along with its byte order, from the given byte stream.
+    /// It is assumed that the input is currently at the start of the
+    /// NIFTI header.
+    pub fn from_stream<S: Read>(input: S) -> Result<(NiftiHeader, Endianness)> {
+        parse_header_1(input)
+    }
 }
 
-/// Detect the endianness of a NIFTI object
-/// It is assumed that the input is currently at the start of the
-/// NIFTI header.
-fn detect_endianness_seekable<S: ReadSeek>(mut input: S) -> Result<Endianness> {
-    // move to dim[0]
-    const OFFSET: i64 = 4 + 10 + 18 + 4 + 2 + 1 + 1;
-    input.seek(SeekFrom::Current(OFFSET))?;
-    let dim0 = input.read_i16::<LittleEndian>()?;
+/// Defines the serialization that is opposite to system native-endian.
+/// This is `BigEndian` in a Little Endian system and `LittleEndian` in a Big Endian system.
+///
+/// Note that this type has no value constructor. It is used purely at the
+/// type level.
+#[cfg(target_endian = "little")]
+type OppositeNativeEndian = BigEndian;
 
-    let e = if dim0 < 1 || dim0 > 7 {
-        Endianness::BE
-    } else {
-        Endianness::LE
-    };
+/// Defines the serialization that is opposite to system native-endian.
+/// This is `BigEndian` in a Little Endian system and `LittleEndian` in a Big Endian system.
+///
+/// Note that this type has no value constructor. It is used purely at the
+/// type level.
+#[cfg(target_endian = "big")]
+type OppositeNativeEndian = LittleEndian;
 
-    // and back to the beginning
-    input.seek(SeekFrom::Current(-OFFSET))?;
-    Ok(e)
-}
+fn parse_header_1<S: Read>(mut input: S) -> Result<(NiftiHeader, Endianness)> {
+    let mut h = NiftiHeader::default();
 
-fn parse_header<B: ByteOrder, S: ReadSeek>(mut input: S) -> Result<NIFTIHeader> {
-    let mut h = NIFTIHeader::default();
-
-    let mut input = BufReader::new(input);
+    // try the system's native endianness first
+    type B = NativeEndian;
 
     h.sizeof_hdr = input.read_i32::<B>()?;
-    
-    // TODO
+    input.read_exact(&mut h.data_type)?;
+    input.read_exact(&mut h.db_name)?;
+    h.extents = input.read_i32::<B>()?;
+    h.session_error = input.read_i16::<B>()?;
+    h.regular = input.read_u8()?;
+    h.dim_info = input.read_u8()?;
+    h.dim[0] = input.read_i16::<B>()?;
 
-    unimplemented!()
-    //Ok(h)
+    if h.dim[0] < 0 || h.dim[0] > 7 {
+        // swap bytes read so far, continue with the opposite endianness
+        h.sizeof_hdr = h.sizeof_hdr.swap_bytes();
+        h.extents = h.extents.swap_bytes();
+        h.session_error = h.session_error.swap_bytes();
+        h.dim[0] = h.dim[0].swap_bytes();
+        parse_header_2::<OppositeNativeEndian, _>(h, input)
+            .map(|a| (a, Endianness::system().opposite()))
+    } else {
+        // all is well
+        parse_header_2::<B, _>(h, input)
+            .map(|a| (a, Endianness::system()))
+    }
+}
+
+/// second part of header parsing
+fn parse_header_2<B: ByteOrder, S: Read>(mut h: NiftiHeader, mut input: S) -> Result<NiftiHeader> {
+    for v in &mut h.dim[1..] {
+        *v = input.read_i16::<B>()?;
+    }
+    h.intent_p1 = input.read_f32::<B>()?;
+    h.intent_p2 = input.read_f32::<B>()?;
+    h.intent_p3 = input.read_f32::<B>()?;
+    h.intent_code = input.read_i16::<B>()?;
+    h.datatype = input.read_i16::<B>()?;
+    h.bitpix = input.read_i16::<B>()?;
+    h.slice_start = input.read_i16::<B>()?;
+    for v in &mut h.pixdim {
+        *v = input.read_f32::<B>()?;
+    }
+    h.vox_offset = input.read_f32::<B>()?;
+    h.scl_slope = input.read_f32::<B>()?;
+    h.scl_inter = input.read_f32::<B>()?;
+    h.slice_end = input.read_i16::<B>()?;
+    h.slice_code = input.read_u8()?;
+    h.xyzt_units = input.read_u8()?;
+    h.cal_max = input.read_f32::<B>()?;
+    h.cal_min = input.read_f32::<B>()?;
+    h.slice_duration = input.read_f32::<B>()?;
+    h.toffset = input.read_f32::<B>()?;
+    h.glmax = input.read_i32::<B>()?;
+    h.glmin = input.read_i32::<B>()?;
+
+    // descrip is 80-elem vec already
+    input.read_exact(h.descrip.as_mut_slice())?;
+    input.read_exact(&mut h.aux_file)?;
+    h.qform_code = input.read_i16::<B>()?;
+    h.sform_code = input.read_i16::<B>()?;
+    h.quatern_b = input.read_f32::<B>()?;
+    h.quatern_c = input.read_f32::<B>()?;
+    h.quatern_d = input.read_f32::<B>()?;
+    h.quatern_x = input.read_f32::<B>()?;
+    h.quatern_y = input.read_f32::<B>()?;
+    h.quatern_z = input.read_f32::<B>()?;
+    for v in &mut h.srow_x {
+        *v = input.read_f32::<B>()?;
+    }
+    for v in &mut h.srow_y {
+        *v = input.read_f32::<B>()?;
+    }
+    for v in &mut h.srow_z {
+        *v = input.read_f32::<B>()?;
+    }
+    input.read_exact(&mut h.intent_name)?;
+    input.read_exact(&mut h.magic)?;
+
+    debug_assert_eq!(&h.magic, MAGIC_CODE_NI1);
+    debug_assert_eq!(h.descrip.len(), 80);
+
+    if &h.magic != MAGIC_CODE_NI1 && &h.magic != MAGIC_CODE_NIP1 {
+        Err(NiftiError::InvalidFormat)
+    } else {
+        Ok(h)
+    }
 }
 
