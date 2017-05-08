@@ -15,6 +15,7 @@ extern crate num;
 extern crate byteorder;
 extern crate flate2;
 
+pub mod extension;
 pub mod header;
 pub mod object;
 pub mod volume;
@@ -22,11 +23,8 @@ pub mod error;
 pub mod typedef;
 mod util;
 
+pub use extension::NiftiExtension;
 pub use header::NiftiHeader;
 pub use volume::NiftiVolume;
 pub use volume::InMemNiftiVolume;
 pub use util::Endianness;
-
-#[cfg(test)]
-mod tests {
-}

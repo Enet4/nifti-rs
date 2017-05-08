@@ -117,20 +117,6 @@ impl Default for NiftiHeader {
     }
 }
 
-
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-struct NiftiExtender {
-    extension: [u8; 4],
-}
-
-#[derive(Debug, PartialEq, Clone)]
-struct NiftiExtension {
-    esize: i32,
-    ecode: i32,
-    edata: Vec<u8>,
-}
-
 impl NiftiHeader {
     /// Retrieve a NIFTI header, along with its byte order, from a file in the file system.
     /// If the file's name ends with ".gz", the file is assumed to need GZip decoding.
