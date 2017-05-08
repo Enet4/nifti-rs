@@ -1,10 +1,11 @@
 use error::{NiftiError, Result};
-use util::{ReadSeek, Endianness};
+use util::{ReadSeek, Endianness, OppositeNativeEndian};
 use std::fs::File;
 use std::io::SeekFrom;
 use std::io::{Read, BufReader, BufRead};
 use std::path::Path;
-use byteorder::{ByteOrder, ReadBytesExt, LittleEndian, BigEndian, NativeEndian};
+use byteorder;
+use byteorder::{ByteOrder, ReadBytesExt, NativeEndian};
 use flate2::bufread::GzDecoder;
 
 pub const MAGIC_CODE_NI1 : &'static [u8; 4] = b"ni1\0";
@@ -118,9 +119,16 @@ impl Default for NiftiHeader {
 
 
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 struct NiftiExtender {
     extension: [u8; 4],
+}
+
+#[derive(Debug, PartialEq, Clone)]
+struct NiftiExtension {
+    esize: i32,
+    ecode: i32,
+    edata: Vec<u8>,
 }
 
 impl NiftiHeader {
@@ -145,22 +153,6 @@ impl NiftiHeader {
         parse_header_1(input)
     }
 }
-
-/// Defines the serialization that is opposite to system native-endian.
-/// This is `BigEndian` in a Little Endian system and `LittleEndian` in a Big Endian system.
-///
-/// Note that this type has no value constructor. It is used purely at the
-/// type level.
-#[cfg(target_endian = "little")]
-type OppositeNativeEndian = BigEndian;
-
-/// Defines the serialization that is opposite to system native-endian.
-/// This is `BigEndian` in a Little Endian system and `LittleEndian` in a Big Endian system.
-///
-/// Note that this type has no value constructor. It is used purely at the
-/// type level.
-#[cfg(target_endian = "big")]
-type OppositeNativeEndian = LittleEndian;
 
 fn parse_header_1<S: Read>(mut input: S) -> Result<(NiftiHeader, Endianness)> {
     let mut h = NiftiHeader::default();
@@ -243,7 +235,6 @@ fn parse_header_2<B: ByteOrder, S: Read>(mut h: NiftiHeader, mut input: S) -> Re
     input.read_exact(&mut h.intent_name)?;
     input.read_exact(&mut h.magic)?;
 
-    debug_assert_eq!(&h.magic, MAGIC_CODE_NI1);
     debug_assert_eq!(h.descrip.len(), 80);
 
     if &h.magic != MAGIC_CODE_NI1 && &h.magic != MAGIC_CODE_NIP1 {

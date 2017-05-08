@@ -1,4 +1,6 @@
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+use num::FromPrimitive;
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
 pub enum NiftiType {
     /// unsigned char.
     // NIFTI_TYPE_UINT8           2
@@ -50,3 +52,95 @@ pub enum NiftiType {
     Rgba32 = 2304,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
+pub enum Unit {
+    Unknown = 0,
+    Meter = 1,
+    Mm = 2,
+    Micron = 3,
+    Sec = 8,
+    Msec = 16,
+    Usec = 24,
+    Hz = 32,
+    Ppm = 40,
+    Rads = 48,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
+pub enum Intent {
+    None = 0,
+    Correl = 2,
+    Ttest = 3,
+    Ftest = 4,
+    Zscore = 5,
+    Chisq = 6,
+    Beta = 7,
+    Binom = 8,
+    Gamma = 9,
+    Poisson = 10,
+    Normal = 11,
+    FtestNonc = 12,
+    ChisqNonc = 13,
+    Logistic = 14,
+    Laplace = 15,
+    Uniform = 16,
+    TtestNonc = 17,
+    Weibull = 18,
+    Chi = 19,
+    Invgauss = 20,
+    Extval = 21,
+    Pval = 22,
+    Logpval = 23,
+    Log10pval = 24,
+    /* --- these values aren't for statistics --- */
+    Estimate = 1001,
+    Label = 1002,
+    Neuroname = 1003,
+    Genmatrix = 1004,
+    Symmatrix = 1005,
+    Dispvect = 1006,
+    Vector = 1007,
+    Pointset = 1008,
+    Triangle = 1009,
+    Dimless = 1011,
+    /* --- these values apply to GIFTI datasets --- */
+    TimeSeries = 2001,
+    NodeIndex = 2002,
+    RgbaVector = 2003,
+    Shape = 2005,
+}
+
+impl Intent {
+    pub fn is_statcode(&self) -> bool {
+        self.get_code() >= 2 && self.get_code() <= 24
+    }
+
+    pub fn get_code(&self) -> i16 { *self as i16 }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
+pub enum XForm {
+    /// Arbitrary coordinates (Method 1).
+    Unknown = 0,
+    /// Scanner-based anatomical coordinates
+    ScannerAnat = 1,
+    /// Coordinates aligned to another file's,
+    /// or to anatomical "truth".
+    AlignedAnat = 2,
+    /// Coordinates aligned to Talairach-Tournoux
+    /// Atlas; (0,0,0)=AC, etc.
+    Talairach = 3,
+    /// MNI 152 normalized coordinates.
+    Mni152 = 4,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
+pub enum SliceOrder {
+    Unknown = 0,
+    SeqInc = 1,
+    SeqDec = 2,
+    AltInc = 3,
+    AltDec = 4,
+    AltInc2 = 5,
+    AltDec2 = 6,
+}

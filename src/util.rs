@@ -1,5 +1,6 @@
 //! Private utility module
 use std::io::{Read, Seek};
+use byteorder;
 
 /// A trait that is both Read and Seek.
 pub trait ReadSeek: Read + Seek {}
@@ -36,6 +37,22 @@ impl Endianness {
         }
     }
 }
+
+/// Defines the serialization that is opposite to system native-endian.
+/// This is `BigEndian` in a Little Endian system and `LittleEndian` in a Big Endian system.
+///
+/// Note that this type has no value constructor. It is used purely at the
+/// type level.
+#[cfg(target_endian = "little")]
+pub type OppositeNativeEndian = byteorder::BigEndian;
+
+/// Defines the serialization that is opposite to system native-endian.
+/// This is `BigEndian` in a Little Endian system and `LittleEndian` in a Big Endian system.
+///
+/// Note that this type has no value constructor. It is used purely at the
+/// type level.
+#[cfg(target_endian = "big")]
+pub type OppositeNativeEndian = byteorder::LittleEndian;
 
 #[cfg(test)]
 mod tests {

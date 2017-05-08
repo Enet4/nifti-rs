@@ -6,13 +6,17 @@ name = "nifti"
 readme = "README.md"
 version = "0.1.0"
 
+[features]
+ndarray_volumes = ['ndarray']
+
 [dependencies]
-acc_reader = "*"
-byteorder = "^1.0.0"
+byteorder = "1.0.0"
 flate2 = "0.2.19"
-ndarray = "^0.9.1"
+ndarray = { version = "0.9.1", optional = true }
+num = "0.1.37"
+num-derive = "0.1.40"
+num-traits = "0.1.37"
 quick-error = "1.2.0"
-seek_bufread = "1.2.0"
 
 [dev-dependencies]
 pretty_assertions = "0.2.0"
