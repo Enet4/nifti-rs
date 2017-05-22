@@ -1,65 +1,107 @@
 use error::{NiftiError, Result};
-use util::{ReadSeek, Endianness, OppositeNativeEndian};
+use util::{Endianness, OppositeNativeEndian};
 use std::fs::File;
-use std::io::SeekFrom;
-use std::io::{Read, BufReader, BufRead};
+use std::io::{Read, BufReader};
 use std::path::Path;
-use byteorder;
 use byteorder::{ByteOrder, ReadBytesExt, NativeEndian};
 use flate2::bufread::GzDecoder;
 
 pub const MAGIC_CODE_NI1 : &'static [u8; 4] = b"ni1\0";
 pub const MAGIC_CODE_NIP1 : &'static [u8; 4] = b"n+1\0";
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Builder)]
+#[builder(derive(Debug))]
+#[builder(field(public))]
 pub struct NiftiHeader {
-
+    /// Header size, must be 348
     pub sizeof_hdr: i32,
+    /// Unused in NIFTI-1
     pub data_type: [u8; 10],
+    /// Unused in NIFTI-1
     pub db_name: [u8; 18],
+    /// Unused in NIFTI-1
     pub extents: i32,
+    /// Unused in NIFTI-1
     pub session_error: i16,
+    /// Unused in NIFTI-1
     pub regular: u8,
+    /// MRI slice ordering
     pub dim_info: u8,
-    pub dim: [i16; 8],
+    /// Data array dimensions
+    pub dim: [u16; 8],
+    /// 1st intent parameter
     pub intent_p1: f32,
+    /// 2nd intent parameter
     pub intent_p2: f32,
+    /// 3rd intent parameter
     pub intent_p3: f32,
+    /// NIFTI_INTENT_* code
     pub intent_code: i16,
+    /// Defines the data type!
     pub datatype: i16,
+    /// Number of bits per voxel
     pub bitpix: i16,
+    /// First slice index
     pub slice_start: i16,
+    /// Grid spacings
     pub pixdim: [f32; 8],
+    /// Offset into .nii file to reach the volume
     pub vox_offset: f32,
+    /// Data scaling: slope
     pub scl_slope: f32,
+    /// Data scaling: offset
     pub scl_inter: f32,
+    /// Last slice index
     pub slice_end: i16,
+    /// Slice timing order
     pub slice_code: u8,
+    /// Units of pixdim[1..4]
     pub xyzt_units: u8,
+    /// Max display intensity
     pub cal_max: f32,
+    /// Min display intensity
     pub cal_min: f32,
+    /// Time for 1 slice
     pub slice_duration: f32,
+    /// Time axis shift
     pub toffset: f32,
+    /// Unused in NIFTI-1
     pub glmax: i32,
+    /// Unused in NIFTI-1
     pub glmin: i32,
 
+    /// Any text you like
     pub descrip: Vec<u8>,
+    /// Auxiliary filename
     pub aux_file: [u8; 24],
+    /// NIFTI_XFORM_* code
     pub qform_code: i16,
+    /// NIFTI_XFORM_* code
     pub sform_code: i16,
+    /// Quaternion b param
     pub quatern_b: f32,
+    /// Quaternion c param
     pub quatern_c: f32,
+    /// Quaternion d param
     pub quatern_d: f32,
+    /// Quaternion x shift
     pub quatern_x: f32,
+    /// Quaternion y shift
     pub quatern_y: f32,
+    /// Quaternion z shift
     pub quatern_z: f32,
 
+    /// 1st row affine transform
     pub srow_x: [f32; 4],
+    /// 2nd row affine transform
     pub srow_y: [f32; 4],
+    /// 3rd row affine transform
     pub srow_z: [f32; 4],
 
+    /// 'name' or meaning of data
     pub intent_name: [u8; 16],
 
+    /// Magic code. Must be `b"ni1\0"` or `b"ni+\0"`
     pub magic: [u8; 4],
 }
 
@@ -153,9 +195,9 @@ fn parse_header_1<S: Read>(mut input: S) -> Result<(NiftiHeader, Endianness)> {
     h.session_error = input.read_i16::<B>()?;
     h.regular = input.read_u8()?;
     h.dim_info = input.read_u8()?;
-    h.dim[0] = input.read_i16::<B>()?;
+    h.dim[0] = input.read_u16::<B>()?;
 
-    if h.dim[0] < 0 || h.dim[0] > 7 {
+    if h.dim[0] > 7 {
         // swap bytes read so far, continue with the opposite endianness
         h.sizeof_hdr = h.sizeof_hdr.swap_bytes();
         h.extents = h.extents.swap_bytes();
@@ -173,7 +215,7 @@ fn parse_header_1<S: Read>(mut input: S) -> Result<(NiftiHeader, Endianness)> {
 /// second part of header parsing
 fn parse_header_2<B: ByteOrder, S: Read>(mut h: NiftiHeader, mut input: S) -> Result<NiftiHeader> {
     for v in &mut h.dim[1..] {
-        *v = input.read_i16::<B>()?;
+        *v = input.read_u16::<B>()?;
     }
     h.intent_p1 = input.read_f32::<B>()?;
     h.intent_p2 = input.read_f32::<B>()?;

@@ -4,24 +4,34 @@ use std::ops::{Add, Mul};
 use std::path::Path;
 use header::NiftiHeader;
 use error::{NiftiError, Result};
-use util::Endianness;
+use util::{Endianness, raw_to_value};
 use flate2::bufread::GzDecoder;
 use typedef::NiftiType;
-use num::{Num, FromPrimitive};
+use num::{NumCast, FromPrimitive};
 
-#[cfg(ndarray_volumes)]
+#[cfg(feature = "ndarray_volumes")]
 use ndarray;
 
 pub trait NiftiVolume {
     /// Get the dimensions of the volume. Unlike how NIFTI-1
     /// stores dimensions, the returned slice does not include
     /// `dim[0]` and is clipped to the effective number of dimensions.
-    fn dim(&self) -> &[i16];
+    fn dim(&self) -> &[u16];
+
+    /// Get the volume's number of dimensions. In a fully compliant file,
+    /// this is equivalent to the corresponding header's `dim[0]` field
+    /// (with byte swapping already applied).
+    fn dimensionality(&self) -> usize {
+        self.dim().len()
+    }    
 
     /// Fetch a single voxel's value in the given coordinates.
     /// All necessary conversions and transformations are made
     /// when reading the voxel, including scaling.
     fn get_f32(&self, coords: &[u16]) -> Result<f32>;
+
+    /// Get this volume's data type.
+    fn data_type(&self) -> NiftiType;
 
     // TODO
 }
@@ -32,7 +42,7 @@ pub trait NiftiVolume {
 ///
 #[derive(Debug, PartialEq, Clone)]
 pub struct InMemNiftiVolume {
-    dim: [i16; 8],
+    dim: [u16; 8],
     datatype: NiftiType,
     scl_slope: f32,
     scl_inter: f32,
@@ -41,6 +51,7 @@ pub struct InMemNiftiVolume {
 }
 
 impl InMemNiftiVolume {
+    
     pub fn from_stream<R: Read>(mut source: R, header: &NiftiHeader, endianness: Endianness) -> Result<Self> {
         let ndims = header.dim[0];
         let resolution: usize = header.dim[1..(ndims+1) as usize].iter()
@@ -48,7 +59,7 @@ impl InMemNiftiVolume {
             .product();
         let nbytes = resolution * header.bitpix as usize / 8;
         let mut raw_data = vec![0u8; nbytes];
-        source.read_exact(raw_data.as_mut_slice())?;        /// This voxel data type is not supported. Sorry. :(
+        source.read_exact(raw_data.as_mut_slice())?;
 
         let datatype: NiftiType = NiftiType::from_i16(header.datatype)
             .ok_or_else(|| NiftiError::InvalidFormat)?;
@@ -94,53 +105,127 @@ impl InMemNiftiVolume {
     /// by the object's scale slope and intercept paramters.
     fn raw_to_value<V: Into<T>, T>(&self, value: V) -> T
         where V: Into<T>,
-              T: From<f32> + Mul<Output = T> + Add<Output = T>,
+              V: NumCast,
+              T: From<f32>,
+              T: Mul<Output = T>,
+              T: Add<Output = T>,
     {
-        if self.scl_slope != 0. {
-            let slope = T::from(self.scl_slope);
-            let inter = T::from(self.scl_inter);
-            value.into() * slope + inter
-        } else {
-            value.into()
-        }
+        raw_to_value(value, self.scl_slope, self.scl_inter)
     }
 }
 
-#[cfg(ndarray_volumes)]
+#[cfg(feature = "ndarray_volumes")]
 // ndarray dependent impl
 impl InMemNiftiVolume {
     /// Consume the volume into an ndarray.
-    pub fn to_ndarray_f32<D>(self) -> Result<Array<f32, D>>
-        where D: ndarray::Dimension
+    pub fn to_ndarray<T>(self) -> Result<ndarray::Array<T, ndarray::IxDyn>>
+        where T: From<u8>,
+              T: From<f32>,
+              T: Mul<Output = T>,
+              T: Add<Output = T>,
     {
-        unimplemented!()
-    }
-}
-
-impl NiftiVolume for InMemNiftiVolume {
-    fn dim(&self) -> &[i16] {
-        &self.dim[1..(self.dim[0] + 1) as usize]
-    }
-
-    /// Fetch a single voxel's value in the given coordinates.
-    fn get_f32(&self, coords: &[u16]) -> Result<f32> {
-        // TODO return error
-        debug_assert_eq!(coords.len(), self.dim().len());
-        debug_assert!(!coords.is_empty());
-
-        // TODO add support for more data types
         if self.datatype != NiftiType::Uint8 {
             return Err(NiftiError::UnsupportedDataType(self.datatype));
         }
 
-        let mut crds = coords.into_iter();
-        let start = *crds.next().unwrap() as usize;
-        let index = coords.into_iter().zip(self.dim())
-            .fold(start, |a, b| {
-                a * *b.1 as usize + *b.0 as usize
-        });
-        
-        let byte = self.raw_data[index];
-        Ok(self.raw_to_value(byte))
+        let slope = self.scl_slope;
+        let inter = self.scl_inter;
+        let dim: Vec<_> = self.dim().iter().map(|d| *d as ndarray::Ix).collect();
+        Ok(ndarray::Array::from_vec(self.raw_data)
+            .into_shape(ndarray::IxDyn(&dim))
+            .expect("Inconsistent raw data size")
+            .mapv(|v| raw_to_value(v, slope, inter)))
+    }
+}
+
+impl NiftiVolume for InMemNiftiVolume {
+    fn dim(&self) -> &[u16] {
+        &self.dim[1..(self.dim[0] + 1) as usize]
+    }
+
+    fn dimensionality(&self) -> usize {
+        self.dim[0] as usize
+    }
+
+    fn data_type(&self) -> NiftiType {
+        self.datatype
+    }
+
+    /// Fetch a single voxel's value in the given index coordinates.
+    /// Scaling is performed when applicable. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    fn get_f32(&self, coords: &[u16]) -> Result<f32> {
+        let index = coords_to_index(coords, self.dim())?;
+        if self.datatype == NiftiType::Uint8 {
+            let byte = self.raw_data[index];
+            Ok(self.raw_to_value(byte))
+        } else {
+            let range = &self.raw_data[index..];
+            self.datatype.read_primitive_value(range, self.endianness, self.scl_slope, self.scl_inter)
+        }
+    }
+}
+
+fn coords_to_index(coords: &[u16], dim: &[u16]) -> Result<usize> {
+    if coords.len() != dim.len() || coords.is_empty() {
+        return Err(NiftiError::IncorrectVolumeDimensionality(
+            dim.len() as u16,
+            coords.len() as u16
+        ))
+    }
+
+    if !coords.iter().zip(dim).all(|(i, d)| {
+        *i < (*d) as u16
+    }) {
+        return Err(NiftiError::OutOfBounds);
+    }
+
+    let mut crds = coords.into_iter();
+    let start = *crds.next_back().unwrap() as usize;
+    let index = crds.zip(dim).rev()
+        .fold(start, |a, b| {
+            a * *b.1 as usize + *b.0 as usize
+    });
+
+    Ok(index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::coords_to_index;
+
+    #[test]
+    fn test_coords_to_index() {
+        assert!(coords_to_index(&[0, 0], &[10, 10, 5]).is_err());
+        assert!(coords_to_index(&[0, 0, 0, 0], &[10, 10, 5]).is_err());
+        assert_eq!(
+            coords_to_index(&[0, 0, 0], &[10, 10, 5]).unwrap(),
+            0
+        );
+
+        assert_eq!(
+            coords_to_index(&[1, 0, 0], &[16, 16, 3]).unwrap(),
+            1
+        );
+        assert_eq!(
+            coords_to_index(&[0, 1, 0], &[16, 16, 3]).unwrap(),
+            16
+        );
+        assert_eq!(
+            coords_to_index(&[0, 0, 1], &[16, 16, 3]).unwrap(),
+            256
+        );
+        assert_eq!(
+            coords_to_index(&[1, 1, 1], &[16, 16, 3]).unwrap(),
+            273
+        );
+
+        assert_eq!(
+            coords_to_index(&[15, 15, 2], &[16, 16, 3]).unwrap(),
+            16 * 16 * 3 - 1
+        );
+
+        assert!(coords_to_index(&[16, 15, 2], &[16, 16, 3]).is_err());
     }
 }

@@ -6,20 +6,29 @@ name = "nifti"
 readme = "README.md"
 version = "0.1.0"
 
-[features]
-ndarray_volumes = ['ndarray']
+[badges]
+
+[badges.travis-ci]
+branch = "master"
+repository = "Enet4/nifti-rs"
 
 [dependencies]
 byteorder = "1.0.0"
 flate2 = "0.2.19"
-ndarray = { version = "0.9.1", optional = true }
 num = "0.1.37"
 num-derive = "0.1.40"
 num-traits = "0.1.37"
 quick-error = "1.2.0"
 
+[dependencies.derive_builder]
+version = "0.4.7"
+
+[dependencies.ndarray]
+optional = true
+version = "0.9.1"
+
 [dev-dependencies]
 pretty_assertions = "0.2.0"
 
-[badges]
-travis-ci = { repository = "Enet4/nifti-rs", branch = "master" }
+[features]
+ndarray_volumes = ["ndarray"]

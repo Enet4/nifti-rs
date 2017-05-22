@@ -1,4 +1,8 @@
-use num::FromPrimitive;
+use byteorder::ReadBytesExt;
+use error::{Result, NiftiError};
+use std::io::Read;
+use std::ops::{Add, Mul};
+use util::{Endianness, raw_to_value};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
 pub enum NiftiType {
@@ -50,6 +54,57 @@ pub enum NiftiType {
     /// 4 8 bit bytes.
     // NIFTI_TYPE_RGBA32       2304
     Rgba32 = 2304,
+}
+
+impl NiftiType {
+    pub fn read_primitive_value<S, T>(&self, mut source: S, endianness: Endianness, slope: f32, inter: f32) -> Result<T>
+        where S: Read,
+              T: From<f32>,
+              T: Add<Output = T>,
+              T: Mul<Output = T>
+    {
+       match *self {
+            NiftiType::Uint8 => {
+                let raw = source.read_u8()?;
+                Ok(raw_to_value(raw as f32, slope, inter))
+            },
+            NiftiType::Uint16 => {
+                let raw = endianness.read_u16(source)?;
+                Ok(raw_to_value(raw as f32, slope, inter))
+            },
+            NiftiType::Int16 => {
+                let raw = endianness.read_i16(source)?;
+                Ok(raw_to_value(raw as f32, slope, inter))
+            },
+            NiftiType::Uint32 => {
+                let raw = endianness.read_u32(source)?;
+                Ok(raw_to_value(raw as f32, slope, inter))
+            },
+            NiftiType::Int32 => {
+                let raw = endianness.read_i32(source)?;
+                Ok(raw_to_value(raw as f32, slope, inter))
+            },
+            NiftiType::Uint64 => {
+                let raw = endianness.read_u64(source)?;
+                Ok(raw_to_value(raw as f32, slope, inter))
+            },
+            NiftiType::Int64 => {
+                let raw = endianness.read_i64(source)?;
+                Ok(raw_to_value(raw as f32, slope, inter))
+            },
+            NiftiType::Float32 => {
+                let raw = endianness.read_f32(source)?;
+                Ok(raw_to_value(raw, slope, inter))
+            },
+            NiftiType::Float64 => {
+                let raw = endianness.read_f64(source)?;
+                Ok(raw_to_value(raw as f32, slope, inter))
+
+            },
+            // TODO add support for more data types
+            _ => Err(NiftiError::UnsupportedDataType(*self))
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
