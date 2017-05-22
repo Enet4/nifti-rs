@@ -2,7 +2,7 @@
 use std::io::{Read, Seek, Result as IoResult};
 use byteorder::{LittleEndian, BigEndian, ReadBytesExt};
 use std::ops::{Add, Mul};
-use num::NumCast;
+use num::Num;
 
 /// A trait that is both Read and Seek.
 pub trait ReadSeek: Read + Seek {}
@@ -39,6 +39,7 @@ impl Endianness {
         }
     }
 
+    /// Read a primitive value with this endianness from the given source. 
     pub fn read_i16<S>(&self, mut src: S) -> IoResult<i16>
         where S: Read
     {
@@ -48,6 +49,7 @@ impl Endianness {
         }
     }
 
+    /// Read a primitive value with this endianness from the given source. 
     pub fn read_u16<S>(&self, mut src: S) -> IoResult<u16>
         where S: Read
     {
@@ -57,6 +59,7 @@ impl Endianness {
         }
     }
 
+    /// Read a primitive value with this endianness from the given source. 
     pub fn read_i32<S>(&self, mut src: S) -> IoResult<i32>
         where S: Read
     {
@@ -66,6 +69,7 @@ impl Endianness {
         }
     }
 
+    /// Read a primitive value with this endianness from the given source. 
     pub fn read_u32<S>(&self, mut src: S) -> IoResult<u32>
         where S: Read
     {
@@ -75,6 +79,7 @@ impl Endianness {
         }
     }
 
+    /// Read a primitive value with this endianness from the given source. 
     pub fn read_i64<S>(&self, mut src: S) -> IoResult<i64>
         where S: Read
     {
@@ -84,6 +89,7 @@ impl Endianness {
         }
     }
 
+    /// Read a primitive value with this endianness from the given source. 
     pub fn read_u64<S>(&self, mut src: S) -> IoResult<u64>
         where S: Read
     {
@@ -93,6 +99,7 @@ impl Endianness {
         }
     }
 
+    /// Read a primitive value with this endianness from the given source. 
     pub fn read_f32<S>(&self, mut src: S) -> IoResult<f32>
         where S: Read
     {
@@ -102,6 +109,7 @@ impl Endianness {
         }
     }
 
+    /// Read a primitive value with this endianness from the given source. 
     pub fn read_f64<S>(&self, mut src: S) -> IoResult<f64>
         where S: Read
     {
@@ -130,16 +138,14 @@ pub type OppositeNativeEndian = LittleEndian;
 
 /// Convert a raw volume value to the scale defined
 /// by the given scale slope and intercept parameters.
-pub fn raw_to_value<V: Into<T>, T>(value: V, slope: f32, intercept: f32) -> T
-    where V: NumCast,
-          T: From<f32>,
+pub fn raw_to_value<V, T>(value: V, slope: T, intercept: T) -> T
+    where V: Into<T>,
+          T: Num,
           T: Mul<Output = T>,
           T: Add<Output = T>,
 {
-    if slope != 0. {
-        let slope = T::from(slope);
-        let inter = T::from(intercept);
-        value.into() * slope + inter
+    if slope != T::zero() {
+        value.into() * slope + intercept
     } else {
         value.into()
     }

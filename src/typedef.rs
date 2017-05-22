@@ -3,6 +3,7 @@ use error::{Result, NiftiError};
 use std::io::Read;
 use std::ops::{Add, Mul};
 use util::{Endianness, raw_to_value};
+use num::Num;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
 pub enum NiftiType {
@@ -57,13 +58,17 @@ pub enum NiftiType {
 }
 
 impl NiftiType {
+    /// Read a primitive voxel value from a source.
     pub fn read_primitive_value<S, T>(&self, mut source: S, endianness: Endianness, slope: f32, inter: f32) -> Result<T>
         where S: Read,
               T: From<f32>,
+              T: Num,
               T: Add<Output = T>,
               T: Mul<Output = T>
     {
-       match *self {
+        let slope: T = slope.into();
+        let inter: T = inter.into();
+        match *self {
             NiftiType::Uint8 => {
                 let raw = source.read_u8()?;
                 Ok(raw_to_value(raw as f32, slope, inter))
@@ -99,7 +104,6 @@ impl NiftiType {
             NiftiType::Float64 => {
                 let raw = endianness.read_f64(source)?;
                 Ok(raw_to_value(raw as f32, slope, inter))
-
             },
             // TODO add support for more data types
             _ => Err(NiftiError::UnsupportedDataType(*self))
@@ -109,15 +113,28 @@ impl NiftiType {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
 pub enum Unit {
+    /// NIFTI code for unspecified units.
     Unknown = 0,
+    /* Space codes are multiples of 1. */
+    /// NIFTI code for meters.
     Meter = 1,
+    /// NIFTI code for millimeters.
     Mm = 2,
+    /// NIFTI code for micrometers.
     Micron = 3,
+    /* Time codes are multiples of 8. */
+    /// NIFTI code for seconds.
     Sec = 8,
+    /// NIFTI code for milliseconds.
     Msec = 16,
+    /// NIFTI code for microseconds.
     Usec = 24,
+    /* These units are for spectral data: */
+    /// NIFTI code for Hertz.
     Hz = 32,
+    /// NIFTI code for ppm.
     Ppm = 40,
+    /// NIFTI code for radians per second.
     Rads = 48,
 }
 

@@ -1,13 +1,12 @@
 use std::io::{Read, BufReader};
 use std::fs::File;
-use std::ops::{Add, Mul};
 use std::path::Path;
 use header::NiftiHeader;
 use error::{NiftiError, Result};
 use util::{Endianness, raw_to_value};
 use flate2::bufread::GzDecoder;
 use typedef::NiftiType;
-use num::{NumCast, FromPrimitive};
+use num::FromPrimitive;
 
 #[cfg(feature = "ndarray_volumes")]
 use ndarray;
@@ -100,18 +99,6 @@ impl InMemNiftiVolume {
     pub fn get_raw_data_mut(&mut self) -> &mut [u8] {
         &mut self.raw_data
     }
-
-    /// Convert a raw volume value to the scale defined
-    /// by the object's scale slope and intercept paramters.
-    fn raw_to_value<V: Into<T>, T>(&self, value: V) -> T
-        where V: Into<T>,
-              V: NumCast,
-              T: From<f32>,
-              T: Mul<Output = T>,
-              T: Add<Output = T>,
-    {
-        raw_to_value(value, self.scl_slope, self.scl_inter)
-    }
 }
 
 #[cfg(feature = "ndarray_volumes")]
@@ -159,7 +146,7 @@ impl NiftiVolume for InMemNiftiVolume {
         let index = coords_to_index(coords, self.dim())?;
         if self.datatype == NiftiType::Uint8 {
             let byte = self.raw_data[index];
-            Ok(self.raw_to_value(byte))
+            Ok(raw_to_value(byte as f32, self.scl_slope, self.scl_inter))
         } else {
             let range = &self.raw_data[index..];
             self.datatype.read_primitive_value(range, self.endianness, self.scl_slope, self.scl_inter)
