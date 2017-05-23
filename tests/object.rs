@@ -28,6 +28,7 @@ fn minimal_nii() {
     assert_eq!(volume.dim(), [64, 64, 10].as_ref());
 }
 
+#[ignore]
 #[test]
 fn minimal_by_hdr() {
     let minimal_hdr = NiftiHeader {
@@ -51,6 +52,7 @@ fn minimal_by_hdr() {
     assert_eq!(volume.dim(), [64, 64, 10].as_ref());
 }
 
+#[ignore]
 #[test]
 fn minimal_by_pair() {
     let minimal_hdr = NiftiHeader {
