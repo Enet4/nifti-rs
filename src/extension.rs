@@ -7,6 +7,26 @@ pub struct Extender {
     extension: [u8; 4],
 }
 
+impl Extender {
+
+    pub fn from_stream<S: Read>(mut source: S) -> Result<Self> {
+        let mut extension = [0u8; 4];
+        source.read_exact(&mut extension)?;
+        Ok(Extender { extension })
+    }
+
+    pub fn from_stream_optional<S: Read>(mut source: S) -> Result<Option<Self>> {
+        let mut extension = [0u8; 4];
+        match source.read_exact(&mut extension) {
+            Ok(_) => Ok(Some(Extender { extension })),
+            Err(_) => {
+                Ok(None) // TODO send other errors properly 
+            }
+        }
+    
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Extension {
     esize: i32,
@@ -39,14 +59,12 @@ impl<'a> IntoIterator for &'a ExtensionSequence {
 }
 
 impl ExtensionSequence {
-    pub fn from_stream<B: ByteOrder, S: Read>(mut source: S, eof: usize) -> Result<Self> {
-        let mut extender = Extender::default();
-        source.read_exact(&mut extender.extension)?;
 
+    pub fn from_stream<B: ByteOrder, S: Read>(extender: Extender, mut source: S, end: usize) -> Result<Self> {
         let mut extensions = Vec::new();
-        let mut offset = 4;
+        let mut offset = 352;
         if extender.extension[0] != 0 {
-            while offset < eof {
+            while offset < end {
                 let esize = source.read_i32::<B>()?;
                 let ecode = source.read_i32::<B>()?;
                 let data_size = esize as usize - 8;
