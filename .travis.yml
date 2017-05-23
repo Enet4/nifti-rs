@@ -3,7 +3,10 @@ rust:
   - stable
   - beta
   - nightly
-script: cargo test --all
+script: cargo test --all $FEATURES_FLAG
+env:
+  - FEATURES_FLAG=""
+  - FEATURES_FLAG="--features ndarray_volumes""
 matrix:
   allow_failures:
     - rust: nightly

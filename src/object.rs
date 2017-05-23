@@ -15,12 +15,24 @@ use flate2::bufread::GzDecoder;
 /// Trait type for all possible implementations of
 /// owning NIFTI-1 objects.
 pub trait NiftiObject {
-    type Volume: ?Sized + NiftiVolume;
 
+    /// The concrete type of the volume.
+    type Volume: NiftiVolume;
+
+    /// Obtain a reference to the NIFTI header.
     fn header(&self) -> &NiftiHeader;
+
+    /// Obtain a mutable reference to the NIFTI header.
+    fn header_mut(&mut self) -> &mut NiftiHeader;
+    
+    /// Obtain a reference to the object's extensions.
     fn extensions(&self) -> &ExtensionSequence;
+
+    /// Obtain a reference to the object's volume.
     fn volume(&self) -> &Self::Volume;
 
+    /// Move the volume out of the object, discarding the
+    /// header and extensions.
     fn into_volume(self) -> Self::Volume;
 }
 
@@ -111,6 +123,10 @@ impl NiftiObject for InMemNiftiObject {
 
     fn header(&self) -> &NiftiHeader {
         &self.header
+    }
+
+    fn header_mut(&mut self) -> &mut NiftiHeader {
+        &mut self.header
     }
 
     fn extensions(&self) -> &ExtensionSequence {

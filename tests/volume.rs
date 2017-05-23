@@ -40,6 +40,7 @@ fn minimal_img_gz() {
 #[cfg(feature = "ndarray_volumes")]
 mod ndarray_volumes {
     use nifti::{Endianness, NiftiHeader, NiftiVolume, InMemNiftiVolume};
+    use ndarray::{Array, Axis, IxDyn, ShapeBuilder};
 
     #[test]
     fn minimal_img_gz_ndarray() {
@@ -64,6 +65,13 @@ mod ndarray_volumes {
         let volume = volume.to_ndarray::<f32>().unwrap();
         
         assert_eq!(volume.shape(), [64, 64, 10].as_ref());  
+
+        let slices = volume.axis_iter(Axis(1));
+        let mut e = Array::zeros(IxDyn(&[64, 10]).f());
+        for (j, slice) in slices.enumerate() {
+            e.fill(j as f32);
+            assert!(slice == e, "slice was:\n{:?}\n, expected:\n{:?}", &slice, &e);
+        }
     }
 
 }

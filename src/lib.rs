@@ -14,7 +14,31 @@
 //! let dims = volume.dim();
 //! # Ok(())
 //! # }
-//! run().unwrap();
+//! # run().unwrap();
+//! ```
+//!
+//! The library will automatically look for the respective volume when
+//! specifying just the header file:
+//!
+//! ```no_run
+//! use nifti::{NiftiObject, InMemNiftiObject};
+//! # use nifti::error::Result;
+//! # fn run() -> Result<()> {
+//! let obj = InMemNiftiObject::from_file("myvolume.hdr.gz")?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! You can also convert a volume to an [`ndarray::Array`](https://docs.rs/ndarray/0.9.1/ndarray/index.html)
+//! and work from there:
+//!
+//! ```no_run
+//! # #[cfg(feature = "ndarray_volumes")]
+//! # fn run() {
+//! # use nifti::{NiftiObject, InMemNiftiObject};
+//! # let obj = InMemNiftiObject::from_file("myvolume.hdr.gz").unwrap();
+//! let volume = obj.into_volume().to_ndarray::<f32>();
+//! # }
 //! ```
 //! 
 #![deny(missing_debug_implementations)]

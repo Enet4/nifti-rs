@@ -8,8 +8,9 @@ use flate2::bufread::GzDecoder;
 use typedef::NiftiType;
 use num::FromPrimitive;
 
-#[cfg(feature = "ndarray_volumes")]
-use ndarray;
+#[cfg(feature = "ndarray_volumes")] use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
+#[cfg(feature = "ndarray_volumes")] use std::ops::{Add, Mul};
+#[cfg(feature = "ndarray_volumes")] use num::Num;
 
 pub trait NiftiVolume {
     /// Get the dimensions of the volume. Unlike how NIFTI-1
@@ -31,8 +32,6 @@ pub trait NiftiVolume {
 
     /// Get this volume's data type.
     fn data_type(&self) -> NiftiType;
-
-    // TODO
 }
 
 /// A data type for a NIFTI-1 volume contained in memory.
@@ -51,6 +50,8 @@ pub struct InMemNiftiVolume {
 
 impl InMemNiftiVolume {
     
+    /// Read a NIFTI volume from a stream of data. The header and expected byte order
+    /// of the volume's data must be known in advance.
     pub fn from_stream<R: Read>(mut source: R, header: &NiftiHeader, endianness: Endianness) -> Result<Self> {
         let ndims = header.dim[0];
         let resolution: usize = header.dim[1..(ndims+1) as usize].iter()
@@ -73,6 +74,9 @@ impl InMemNiftiVolume {
         })
     }
 
+    /// Read a NIFTI volume from an image file. NIFTI-1 volume files usually have the
+    /// extension ".img" or ".img.gz". In the latter case, the file is automatically
+    /// decoded as a Gzip stream.
     pub fn from_file<P: AsRef<Path>>(path: P, header: &NiftiHeader, endianness: Endianness) -> Result<Self> {
         let gz = path.as_ref().extension()
             .map(|a| a.to_string_lossy() == "gz")
@@ -104,10 +108,13 @@ impl InMemNiftiVolume {
 #[cfg(feature = "ndarray_volumes")]
 // ndarray dependent impl
 impl InMemNiftiVolume {
+
     /// Consume the volume into an ndarray.
-    pub fn to_ndarray<T>(self) -> Result<ndarray::Array<T, ndarray::IxDyn>>
+    pub fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
         where T: From<u8>,
               T: From<f32>,
+              T: Clone,
+              T: Num,
               T: Mul<Output = T>,
               T: Add<Output = T>,
     {
@@ -115,13 +122,14 @@ impl InMemNiftiVolume {
             return Err(NiftiError::UnsupportedDataType(self.datatype));
         }
 
-        let slope = self.scl_slope;
-        let inter = self.scl_inter;
-        let dim: Vec<_> = self.dim().iter().map(|d| *d as ndarray::Ix).collect();
-        Ok(ndarray::Array::from_vec(self.raw_data)
-            .into_shape(ndarray::IxDyn(&dim))
+        let slope: T = self.scl_slope.into();
+        let inter: T = self.scl_inter.into();
+        let dim: Vec<_> = self.dim().iter()
+            .map(|d| *d as Ix).collect();
+        let a = Array::from_shape_vec(IxDyn(&dim).f(), self.raw_data)
             .expect("Inconsistent raw data size")
-            .mapv(|v| raw_to_value(v, slope, inter)))
+            .mapv(|v| raw_to_value(v, slope.clone(), inter.clone()));
+        Ok(a)
     }
 }
 
@@ -165,7 +173,7 @@ fn coords_to_index(coords: &[u16], dim: &[u16]) -> Result<usize> {
     if !coords.iter().zip(dim).all(|(i, d)| {
         *i < (*d) as u16
     }) {
-        return Err(NiftiError::OutOfBounds);
+        return Err(NiftiError::OutOfBounds(Vec::from(coords)));
     }
 
     let mut crds = coords.into_iter();
