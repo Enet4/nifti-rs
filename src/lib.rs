@@ -14,7 +14,6 @@
 //! let dims = volume.dim();
 //! # Ok(())
 //! # }
-//! # run().unwrap();
 //! ```
 //!
 //! The library will automatically look for the respective volume when
@@ -68,5 +67,5 @@ pub use object::{NiftiObject, InMemNiftiObject};
 pub use extension::{Extender, Extension, ExtensionSequence};
 pub use header::NiftiHeader;
 pub use volume::{NiftiVolume, InMemNiftiVolume};
-pub use typedef::NiftiType;
+pub use typedef::{NiftiType, Unit, Intent, XForm, SliceOrder};
 pub use util::Endianness;

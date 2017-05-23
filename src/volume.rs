@@ -12,6 +12,13 @@ use num::FromPrimitive;
 #[cfg(feature = "ndarray_volumes")] use std::ops::{Add, Mul};
 #[cfg(feature = "ndarray_volumes")] use num::Num;
 
+
+/// Public API for NIFTI volume data, exposed as a multi-dimensional
+/// voxel array.
+///
+/// # Note
+///
+/// This API is experimental and subject to change.
 pub trait NiftiVolume {
     /// Get the dimensions of the volume. Unlike how NIFTI-1
     /// stores dimensions, the returned slice does not include
@@ -23,12 +30,32 @@ pub trait NiftiVolume {
     /// (with byte swapping already applied).
     fn dimensionality(&self) -> usize {
         self.dim().len()
-    }    
+    }
+
+    /// Fetch a single voxel's value in the given coordinates as
+    /// a .
+    /// All necessary conversions and transformations are made
+    /// when reading the voxel, including scaling. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    ///
+    /// # Errors
+    /// 
+    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
+    /// volume's boundaries.
+    fn get_f32(&self, coords: &[u16]) -> Result<f32>;
 
     /// Fetch a single voxel's value in the given coordinates.
     /// All necessary conversions and transformations are made
-    /// when reading the voxel, including scaling.
-    fn get_f32(&self, coords: &[u16]) -> Result<f32>;
+    /// when reading the voxel, including scaling. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    ///
+    /// # Errors
+    /// 
+    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
+    /// volume's boundaries.
+    fn get_f64(&self, coords: &[u16]) -> Result<f64>;
 
     /// Get this volume's data type.
     fn data_type(&self) -> NiftiType;
@@ -146,15 +173,22 @@ impl NiftiVolume for InMemNiftiVolume {
         self.datatype
     }
 
-    /// Fetch a single voxel's value in the given index coordinates.
-    /// Scaling is performed when applicable. Note that using this
-    /// function continuously to traverse the volume is inefficient.
-    /// Prefer using iterators or the `ndarray` API for volume traversal.
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
         let index = coords_to_index(coords, self.dim())?;
         if self.datatype == NiftiType::Uint8 {
             let byte = self.raw_data[index];
             Ok(raw_to_value(byte as f32, self.scl_slope, self.scl_inter))
+        } else {
+            let range = &self.raw_data[index..];
+            self.datatype.read_primitive_value(range, self.endianness, self.scl_slope, self.scl_inter)
+        }
+    }
+
+    fn get_f64(&self, coords: &[u16]) -> Result<f64> {
+        let index = coords_to_index(coords, self.dim())?;
+        if self.datatype == NiftiType::Uint8 {
+            let byte = self.raw_data[index];
+            Ok(raw_to_value(byte as f64, self.scl_slope as f64, self.scl_inter as f64))
         } else {
             let range = &self.raw_data[index..];
             self.datatype.read_primitive_value(range, self.endianness, self.scl_slope, self.scl_inter)
