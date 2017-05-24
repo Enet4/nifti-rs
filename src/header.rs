@@ -1,5 +1,5 @@
 use error::{NiftiError, Result};
-use util::{Endianness, OppositeNativeEndian};
+use util::{Endianness, OppositeNativeEndian, is_gz_file};
 use std::fs::File;
 use std::io::{Read, BufReader};
 use std::path::Path;
@@ -163,9 +163,7 @@ impl NiftiHeader {
     /// Retrieve a NIFTI header, along with its byte order, from a file in the file system.
     /// If the file's name ends with ".gz", the file is assumed to need GZip decoding.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<(NiftiHeader, Endianness)> {
-        let gz = path.as_ref().extension()
-            .map(|a| a.to_string_lossy() == "gz")
-            .unwrap_or(false);
+        let gz = is_gz_file(&path);
         let file = BufReader::new(File::open(path)?);
         if gz {
             NiftiHeader::from_stream(GzDecoder::new(file)?)

@@ -80,15 +80,18 @@ pub struct InMemNiftiVolume {
 impl InMemNiftiVolume {
     
     /// Read a NIFTI volume from a stream of data. The header and expected byte order
-    /// of the volume's data must be known in advance.
+    /// of the volume's data must be known in advance. It it also expected that the
+    /// following bytes represent the first voxels of the volume (and not part of the
+    /// extensions).
     pub fn from_stream<R: Read>(mut source: R, header: &NiftiHeader, endianness: Endianness) -> Result<Self> {
         let ndims = header.dim[0];
         let resolution: usize = header.dim[1..(ndims+1) as usize].iter()
             .map(|d| *d as usize)
             .product();
         let nbytes = resolution * header.bitpix as usize / 8;
+        println!("Reading volume of {:?} bytes", nbytes);
         let mut raw_data = vec![0u8; nbytes];
-        source.read_exact(raw_data.as_mut_slice())?;
+        source.read_exact(raw_data.as_mut_slice()).unwrap();
 
         let datatype: NiftiType = NiftiType::from_i16(header.datatype)
             .ok_or_else(|| NiftiError::InvalidFormat)?;
@@ -108,36 +111,20 @@ impl InMemNiftiVolume {
     /// known in advance.
     pub fn from_stream_with_extensions<R: Read>(mut source: R, header: &NiftiHeader, extender: Extender, endianness: Endianness) -> Result<(Self, ExtensionSequence)> {
         // fetch extensions
-        let mut end = header.vox_offset as usize;
-        if end < 348 {
-            end = 348;
-        }
+        let len = header.vox_offset as usize;
+        let len = if len < 352 {
+            0
+        } else {
+            len - 352
+        };
 
         let ext = match endianness {
-            Endianness::LE => ExtensionSequence::from_stream::<LittleEndian, _>(extender, &mut source, end),
-            Endianness::BE => ExtensionSequence::from_stream::<BigEndian, _>(extender, &mut source, end),
+            Endianness::LE => ExtensionSequence::from_stream::<LittleEndian, _>(extender, &mut source, len),
+            Endianness::BE => ExtensionSequence::from_stream::<BigEndian, _>(extender, &mut source, len),
         }?;
 
         // fetch volume (rest of file)
-        let ndims = header.dim[0];
-        let resolution: usize = header.dim[1..(ndims+1) as usize].iter()
-            .map(|d| *d as usize)
-            .product();
-        let nbytes = resolution * header.bitpix as usize / 8;
-        let mut raw_data = vec![0u8; nbytes];
-        source.read_exact(raw_data.as_mut_slice())?;
-
-        let datatype: NiftiType = NiftiType::from_i16(header.datatype)
-            .ok_or_else(|| NiftiError::InvalidFormat)?;
-       
-        Ok((InMemNiftiVolume {
-            dim: header.dim,
-            datatype,
-            scl_slope: header.scl_slope,
-            scl_inter: header.scl_inter,
-            raw_data,
-            endianness,
-        }, ext))
+        Ok((Self::from_stream(source, &header, endianness)?, ext))
     }
 
     /// Read a NIFTI volume from an image file. NIFTI-1 volume files usually have the
@@ -158,18 +145,15 @@ impl InMemNiftiVolume {
     /// Read a NIFTI volume, along with the extensions, from an image file. NIFTI-1 volume
     /// files usually have the extension ".img" or ".img.gz". In the latter case, the file
     /// is automatically decoded as a Gzip stream.
-    pub fn from_file_with_extensions<P: AsRef<Path>>(path: P, header: &NiftiHeader, endianness: Endianness) -> Result<(Self, ExtensionSequence)> {
+    pub fn from_file_with_extensions<P: AsRef<Path>>(path: P, header: &NiftiHeader, endianness: Endianness, extender: Extender) -> Result<(Self, ExtensionSequence)> {
         let gz = path.as_ref().extension()
             .map(|a| a.to_string_lossy() == "gz")
             .unwrap_or(false);
-        let mut stream = BufReader::new(File::open(path)?);
+        let stream = BufReader::new(File::open(path)?);
 
         if gz {
-            let mut stream = GzDecoder::new(stream)?;
-            let extender = Extender::from_stream_optional(&mut stream)?.unwrap_or_default();
-            InMemNiftiVolume::from_stream_with_extensions(stream, &header, extender, endianness)
+            InMemNiftiVolume::from_stream_with_extensions(GzDecoder::new(stream)?, &header, extender, endianness)
         } else {
-            let extender = Extender::from_stream_optional(&mut stream)?.unwrap_or_default();
             InMemNiftiVolume::from_stream_with_extensions(stream, &header, extender, endianness)
         }
     }

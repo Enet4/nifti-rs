@@ -7,7 +7,7 @@ use extension::{ExtensionSequence, Extender};
 use header::NiftiHeader;
 use header::MAGIC_CODE_NI1;
 use volume::{NiftiVolume, InMemNiftiVolume};
-use util::Endianness;
+use util::{Endianness, is_gz_file, to_img_file};
 use error::Result;
 use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
@@ -64,28 +64,27 @@ impl InMemNiftiObject {
     /// # }
     /// ```
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<InMemNiftiObject> {
-        let gz = path.as_ref().extension()
-            .map(|a| a.to_string_lossy().ends_with(".gz"))
-            .unwrap_or(false);
+        let gz = is_gz_file(&path);
         
         let file = BufReader::new(File::open(&path)?);
         if gz {
-            let file = GzDecoder::new(file)?;
-            Self::from_file_2(path, file, gz)
+            Self::from_file_2(GzDecoder::new(file)?, file)
         } else {
-            Self::from_file_2(path, file, gz)
+            Self::from_file_2(path, file)
         }
     }
 
     /// Retrieve a NIFTI object as separate header and volume files.
     /// This method is useful when file names are not conventional for a
     /// NIFTI file pair.
-    pub fn from_file_pair<P1, P2>(hdr_path: P1, vol_path: P2) -> Result<InMemNiftiObject>
-        where P1: AsRef<Path>,
-              P2: AsRef<Path>
+    pub fn from_file_pair<P, Q>(hdr_path: P, vol_path: Q) -> Result<InMemNiftiObject>
+        where P: AsRef<Path>,
+              Q: AsRef<Path>
     {
-        let (header, endianness) = NiftiHeader::from_file(hdr_path)?;
-        let (volume, extensions) = InMemNiftiVolume::from_file_with_extensions(vol_path, &header, endianness)?;
+        let mut hdr_stream = BufReader::new(File::open(hdr_path)?);
+        let (header, endianness) = NiftiHeader::from_stream(&mut hdr_stream)?;
+        let extender = Extender::from_stream_optional(hdr_stream)?.unwrap_or_default();
+        let (volume, extensions) = InMemNiftiVolume::from_file_with_extensions(vol_path, &header, endianness, extender)?;
 
         Ok(InMemNiftiObject {
             header,
@@ -94,30 +93,35 @@ impl InMemNiftiObject {
         })
     }
 
-    fn from_file_2<P: AsRef<Path>, S>(path: P, mut stream: S, gz: bool) -> Result<InMemNiftiObject>
+    fn from_file_2<P: AsRef<Path>, S>(path: P, mut stream: S) -> Result<InMemNiftiObject>
         where S: Read
     {
         let (header, endianness) = NiftiHeader::from_stream(&mut stream)?;
+        let extender = Extender::from_stream_optional(&mut stream)?.unwrap_or_default();
         let (volume, ext) = if &header.magic == MAGIC_CODE_NI1 {
             // look for corresponding img file
             let mut img_path = path.as_ref().to_path_buf();
-            img_path.set_extension(if gz {
-                    ".img.gz"
-                } else {
-                    ".img"
-                });
 
-            InMemNiftiVolume::from_file_with_extensions(img_path, &header, endianness)?
+            img_path = to_img_file(img_path);
+
+            InMemNiftiVolume::from_file_with_extensions(img_path, &header, endianness, extender)
+                .map_err(|e| if let NiftiError::Io(io_e) = e {
+                    NiftiError::MissingVolumeFile(io_e)
+                } else {
+                    e
+                })?
         } else {
-            let mut eof = header.vox_offset as usize;
-            if eof < 352 {
-                eof = 352;
-            }
-            
             let extender = Extender::from_stream(&mut stream)?;
+            let len = header.vox_offset as usize;
+            let len = if len < 352 {
+                0
+            } else {
+                len - 352
+            };
+            
             let ext = match endianness {
-                Endianness::LE => ExtensionSequence::from_stream::<LittleEndian, _>(extender, &mut stream, eof),
-                Endianness::BE => ExtensionSequence::from_stream::<BigEndian, _>(extender, &mut stream, eof),
+                Endianness::LE => ExtensionSequence::from_stream::<LittleEndian, _>(extender, &mut stream, len),
+                Endianness::BE => ExtensionSequence::from_stream::<BigEndian, _>(extender, &mut stream, len),
             }?;
 
             let volume = InMemNiftiVolume::from_stream(stream, &header, endianness)?;
@@ -136,21 +140,23 @@ impl InMemNiftiObject {
     /// 
     /// # Errors
     /// 
-    /// - [`NiftiError::NoVolumeData`] if the source only contains (or claims to contain)
+    /// - `NiftiError::NoVolumeData` if the source only contains (or claims to contain)
     /// a header.
     pub fn new_from_stream<R: Read>(&self, mut source: R) -> Result<InMemNiftiObject> {
         let (header, endianness) = NiftiHeader::from_stream(&mut source)?;
         if &header.magic == MAGIC_CODE_NI1 {
             return Err(NiftiError::NoVolumeData);
         }
-        let mut eof = header.vox_offset as usize;
-        if eof < 352 {
-            eof = 352;
-        }
+        let len = header.vox_offset as usize;
+        let len = if len < 352 {
+            0
+        } else {
+            len - 352
+        };
         let extender = Extender::from_stream(&mut source)?;
         let ext = match endianness {
-            Endianness::LE => ExtensionSequence::from_stream::<LittleEndian, _>(extender, &mut source, eof),
-            Endianness::BE => ExtensionSequence::from_stream::<BigEndian, _>(extender, &mut source, eof),
+            Endianness::LE => ExtensionSequence::from_stream::<LittleEndian, _>(extender, &mut source, len),
+            Endianness::BE => ExtensionSequence::from_stream::<BigEndian, _>(extender, &mut source, len),
         }?;
 
         let volume = InMemNiftiVolume::from_stream(source, &header, endianness)?;

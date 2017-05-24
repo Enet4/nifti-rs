@@ -17,6 +17,11 @@ quick_error! {
         OutOfBounds(coords: Vec<u16>) {
             description("Out of bounds access to volume")
         }
+        /// Could not retrieve a volume file based on the given header file.
+        MissingVolumeFile(err: IOError) {
+            cause(err)
+            description("Volume file not found")
+        }
         /// An attempt to read a complete NIFTI-1 object from a header file
         /// was made. It can also be triggered when a NIFTI object contains
         /// the magic code "ni-1\0", even if the following bytes contain the volume.

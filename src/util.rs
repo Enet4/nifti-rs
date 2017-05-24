@@ -3,6 +3,7 @@ use std::io::{Read, Seek, Result as IoResult};
 use byteorder::{LittleEndian, BigEndian, ReadBytesExt};
 use std::ops::{Add, Mul};
 use num::Num;
+use std::path::{Path, PathBuf};
 
 /// A trait that is both Read and Seek.
 pub trait ReadSeek: Read + Seek {}
@@ -149,6 +150,23 @@ pub fn raw_to_value<V, T>(value: V, slope: T, intercept: T) -> T
     } else {
         value.into()
     }
+}
+
+pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
+    path.as_ref().extension()
+        .map(|a| a.to_string_lossy().ends_with("gz"))
+        .unwrap_or(false)
+}
+
+pub fn to_img_file(mut path: PathBuf) -> PathBuf {
+    // TODO fix
+    let gz = is_gz_file(&path);
+    path.set_extension(if gz {
+            "img.gz"
+        } else {
+            "img"
+        });
+    path
 }
 
 #[cfg(test)]

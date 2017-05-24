@@ -1,5 +1,5 @@
-use std::io::Read;
-use error::Result;
+use std::io::{Read, ErrorKind as IoErrorKind};
+use error::{NiftiError, Result};
 use byteorder::{ByteOrder, ReadBytesExt};
 
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
@@ -9,22 +9,33 @@ pub struct Extender {
 
 impl Extender {
 
+    /// Fetch the extender code from the given source, while expecting it to exist.
     pub fn from_stream<S: Read>(mut source: S) -> Result<Self> {
         let mut extension = [0u8; 4];
         source.read_exact(&mut extension)?;
         Ok(Extender { extension })
     }
 
+    /// Fetch the extender code from the given source, while 
+    /// being possible to not be available.
+    /// Returns `None` if the source reaches EoF prematurely.
+    /// Any other I/O error is delegated to a `NiftiError`.
     pub fn from_stream_optional<S: Read>(mut source: S) -> Result<Option<Self>> {
         let mut extension = [0u8; 4];
         match source.read_exact(&mut extension) {
             Ok(_) => Ok(Some(Extender { extension })),
-            Err(_) => {
-                Ok(None) // TODO send other errors properly 
+            Err(ref e) if e.kind() == IoErrorKind::UnexpectedEof => {
+                Ok(None)
             }
+            Err(e) => Err(NiftiError::from(e))
         }
-    
     }
+
+    /// Whether extensions should exist after this extender code.
+    pub fn has_extensions(&self) -> bool {
+        self.extension[0] != 0
+    }
+
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -60,11 +71,12 @@ impl<'a> IntoIterator for &'a ExtensionSequence {
 
 impl ExtensionSequence {
 
-    pub fn from_stream<B: ByteOrder, S: Read>(extender: Extender, mut source: S, end: usize) -> Result<Self> {
+    /// Read a sequence of extensions from a source, up until `len` bytes.
+    pub fn from_stream<B: ByteOrder, S: Read>(extender: Extender, mut source: S, len: usize) -> Result<Self> {
         let mut extensions = Vec::new();
-        let mut offset = 352;
-        if extender.extension[0] != 0 {
-            while offset < end {
+        if extender.has_extensions() {
+            let mut offset = 0;
+            while offset < len {
                 let esize = source.read_i32::<B>()?;
                 let ecode = source.read_i32::<B>()?;
                 let data_size = esize as usize - 8;
