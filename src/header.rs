@@ -1,3 +1,6 @@
+//! This module defines the `NiftiHeader` struct, which is used
+//! to provide important information about NIFTI-1 volumes.
+
 use error::{NiftiError, Result};
 use util::{Endianness, OppositeNativeEndian, is_gz_file};
 use std::fs::File;
@@ -6,14 +9,56 @@ use std::path::Path;
 use byteorder::{ByteOrder, ReadBytesExt, NativeEndian};
 use flate2::bufread::GzDecoder;
 
+/// Magic code for NIFTI-1 header files (extention ".hdr[.gz]").
 pub const MAGIC_CODE_NI1 : &'static [u8; 4] = b"ni1\0";
+/// Magic code for full NIFTI-1 files (extention ".nii[.gz]").
 pub const MAGIC_CODE_NIP1 : &'static [u8; 4] = b"n+1\0";
 
+/// The NIFTI-1 header data type.
+/// All fields are public and named after the specification's header file.
+/// The type of each field was adjusted according to their use and
+/// array limitations. A builder is also available.
+///
+/// # Examples
+///
+/// ```no_run
+/// use nifti::{NiftiHeader, Endianness};
+/// # use nifti::Result;
+///
+/// # fn run() -> Result<()> { 
+/// let (hdr1, endianness): (NiftiHeader, Endianness) =
+///     NiftiHeader::from_file("0000.hdr")?;
+/// 
+/// let hdr2: NiftiHeader = NiftiHeader::from_file("0001.hdr.gz")?.0;
+/// let (hdr3, end3) = NiftiHeader::from_file("4321.nii.gz")?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Or to build one yourself:
+///
+/// ```
+/// use nifti::NiftiHeaderBuilder;
+/// # use std::error::Error;
+///
+/// # fn run() -> Result<(), Box<Error>> {
+/// let hdr = NiftiHeaderBuilder::default()
+///     .cal_min(0.)
+///     .cal_max(128.)
+///     .build()?;
+/// assert_eq!(hdr.cal_min, 0.);
+/// assert_eq!(hdr.cal_max, 128.);
+/// # Ok(())
+/// # }
+/// # run().unwrap();
+/// ```
 #[derive(Debug, Clone, PartialEq, Builder)]
 #[builder(derive(Debug))]
 #[builder(field(public))]
+#[builder(default)]
 pub struct NiftiHeader {
     /// Header size, must be 348
+    #[builder(default="348")]
     pub sizeof_hdr: i32,
     /// Unused in NIFTI-1
     pub data_type: [u8; 10],

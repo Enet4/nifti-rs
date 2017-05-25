@@ -1,3 +1,10 @@
+//! This module defines the voxel volume API, as well as data
+//! types for reading volumes from files.
+//! An integration with `ndarray` allows for more elegant and
+//! efficient approaches, and should be preferred when possible.
+//! In order to do so, you must add the `ndarray_volumes` feature
+//! to this crate.
+
 use std::io::{Read, BufReader};
 use std::fs::File;
 use std::path::Path;
@@ -17,10 +24,6 @@ use num::FromPrimitive;
 
 /// Public API for NIFTI volume data, exposed as a multi-dimensional
 /// voxel array.
-///
-/// # Note
-///
-/// This API is experimental and subject to change.
 pub trait NiftiVolume {
     /// Get the dimensions of the volume. Unlike how NIFTI-1
     /// stores dimensions, the returned slice does not include
@@ -34,8 +37,8 @@ pub trait NiftiVolume {
         self.dim().len()
     }
 
-    /// Fetch a single voxel's value in the given coordinates as
-    /// a .
+    /// Fetch a single voxel's value in the given voxel index coordinates
+    /// as a single precision floating point value.
     /// All necessary conversions and transformations are made
     /// when reading the voxel, including scaling. Note that using this
     /// function continuously to traverse the volume is inefficient.
@@ -47,7 +50,8 @@ pub trait NiftiVolume {
     /// volume's boundaries.
     fn get_f32(&self, coords: &[u16]) -> Result<f32>;
 
-    /// Fetch a single voxel's value in the given coordinates.
+    /// Fetch a single voxel's value in the given voxel index coordinates
+    /// as a double precision floating point value.
     /// All necessary conversions and transformations are made
     /// when reading the voxel, including scaling. Note that using this
     /// function continuously to traverse the volume is inefficient.
@@ -65,8 +69,9 @@ pub trait NiftiVolume {
 
 /// A data type for a NIFTI-1 volume contained in memory.
 /// Objects of this type contain raw image data, which
-/// is converted automatically when reading the
-///
+/// is converted automatically when using reading methods
+/// or converting it to an `ndarray` (with the
+/// `ndarray_volumes` feature).
 #[derive(Debug, PartialEq, Clone)]
 pub struct InMemNiftiVolume {
     dim: [u16; 8],
@@ -109,7 +114,13 @@ impl InMemNiftiVolume {
     /// Read a NIFTI volume, and extensions, from a stream of data. The header,
     /// extender code and expected byte order of the volume's data must be
     /// known in advance.
-    pub fn from_stream_with_extensions<R: Read>(mut source: R, header: &NiftiHeader, extender: Extender, endianness: Endianness) -> Result<(Self, ExtensionSequence)> {
+    pub fn from_stream_with_extensions<R>(mut source: R,
+                                          header: &NiftiHeader,
+                                          extender: Extender,
+                                          endianness: Endianness)
+                                          -> Result<(Self, ExtensionSequence)>
+        where R: Read
+    {
         // fetch extensions
         let len = header.vox_offset as usize;
         let len = if len < 352 {
@@ -145,7 +156,13 @@ impl InMemNiftiVolume {
     /// Read a NIFTI volume, along with the extensions, from an image file. NIFTI-1 volume
     /// files usually have the extension ".img" or ".img.gz". In the latter case, the file
     /// is automatically decoded as a Gzip stream.
-    pub fn from_file_with_extensions<P: AsRef<Path>>(path: P, header: &NiftiHeader, endianness: Endianness, extender: Extender) -> Result<(Self, ExtensionSequence)> {
+    pub fn from_file_with_extensions<P>(path: P,
+                                        header: &NiftiHeader,
+                                        endianness: Endianness,
+                                        extender: Extender)
+                                        -> Result<(Self, ExtensionSequence)>
+        where P: AsRef<Path>
+    {
         let gz = path.as_ref().extension()
             .map(|a| a.to_string_lossy() == "gz")
             .unwrap_or(false);

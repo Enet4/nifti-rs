@@ -153,26 +153,39 @@ pub fn raw_to_value<V, T>(value: V, slope: T, intercept: T) -> T
 }
 
 pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
-    path.as_ref().extension()
-        .map(|a| a.to_string_lossy().ends_with("gz"))
+    path.as_ref().file_name()
+        .map(|a| a.to_string_lossy().ends_with(".gz"))
         .unwrap_or(false)
 }
 
-pub fn to_img_file(mut path: PathBuf) -> PathBuf {
-    // TODO fix
+/// Convert a file path to a header file (.hdr or .hdr.gz) to
+/// the respective volume file (.img or .img.gz).
+///
+/// # Panics
+/// Can panic if the given file path is not a valid path to a header file.
+/// If it doesn't panic in this case, the result might still not be correct.
+pub fn to_img_file(path: PathBuf) -> PathBuf {
     let gz = is_gz_file(&path);
-    path.set_extension(if gz {
-            "img.gz"
-        } else {
-            "img"
-        });
-    path
+    let fname = path.file_name().unwrap().to_owned();
+    let fname = fname.to_string_lossy();
+    if gz {
+        let mut fname = fname[..fname.len() - ".img.gz".len()].to_owned();
+        fname += ".img.gz";
+        path.with_file_name(fname)
+    } else {
+        let mut fname = fname[..fname.len() - ".img".len()].to_owned();
+        fname += ".img";
+        path.with_file_name(fname)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Endianness;
     use super::raw_to_value;
+    use super::to_img_file;
+    use super::is_gz_file;
+    use std::path::PathBuf;
 
     #[test]
     fn endianness() {
@@ -202,5 +215,36 @@ mod tests {
         let raw: u8 = 100;
         let val: f32 = raw_to_value(raw, 2., -1024.);
         assert_eq!(val, -824.);
+    }
+
+    #[test]
+    fn filenames() {
+        assert!(!is_gz_file("/path/to/something.nii"));
+        assert!(is_gz_file("/path/to/something.nii.gz"));
+        assert!(!is_gz_file("volume.não"));
+        assert!(is_gz_file("1.2.3.nii.gz"));
+        assert!(!is_gz_file("não_é_gz.hdr"));
+
+        assert!(!is_gz_file("/path/to/image.hdr"));
+        assert_eq!(
+            to_img_file(PathBuf::from("/path/to/image.hdr")),
+            PathBuf::from("/path/to/image.img")
+        );
+
+        assert!(is_gz_file("/path/to/image.hdr.gz"));
+        assert_eq!(
+            to_img_file(PathBuf::from("/path/to/image.hdr.gz")),
+            PathBuf::from("/path/to/image.img.gz")
+        );
+
+        assert_eq!(
+            to_img_file(PathBuf::from("my_ct_scan.1.hdr.gz")),
+            PathBuf::from("my_ct_scan.1.img.gz")
+        );
+
+        assert_eq!(
+            to_img_file(PathBuf::from("../you.cant.fool.me.hdr.gz")),
+            PathBuf::from("../you.cant.fool.me.img.gz")
+        );
     }
 }

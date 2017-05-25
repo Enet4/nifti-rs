@@ -1,3 +1,5 @@
+//! Module for handling and retrieving complete NIFTI-1 objects.
+
 use std::fs::File;
 use std::path::Path;
 use std::io::{BufReader, Read};
@@ -13,7 +15,8 @@ use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
 
 /// Trait type for all possible implementations of
-/// owning NIFTI-1 objects.
+/// owning NIFTI-1 objects. Objects contain a NIFTI header,
+/// a volume, and a possibly empty extension sequence.
 pub trait NiftiObject {
 
     /// The concrete type of the volume.
@@ -68,37 +71,23 @@ impl InMemNiftiObject {
         
         let file = BufReader::new(File::open(&path)?);
         if gz {
-            Self::from_file_2(GzDecoder::new(file)?, file)
+            Self::from_file_2(path, GzDecoder::new(file)?)
         } else {
             Self::from_file_2(path, file)
         }
-    }
-
-    /// Retrieve a NIFTI object as separate header and volume files.
-    /// This method is useful when file names are not conventional for a
-    /// NIFTI file pair.
-    pub fn from_file_pair<P, Q>(hdr_path: P, vol_path: Q) -> Result<InMemNiftiObject>
-        where P: AsRef<Path>,
-              Q: AsRef<Path>
-    {
-        let mut hdr_stream = BufReader::new(File::open(hdr_path)?);
-        let (header, endianness) = NiftiHeader::from_stream(&mut hdr_stream)?;
-        let extender = Extender::from_stream_optional(hdr_stream)?.unwrap_or_default();
-        let (volume, extensions) = InMemNiftiVolume::from_file_with_extensions(vol_path, &header, endianness, extender)?;
-
-        Ok(InMemNiftiObject {
-            header,
-            extensions,
-            volume,
-        })
     }
 
     fn from_file_2<P: AsRef<Path>, S>(path: P, mut stream: S) -> Result<InMemNiftiObject>
         where S: Read
     {
         let (header, endianness) = NiftiHeader::from_stream(&mut stream)?;
-        let extender = Extender::from_stream_optional(&mut stream)?.unwrap_or_default();
         let (volume, ext) = if &header.magic == MAGIC_CODE_NI1 {
+            // extensions and volume are in another file
+
+            // extender is optional
+            let extender = Extender::from_stream_optional(&mut stream)?
+                .unwrap_or_default();
+            
             // look for corresponding img file
             let mut img_path = path.as_ref().to_path_buf();
 
@@ -111,6 +100,8 @@ impl InMemNiftiObject {
                     e
                 })?
         } else {
+            // extensions and volume are in the same source
+            
             let extender = Extender::from_stream(&mut stream)?;
             let len = header.vox_offset as usize;
             let len = if len < 352 {
@@ -135,6 +126,39 @@ impl InMemNiftiObject {
             volume
         })
     }
+
+    /// Retrieve a NIFTI object as separate header and volume files.
+    /// This method is useful when file names are not conventional for a
+    /// NIFTI file pair.
+    pub fn from_file_pair<P, Q>(hdr_path: P, vol_path: Q) -> Result<InMemNiftiObject>
+        where P: AsRef<Path>,
+              Q: AsRef<Path>
+    {
+        let gz = is_gz_file(&hdr_path);
+        
+        let file = BufReader::new(File::open(&hdr_path)?);
+        if gz {
+            Self::from_file_pair_2(GzDecoder::new(file)?, vol_path)
+        } else {
+            Self::from_file_pair_2(file, vol_path)
+        }
+    }
+
+    fn from_file_pair_2<S, Q>(mut hdr_stream: S, vol_path: Q) -> Result<InMemNiftiObject>
+        where S: Read,
+              Q: AsRef<Path>,
+    {
+        let (header, endianness) = NiftiHeader::from_stream(&mut hdr_stream)?;
+        let extender = Extender::from_stream_optional(hdr_stream)?.unwrap_or_default();
+        let (volume, extensions) = InMemNiftiVolume::from_file_with_extensions(vol_path, &header, endianness, extender)?;
+
+        Ok(InMemNiftiObject {
+            header,
+            extensions,
+            volume,
+        })
+    }
+
 
     /// Retrieve a NIFTI object from a stream of data.
     /// 

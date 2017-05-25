@@ -1,3 +1,9 @@
+//! This module contains multiple types defined by the standard.
+//! At the moment, not all of them are used internally (`NiftiType`
+//! makes the exception, which also provides a safe means of
+//! reading voxel values). However, primitive integer values can be
+//! converted to these types and vice-versa.
+
 use byteorder::ReadBytesExt;
 use error::{Result, NiftiError};
 use std::io::Read;
@@ -92,10 +98,12 @@ impl NiftiType {
                 Ok(raw_to_value(raw as f32, slope, inter))
             },
             NiftiType::Uint64 => {
+                // TODO find a way to not lose precision
                 let raw = endianness.read_u64(source)?;
                 Ok(raw_to_value(raw as f32, slope, inter))
             },
             NiftiType::Int64 => {
+                // TODO find a way to not lose precision
                 let raw = endianness.read_i64(source)?;
                 Ok(raw_to_value(raw as f32, slope, inter))
             },
@@ -104,6 +112,7 @@ impl NiftiType {
                 Ok(raw_to_value(raw, slope, inter))
             },
             NiftiType::Float64 => {
+                // TODO find a way to not lose precision
                 let raw = endianness.read_f64(source)?;
                 Ok(raw_to_value(raw as f32, slope, inter))
             },

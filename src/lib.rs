@@ -63,9 +63,10 @@ pub mod error;
 pub mod typedef;
 mod util;
 
+pub use error::{NiftiError, Result};
 pub use object::{NiftiObject, InMemNiftiObject};
 pub use extension::{Extender, Extension, ExtensionSequence};
-pub use header::NiftiHeader;
+pub use header::{NiftiHeader, NiftiHeaderBuilder};
 pub use volume::{NiftiVolume, InMemNiftiVolume};
 pub use typedef::{NiftiType, Unit, Intent, XForm, SliceOrder};
 pub use util::Endianness;
