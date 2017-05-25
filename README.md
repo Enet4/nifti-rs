@@ -42,7 +42,7 @@ from a complete solution. In particular, future versions should be able to:
 - Provide a real spatial-temporal interpretation of the volume (rather than just voxel-indexed);
 - Maybe add support for NIFTI-2?
 
-There are no deadlines for these features, so your help is much appreciated. Consider filing an [issue](issues) in case something is missing for your use case to work. Pull requests are also welcome.
+There are no deadlines for these features, so your help is much appreciated. Consider filing an [issue](https://github.com/Enet4/nifti-rs/issues) in case something is missing for your use case to work. Pull requests are also welcome.
 
 ## License
 
