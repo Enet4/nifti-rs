@@ -1,6 +1,4 @@
-# NIFTI-rs
-
-[![Build Status](https://travis-ci.org/Enet4/nifti-rs.svg?branch=master)](https://travis-ci.org/Enet4/nifti-rs)
+# NIFTI-rs &emsp; [![Latest Version](https://img.shields.io/crates/v/nifti.svg)](https://crates.io/crates/nifti) [![Build Status](https://travis-ci.org/Enet4/nifti-rs.svg?branch=master)](https://travis-ci.org/Enet4/nifti-rs)
 
 This library is a pure Rust implementation for reading files in the [NIfTI](https://nifti.nimh.nih.gov/nifti-1/) format (more specifically NIfTI-1.1).
 
