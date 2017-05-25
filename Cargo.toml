@@ -6,6 +6,8 @@ keywords = ["nifti", "neuroimaging", "standard", "parser"]
 license = "MIT/Apache-2.0"
 name = "nifti"
 readme = "README.md"
+documentation = "https://docs.rs/crate/nifti"
+repository = "https://github.com/Enet4/nifti-rs"
 version = "0.1.0"
 
 [badges]
