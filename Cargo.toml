@@ -1,6 +1,8 @@
 [package]
 authors = ["Eduardo Pinho <enet4mikeenet@gmail.com>"]
+categories = ["parser-implementations"]
 description = "Rust implementation of the NIfTI file format"
+keywords = ["nifti", "neuroimaging", "standard", "parser"]
 license = "MIT/Apache-2.0"
 name = "nifti"
 readme = "README.md"

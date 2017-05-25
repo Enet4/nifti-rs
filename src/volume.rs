@@ -21,9 +21,11 @@ use num::FromPrimitive;
 #[cfg(feature = "ndarray_volumes")] use std::ops::{Add, Mul};
 #[cfg(feature = "ndarray_volumes")] use num::Num;
 
-
 /// Public API for NIFTI volume data, exposed as a multi-dimensional
 /// voxel array.
+///
+/// This API is currently experimental and will likely be subjected to
+/// various changes and additions in future versions.
 pub trait NiftiVolume {
     /// Get the dimensions of the volume. Unlike how NIFTI-1
     /// stores dimensions, the returned slice does not include
