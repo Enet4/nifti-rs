@@ -40,19 +40,6 @@ pub trait NiftiVolume {
     }
 
     /// Fetch a single voxel's value in the given voxel index coordinates
-    /// as a single precision floating point value.
-    /// All necessary conversions and transformations are made
-    /// when reading the voxel, including scaling. Note that using this
-    /// function continuously to traverse the volume is inefficient.
-    /// Prefer using iterators or the `ndarray` API for volume traversal.
-    ///
-    /// # Errors
-    /// 
-    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
-    /// volume's boundaries.
-    fn get_f32(&self, coords: &[u16]) -> Result<f32>;
-
-    /// Fetch a single voxel's value in the given voxel index coordinates
     /// as a double precision floating point value.
     /// All necessary conversions and transformations are made
     /// when reading the voxel, including scaling. Note that using this
@@ -67,7 +54,50 @@ pub trait NiftiVolume {
 
     /// Get this volume's data type.
     fn data_type(&self) -> NiftiType;
+
+    /// Fetch a single voxel's value in the given voxel index coordinates
+    /// as a single precision floating point value.
+    /// All necessary conversions and transformations are made
+    /// when reading the voxel, including scaling. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    ///
+    /// # Errors
+    /// 
+    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
+    /// volume's boundaries.
+    fn get_f32(&self, coords: &[u16]) -> Result<f32> {
+        let v = self.get_f64(coords)?;
+        v as f32
+    }
 }
+
+/// Interface for a volume that can be sliced.
+impl Sliceable {
+    /// The type of the resulting slice, which is also a volume.
+    type Slice: NiftiVolume;
+
+    /// Obtain a slice of the volume over a certain axis, yielding a
+    /// volume of N-1 dimensions.
+    fn get_slice_f64(&self, axis: u16, index: u16) -> Result<Self::Slice>;
+}
+
+
+/// A data type for a NIFTI-1 volume contained in memory.
+/// Objects of this type contain raw image data, which
+/// is converted automatically when using reading methods
+/// or converting it to an `ndarray` (with the
+/// `ndarray_volumes` feature).
+#[derive(Debug, PartialEq, Clone)]
+pub struct InMemNiftiVolumeRef<'v> {
+    dim: [u16; 8],
+    datatype: NiftiType,
+    scl_slope: f32,
+    scl_inter: f32,
+    raw_data: &'v [u8],
+    endianness: Endianness,
+}
+
 
 /// A data type for a NIFTI-1 volume contained in memory.
 /// Objects of this type contain raw image data, which
