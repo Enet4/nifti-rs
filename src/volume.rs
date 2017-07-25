@@ -68,7 +68,7 @@ pub trait NiftiVolume {
     /// volume's boundaries.
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
         let v = self.get_f64(coords)?;
-        v as f32
+        Ok(v as f32)
     }
 }
 
