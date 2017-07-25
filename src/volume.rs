@@ -73,7 +73,7 @@ pub trait NiftiVolume {
 }
 
 /// Interface for a volume that can be sliced.
-impl Sliceable {
+pub trait Sliceable {
     /// The type of the resulting slice, which is also a volume.
     type Slice: NiftiVolume;
 
