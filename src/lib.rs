@@ -67,6 +67,6 @@ pub use error::{NiftiError, Result};
 pub use object::{NiftiObject, InMemNiftiObject};
 pub use extension::{Extender, Extension, ExtensionSequence};
 pub use header::{NiftiHeader, NiftiHeaderBuilder};
-pub use volume::{NiftiVolume, InMemNiftiVolume};
+pub use volume::{NiftiVolume, InMemNiftiVolume, Sliceable};
 pub use typedef::{NiftiType, Unit, Intent, XForm, SliceOrder};
 pub use util::Endianness;
