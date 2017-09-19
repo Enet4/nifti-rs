@@ -10,6 +10,10 @@ documentation = "https://docs.rs/crate/nifti"
 repository = "https://github.com/Enet4/nifti-rs"
 version = "0.1.0"
 
+[[example]]
+name = "niftidump"
+path = "examples/niftidump/main.rs"
+
 [badges]
 
 [badges.travis-ci]
@@ -17,11 +21,11 @@ branch = "master"
 repository = "Enet4/nifti-rs"
 
 [dependencies]
-byteorder = "1.0.0"
+byteorder = "1.1.0"
 flate2 = "0.2.19"
-num = "0.1.37"
-num-derive = "0.1.40"
-num-traits = "0.1.37"
+num = "0.1.40"
+num-derive = "0.1.41"
+num-traits = "0.1.40"
 quick-error = "1.2.0"
 
 [dependencies.derive_builder]

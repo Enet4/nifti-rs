@@ -75,3 +75,37 @@ pub trait Sliceable {
     /// volume of N-1 dimensions.
     fn get_slice(&self, axis: u16, index: u16) -> Result<Self::Slice>;
 }
+
+#[derive(Debug, Clone)]
+pub struct SliceView<T> {
+    volume: T,
+    axis: u16,
+    index: u16,
+    dim: Vec<u16>,
+}
+
+impl<'v, V> NiftiVolume for SliceView<&'v V>
+where V: NiftiVolume {
+
+    fn dim(&self) -> &[u16] {
+        &self.dim
+    }
+    
+    fn get_f32(&self, coords: &[u16]) -> Result<f32> {
+        let mut coords = Vec::from(coords);
+        coords.insert(self.axis as usize, self.index);
+        self.volume.get_f32(&coords)
+    }
+
+    fn get_f64(&self, coords: &[u16]) -> Result<f64> {
+        let mut coords = Vec::from(coords);
+        coords.insert(self.axis as usize, self.index);
+        self.volume.get_f64(&coords)
+    }
+
+    /// Get this volume's data type.
+    fn data_type(&self) -> NiftiType {
+        self.volume.data_type()
+    }
+
+}

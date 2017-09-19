@@ -17,6 +17,10 @@ quick_error! {
         OutOfBounds(coords: Vec<u16>) {
             description("Out of bounds access to volume")
         }
+        /// Attempted to read a volume over a volume's unexistent dimension.
+        AxisOutOfBounds(axis: u16) {
+            description("Out of bounds access to volume")
+        }
         /// Could not retrieve a volume file based on the given header file.
         MissingVolumeFile(err: IOError) {
             cause(err)
