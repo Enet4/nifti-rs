@@ -8,12 +8,8 @@
 pub mod inmem;
 pub use self::inmem::*;
 mod util;
-use error::Result;
+use error::{Result, NiftiError};
 use typedef::NiftiType;
-
-#[cfg(feature = "ndarray_volumes")] use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
-#[cfg(feature = "ndarray_volumes")] use std::ops::{Add, Mul};
-#[cfg(feature = "ndarray_volumes")] use num::Num;
 
 /// Public API for NIFTI volume data, exposed as a multi-dimensional
 /// voxel array.
@@ -84,7 +80,34 @@ pub struct SliceView<T> {
     dim: Vec<u16>,
 }
 
-impl<'v, V> NiftiVolume for SliceView<&'v V>
+impl<'a, T> Sliceable for &'a T
+where &'a T: NiftiVolume
+{
+    type Slice = SliceView<&'a T>;
+
+    fn get_slice(&self, axis: u16, index: u16) -> Result<Self::Slice> {
+        let mut coords: Vec<_> = self.dim().into();
+        if let Some(d) = coords.get(axis as usize) {
+            if *d <= index {
+                return Err(NiftiError::OutOfBounds(
+                    util::hot_vector(self.dimensionality(), axis as usize, index)));
+            }
+        } else {
+            return Err(NiftiError::AxisOutOfBounds(axis));
+        }
+
+        let _ = coords.remove(axis as usize);
+
+        Ok(SliceView {
+            volume: *self,
+            axis,
+            index,
+            dim: coords,
+        })
+    }
+}
+
+impl<V> NiftiVolume for SliceView<V>
 where V: NiftiVolume {
 
     fn dim(&self) -> &[u16] {

@@ -1,6 +1,6 @@
 //! Module holding an in-memory implementation of a NIfTI volume.
 
-use super::{NiftiVolume, Sliceable, SliceView};
+use super::NiftiVolume;
 use super::util::coords_to_index;
 use std::io::{Read, BufReader};
 use std::fs::File;
@@ -12,7 +12,7 @@ use util::{raw_to_value, Endianness};
 use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
 use typedef::NiftiType;
-use num::{FromPrimitive, Zero};
+use num::FromPrimitive;
 
 #[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
@@ -201,7 +201,7 @@ impl InMemNiftiVolume {
         T: Mul<Output = T>,
         T: Add<Output = T>,
     {
-        self.clone().into_ndarray()
+        self.clone().to_ndarray()
     }
 }
 
@@ -277,61 +277,12 @@ impl NiftiVolume for InMemNiftiVolume {
     }
 }
 
-fn hot_vector<T>(dim: usize, axis: usize, value: T) -> Vec<T>
-where
-    T: Zero,
-    T: Clone,
-{
-    let mut v = vec![T::zero(); dim];
-    v[axis] = value;
-    v
-}
-
-fn coords_to_index(coords: &[u16], dim: &[u16]) -> Result<usize> {
-    if coords.len() != dim.len() || coords.is_empty() {
-        return Err(NiftiError::IncorrectVolumeDimensionality(
-            dim.len() as u16,
-            coords.len() as u16,
-        ));
-    }
-
-    if !coords.iter().zip(dim).all(|(i, d)| *i < (*d) as u16) {
-        return Err(NiftiError::OutOfBounds(Vec::from(coords)));
-    }
-
-    let mut crds = coords.into_iter();
-    let start = *crds.next_back().unwrap() as usize;
-    let index = crds.zip(dim)
-        .rev()
-        .fold(start, |a, b| a * *b.1 as usize + *b.0 as usize);
-
-    Ok(index)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use volume::Sliceable;
     use typedef::NiftiType;
     use util::Endianness;
-
-    #[test]
-    fn test_coords_to_index() {
-        assert!(coords_to_index(&[0, 0], &[10, 10, 5]).is_err());
-        assert!(coords_to_index(&[0, 0, 0, 0], &[10, 10, 5]).is_err());
-        assert_eq!(coords_to_index(&[0, 0, 0], &[10, 10, 5]).unwrap(), 0);
-
-        assert_eq!(coords_to_index(&[1, 0, 0], &[16, 16, 3]).unwrap(), 1);
-        assert_eq!(coords_to_index(&[0, 1, 0], &[16, 16, 3]).unwrap(), 16);
-        assert_eq!(coords_to_index(&[0, 0, 1], &[16, 16, 3]).unwrap(), 256);
-        assert_eq!(coords_to_index(&[1, 1, 1], &[16, 16, 3]).unwrap(), 273);
-
-        assert_eq!(
-            coords_to_index(&[15, 15, 2], &[16, 16, 3]).unwrap(),
-            16 * 16 * 3 - 1
-        );
-
-        assert!(coords_to_index(&[16, 15, 2], &[16, 16, 3]).is_err());
-    }
 
     #[test]
     fn test_u8_inmem_volume() {
@@ -384,7 +335,4 @@ mod tests {
         let v = slice.get_f32(&[2, 1]).unwrap();
         assert_eq!(v, 39.);
     }
-
-
 }
->>>>>>> More content:src/volume.rs

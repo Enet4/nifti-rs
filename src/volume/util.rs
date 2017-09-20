@@ -1,5 +1,16 @@
 //! Miscellaneous volume-related functions
 use error::{Result, NiftiError};
+use num::Zero;
+
+pub fn hot_vector<T>(dim: usize, axis: usize, value: T) -> Vec<T>
+where
+    T: Zero,
+    T: Clone,
+{
+    let mut v = vec![T::zero(); dim];
+    v[axis] = value;
+    v
+}
 
 pub fn coords_to_index(coords: &[u16], dim: &[u16]) -> Result<usize> {
     if coords.len() != dim.len() || coords.is_empty() {
