@@ -8,7 +8,7 @@ name = "nifti"
 readme = "README.md"
 documentation = "https://docs.rs/crate/nifti"
 repository = "https://github.com/Enet4/nifti-rs"
-version = "0.1.0"
+version = "0.2.0"
 
 [[example]]
 name = "niftidump"
