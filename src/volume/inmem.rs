@@ -177,10 +177,6 @@ impl InMemNiftiVolume {
         T: Mul<Output = T>,
         T: Add<Output = T>,
     {
-        if self.datatype != NiftiType::Uint8 {
-            return Err(NiftiError::UnsupportedDataType(self.datatype));
-        }
-
         let slope: T = self.scl_slope.into();
         let inter: T = self.scl_inter.into();
         let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
