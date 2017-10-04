@@ -1,9 +1,11 @@
-extern crate nifti;
 extern crate flate2;
-#[macro_use] extern crate pretty_assertions;
-#[cfg(feature = "ndarray_volumes")] extern crate ndarray;
+#[cfg(feature = "ndarray_volumes")]
+extern crate ndarray;
+extern crate nifti;
+#[macro_use]
+extern crate pretty_assertions;
 
-use nifti::{NiftiHeader, InMemNiftiObject, NiftiObject, NiftiVolume, NiftiType};
+use nifti::{InMemNiftiObject, NiftiHeader, NiftiObject, NiftiType, NiftiVolume};
 
 #[test]
 fn minimal_nii_gz() {

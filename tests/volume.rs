@@ -1,9 +1,11 @@
-extern crate nifti;
 extern crate flate2;
-#[macro_use] extern crate pretty_assertions;
-#[cfg(feature = "ndarray_volumes")] extern crate ndarray;
+#[cfg(feature = "ndarray_volumes")]
+extern crate ndarray;
+extern crate nifti;
+#[macro_use]
+extern crate pretty_assertions;
 
-use nifti::{NiftiHeader, InMemNiftiVolume, NiftiVolume, Endianness};
+use nifti::{Endianness, InMemNiftiVolume, NiftiHeader, NiftiVolume};
 
 #[test]
 fn minimal_img_gz() {

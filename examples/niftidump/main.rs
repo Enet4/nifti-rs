@@ -8,6 +8,8 @@ use nifti::NiftiHeader;
 fn main() {
     let mut args = env::args().skip(1);
     let filename = args.next().expect("Path to NIFTI file is required");
-    let header = NiftiHeader::from_file(filename).expect("Failed to read NIFTI file").0;
+    let header = NiftiHeader::from_file(filename)
+        .expect("Failed to read NIFTI file")
+        .0;
     println!("{:#?}", &header);
 }

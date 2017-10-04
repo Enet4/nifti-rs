@@ -8,7 +8,7 @@
 pub mod inmem;
 pub use self::inmem::*;
 mod util;
-use error::{Result, NiftiError};
+use error::{NiftiError, Result};
 use typedef::NiftiType;
 
 /// Public API for NIFTI volume data, exposed as a multi-dimensional
@@ -37,7 +37,7 @@ pub trait NiftiVolume {
     /// Prefer using iterators or the `ndarray` API for volume traversal.
     ///
     /// # Errors
-    /// 
+    ///
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     fn get_f64(&self, coords: &[u16]) -> Result<f64>;
@@ -53,7 +53,7 @@ pub trait NiftiVolume {
     /// Prefer using iterators or the `ndarray` API for volume traversal.
     ///
     /// # Errors
-    /// 
+    ///
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
@@ -84,7 +84,8 @@ pub struct SliceView<T> {
 }
 
 impl<'a, T> Sliceable for &'a T
-where &'a T: NiftiVolume
+where
+    &'a T: NiftiVolume,
 {
     type Slice = SliceView<&'a T>;
 
@@ -92,8 +93,11 @@ where &'a T: NiftiVolume
         let mut coords: Vec<_> = self.dim().into();
         if let Some(d) = coords.get(axis as usize) {
             if *d <= index {
-                return Err(NiftiError::OutOfBounds(
-                    util::hot_vector(self.dimensionality(), axis as usize, index)));
+                return Err(NiftiError::OutOfBounds(util::hot_vector(
+                    self.dimensionality(),
+                    axis as usize,
+                    index,
+                )));
             }
         } else {
             return Err(NiftiError::AxisOutOfBounds(axis));
@@ -111,12 +115,13 @@ where &'a T: NiftiVolume
 }
 
 impl<V> NiftiVolume for SliceView<V>
-where V: NiftiVolume {
-
+where
+    V: NiftiVolume,
+{
     fn dim(&self) -> &[u16] {
         &self.dim
     }
-    
+
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
@@ -133,5 +138,4 @@ where V: NiftiVolume {
     fn data_type(&self) -> NiftiType {
         self.volume.data_type()
     }
-
 }

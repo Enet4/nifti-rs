@@ -4,7 +4,7 @@
 //! end of the NIFTI-1 header, with the first byte set to something
 //! other than 0.
 
-use std::io::{Read, ErrorKind as IoErrorKind};
+use std::io::{ErrorKind as IoErrorKind, Read};
 use error::{NiftiError, Result};
 use byteorder::{ByteOrder, ReadBytesExt};
 
@@ -13,7 +13,6 @@ use byteorder::{ByteOrder, ReadBytesExt};
 pub struct Extender([u8; 4]);
 
 impl Extender {
-
     /// Fetch the extender code from the given source, while expecting it to exist.
     pub fn from_stream<S: Read>(mut source: S) -> Result<Self> {
         let mut extension = [0u8; 4];
@@ -21,7 +20,7 @@ impl Extender {
         Ok(extension.into())
     }
 
-    /// Fetch the extender code from the given source, while 
+    /// Fetch the extender code from the given source, while
     /// being possible to not be available.
     /// Returns `None` if the source reaches EoF prematurely.
     /// Any other I/O error is delegated to a `NiftiError`.
@@ -33,7 +32,7 @@ impl Extender {
                 println!("[Extender]: No data!");
                 Ok(None)
             }
-            Err(e) => Err(NiftiError::from(e))
+            Err(e) => Err(NiftiError::from(e)),
         }
     }
 
@@ -65,7 +64,6 @@ pub struct Extension {
 }
 
 impl Extension {
-
     /// Create an extension out of its main components.
     ///
     /// # Panics
@@ -73,14 +71,17 @@ impl Extension {
     /// of the extension in bytes: `8 + edata.len()`
     pub fn new(esize: i32, ecode: i32, edata: Vec<u8>) -> Self {
         if esize as usize != 8 + edata.len() {
-            panic!("Illegal extension size: esize is {}, but full size is {}",
-                esize, edata.len());
+            panic!(
+                "Illegal extension size: esize is {}, but full size is {}",
+                esize,
+                edata.len()
+            );
         }
 
         Extension {
             esize,
             ecode,
-            edata
+            edata,
         }
     }
 
@@ -132,9 +133,12 @@ impl<'a> IntoIterator for &'a ExtensionSequence {
 }
 
 impl ExtensionSequence {
-
     /// Read a sequence of extensions from a source, up until `len` bytes.
-    pub fn from_stream<B: ByteOrder, S: Read>(extender: Extender, mut source: S, len: usize) -> Result<Self> {
+    pub fn from_stream<B: ByteOrder, S: Read>(
+        extender: Extender,
+        mut source: S,
+        len: usize,
+    ) -> Result<Self> {
         let mut extensions = Vec::new();
         if extender.has_extensions() {
             let mut offset = 0;
@@ -144,18 +148,14 @@ impl ExtensionSequence {
                 let data_size = esize as usize - 8;
                 let mut edata = vec![0u8; data_size];
                 source.read_exact(&mut edata)?;
-                extensions.push(Extension::new(
-                    esize,
-                    ecode,
-                    edata
-                ));
+                extensions.push(Extension::new(esize, ecode, edata));
                 offset += esize as usize;
             }
         }
 
         Ok(ExtensionSequence {
             extender,
-            extensions
+            extensions,
         })
     }
 
@@ -179,4 +179,3 @@ impl ExtensionSequence {
         self.extender
     }
 }
-

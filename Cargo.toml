@@ -29,15 +29,14 @@ num-traits = "0.1.40"
 quick-error = "1.2.0"
 
 [dependencies.derive_builder]
-version = "0.4.7"
-features = ["struct_default"]
+version = "0.5.0"
 
 [dependencies.ndarray]
 optional = true
-version = "0.9.1"
+version = "0.10.10"
 
 [dev-dependencies]
-pretty_assertions = "0.2.0"
+pretty_assertions = "0.3.4"
 
 [features]
 ndarray_volumes = ["ndarray"]

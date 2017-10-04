@@ -1,8 +1,9 @@
 extern crate nifti;
-#[macro_use] extern crate pretty_assertions;
+#[macro_use]
+extern crate pretty_assertions;
 
 use std::fs::File;
-use nifti::{NiftiHeader, Endianness};
+use nifti::{Endianness, NiftiHeader};
 
 #[test]
 fn minimal_hdr() {

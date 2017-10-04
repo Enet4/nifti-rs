@@ -2,7 +2,7 @@
 
 use super::NiftiVolume;
 use super::util::coords_to_index;
-use std::io::{Read, BufReader};
+use std::io::{BufReader, Read};
 use std::fs::File;
 use std::path::Path;
 use header::NiftiHeader;
@@ -39,7 +39,6 @@ pub struct InMemNiftiVolume {
 }
 
 impl InMemNiftiVolume {
-
     /// Read a NIFTI volume from a stream of data. The header and expected byte order
     /// of the volume's data must be known in advance. It it also expected that the
     /// following bytes represent the first voxels of the volume (and not part of the
@@ -197,7 +196,7 @@ impl InMemNiftiVolume {
                     .mapv(|v| raw_to_value(v, slope.clone(), inter.clone()));
                 Ok(a)
             }
-            _ => Err(NiftiError::UnsupportedDataType(self.datatype))
+            _ => Err(NiftiError::UnsupportedDataType(self.datatype)),
         }
     }
 

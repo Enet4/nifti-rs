@@ -1,6 +1,6 @@
 //! Private utility module
-use std::io::{Read, Seek, Result as IoResult};
-use byteorder::{LittleEndian, BigEndian, ReadBytesExt};
+use std::io::{Read, Result as IoResult, Seek};
+use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use std::ops::{Add, Mul};
 use num::Num;
 use std::path::{Path, PathBuf};
@@ -40,9 +40,10 @@ impl Endianness {
         }
     }
 
-    /// Read a primitive value with this endianness from the given source. 
+    /// Read a primitive value with this endianness from the given source.
     pub fn read_i16<S>(&self, mut src: S) -> IoResult<i16>
-        where S: Read
+    where
+        S: Read,
     {
         match *self {
             Endianness::LE => src.read_i16::<LittleEndian>(),
@@ -50,9 +51,10 @@ impl Endianness {
         }
     }
 
-    /// Read a primitive value with this endianness from the given source. 
+    /// Read a primitive value with this endianness from the given source.
     pub fn read_u16<S>(&self, mut src: S) -> IoResult<u16>
-        where S: Read
+    where
+        S: Read,
     {
         match *self {
             Endianness::LE => src.read_u16::<LittleEndian>(),
@@ -60,9 +62,10 @@ impl Endianness {
         }
     }
 
-    /// Read a primitive value with this endianness from the given source. 
+    /// Read a primitive value with this endianness from the given source.
     pub fn read_i32<S>(&self, mut src: S) -> IoResult<i32>
-        where S: Read
+    where
+        S: Read,
     {
         match *self {
             Endianness::LE => src.read_i32::<LittleEndian>(),
@@ -70,9 +73,10 @@ impl Endianness {
         }
     }
 
-    /// Read a primitive value with this endianness from the given source. 
+    /// Read a primitive value with this endianness from the given source.
     pub fn read_u32<S>(&self, mut src: S) -> IoResult<u32>
-        where S: Read
+    where
+        S: Read,
     {
         match *self {
             Endianness::LE => src.read_u32::<LittleEndian>(),
@@ -80,9 +84,10 @@ impl Endianness {
         }
     }
 
-    /// Read a primitive value with this endianness from the given source. 
+    /// Read a primitive value with this endianness from the given source.
     pub fn read_i64<S>(&self, mut src: S) -> IoResult<i64>
-        where S: Read
+    where
+        S: Read,
     {
         match *self {
             Endianness::LE => src.read_i64::<LittleEndian>(),
@@ -90,9 +95,10 @@ impl Endianness {
         }
     }
 
-    /// Read a primitive value with this endianness from the given source. 
+    /// Read a primitive value with this endianness from the given source.
     pub fn read_u64<S>(&self, mut src: S) -> IoResult<u64>
-        where S: Read
+    where
+        S: Read,
     {
         match *self {
             Endianness::LE => src.read_u64::<LittleEndian>(),
@@ -100,9 +106,10 @@ impl Endianness {
         }
     }
 
-    /// Read a primitive value with this endianness from the given source. 
+    /// Read a primitive value with this endianness from the given source.
     pub fn read_f32<S>(&self, mut src: S) -> IoResult<f32>
-        where S: Read
+    where
+        S: Read,
     {
         match *self {
             Endianness::LE => src.read_f32::<LittleEndian>(),
@@ -110,9 +117,10 @@ impl Endianness {
         }
     }
 
-    /// Read a primitive value with this endianness from the given source. 
+    /// Read a primitive value with this endianness from the given source.
     pub fn read_f64<S>(&self, mut src: S) -> IoResult<f64>
-        where S: Read
+    where
+        S: Read,
     {
         match *self {
             Endianness::LE => src.read_f64::<LittleEndian>(),
@@ -140,10 +148,11 @@ pub type OppositeNativeEndian = LittleEndian;
 /// Convert a raw volume value to the scale defined
 /// by the given scale slope and intercept parameters.
 pub fn raw_to_value<V, T>(value: V, slope: T, intercept: T) -> T
-    where V: Into<T>,
-          T: Num,
-          T: Mul<Output = T>,
-          T: Add<Output = T>,
+where
+    V: Into<T>,
+    T: Num,
+    T: Mul<Output = T>,
+    T: Add<Output = T>,
 {
     if slope != T::zero() {
         value.into() * slope + intercept
@@ -164,7 +173,8 @@ pub fn convert_vec_f32(a: Vec<u8>, e: Endianness) -> Vec<f32> {
 }
 
 pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
-    path.as_ref().file_name()
+    path.as_ref()
+        .file_name()
         .map(|a| a.to_string_lossy().ends_with(".gz"))
         .unwrap_or(false)
 }
@@ -194,6 +204,7 @@ mod tests {
     use super::raw_to_value;
     use super::to_img_file_gz;
     use super::is_gz_file;
+    use super::convert_vec_f32;
     use std::path::PathBuf;
 
     #[test]
@@ -217,6 +228,18 @@ mod tests {
         let le = Endianness::system();
         assert_eq!(le, Endianness::BE);
         assert_eq!(le.opposite(), Endianness::LE);
+    }
+
+    #[test]
+    fn test_convert_vec_f32() {
+        assert_eq!(
+            convert_vec_f32(vec![0x42, 0x28, 0x00, 0x00], Endianness::BE),
+            vec![42.]
+        );
+        assert_eq!(
+            convert_vec_f32(vec![0x00, 0x00, 0x28, 0x42], Endianness::LE),
+            vec![42.]
+        );
     }
 
     #[test]

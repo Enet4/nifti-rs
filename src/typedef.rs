@@ -5,10 +5,10 @@
 //! converted to these types and vice-versa.
 
 use byteorder::ReadBytesExt;
-use error::{Result, NiftiError};
+use error::{NiftiError, Result};
 use std::io::Read;
 use std::ops::{Add, Mul};
-use util::{Endianness, raw_to_value};
+use util::{raw_to_value, Endianness};
 use num::Num;
 
 /// Data type for representing a NIFTI value type in a volume.
@@ -76,19 +76,26 @@ impl NiftiType {
             Int32 | Uint32 | Float32 | Rgba32 => 4,
             Int64 | Uint64 | Float64 | Complex64 => 8,
             Float128 | Complex128 => 16,
-            Complex256 => 32
+            Complex256 => 32,
         }
     }
 }
 
 impl NiftiType {
     /// Read a primitive voxel value from a source.
-    pub fn read_primitive_value<S, T>(&self, mut source: S, endianness: Endianness, slope: f32, inter: f32) -> Result<T>
-        where S: Read,
-              T: From<f32>,
-              T: Num,
-              T: Add<Output = T>,
-              T: Mul<Output = T>
+    pub fn read_primitive_value<S, T>(
+        &self,
+        mut source: S,
+        endianness: Endianness,
+        slope: f32,
+        inter: f32,
+    ) -> Result<T>
+    where
+        S: Read,
+        T: From<f32>,
+        T: Num,
+        T: Add<Output = T>,
+        T: Mul<Output = T>,
     {
         let slope: T = slope.into();
         let inter: T = inter.into();
@@ -96,44 +103,44 @@ impl NiftiType {
             NiftiType::Uint8 => {
                 let raw = source.read_u8()?;
                 Ok(raw_to_value(raw as f32, slope, inter))
-            },
+            }
             NiftiType::Uint16 => {
                 let raw = endianness.read_u16(source)?;
                 Ok(raw_to_value(raw as f32, slope, inter))
-            },
+            }
             NiftiType::Int16 => {
                 let raw = endianness.read_i16(source)?;
                 Ok(raw_to_value(raw as f32, slope, inter))
-            },
+            }
             NiftiType::Uint32 => {
                 let raw = endianness.read_u32(source)?;
                 Ok(raw_to_value(raw as f32, slope, inter))
-            },
+            }
             NiftiType::Int32 => {
                 let raw = endianness.read_i32(source)?;
                 Ok(raw_to_value(raw as f32, slope, inter))
-            },
+            }
             NiftiType::Uint64 => {
                 // TODO find a way to not lose precision
                 let raw = endianness.read_u64(source)?;
                 Ok(raw_to_value(raw as f32, slope, inter))
-            },
+            }
             NiftiType::Int64 => {
                 // TODO find a way to not lose precision
                 let raw = endianness.read_i64(source)?;
                 Ok(raw_to_value(raw as f32, slope, inter))
-            },
+            }
             NiftiType::Float32 => {
                 let raw = endianness.read_f32(source)?;
                 Ok(raw_to_value(raw, slope, inter))
-            },
+            }
             NiftiType::Float64 => {
                 // TODO find a way to not lose precision
                 let raw = endianness.read_f64(source)?;
                 Ok(raw_to_value(raw as f32, slope, inter))
-            },
+            }
             // TODO add support for more data types
-            _ => Err(NiftiError::UnsupportedDataType(*self))
+            _ => Err(NiftiError::UnsupportedDataType(*self)),
         }
     }
 }
@@ -259,7 +266,7 @@ pub enum Intent {
     Estimate = 1001,
     /// To signify that the value at each voxel is an index into
     /// some set of labels, set intent_code = `NIFTI_INTENT_LABEL`.
-    /// The filename with the labels may stored in aux_file. 
+    /// The filename with the labels may stored in aux_file.
     Label = 1002,
     /// To signify that the value at each voxel is an index into the
     /// NeuroNames labels set, set intent_code = `NIFTI_INTENT_NEURONAME`.
@@ -285,7 +292,7 @@ pub enum Intent {
     ///       - A[0][0]
     ///       - A[1][0] A[1][1]
     ///       - A[2][0] A[2][1] A[2][2]
-    ///       - etc.: row-by-row 
+    ///       - etc.: row-by-row
     Symmatrix = 1005,
     /// To signify that the vector value at each voxel is to be taken
     /// as a displacement field or vector:
