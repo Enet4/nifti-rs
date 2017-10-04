@@ -1,6 +1,5 @@
 //! Interfaces and implementations specific to integration with `ndarray`
-use util::convert_vec_f32;
-use ndarray::{Array, Axis, Ix, IxDyn, ShapeBuilder};
+use ndarray::{Array, Axis, Ix, IxDyn};
 use volume::NiftiVolume;
 use std::ops::{Add, Mul};
 use num::Num;

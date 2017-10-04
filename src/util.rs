@@ -161,6 +161,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub fn convert_vec_f32(a: Vec<u8>, e: Endianness) -> Vec<f32> {
     let len = a.len() / 4;
     let mut v = Vec::with_capacity(len);
