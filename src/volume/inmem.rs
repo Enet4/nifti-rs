@@ -8,12 +8,14 @@ use std::path::Path;
 use header::NiftiHeader;
 use extension::{Extender, ExtensionSequence};
 use error::{NiftiError, Result};
-use util::{raw_to_value, convert_vec_f32, Endianness};
+use util::{raw_to_value, Endianness};
 use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
 use typedef::NiftiType;
 use num::FromPrimitive;
 
+#[cfg(feature = "ndarray_volumes")]
+use util::convert_vec_f32;
 #[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
 #[cfg(feature = "ndarray_volumes")]

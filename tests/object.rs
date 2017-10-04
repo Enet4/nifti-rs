@@ -74,6 +74,31 @@ fn minimal_by_hdr() {
     assert_eq!(volume.dim(), [64, 64, 10].as_ref());
 }
 
+
+#[test]
+fn minimal_by_hdr_and_img_gz() {
+    let minimal_hdr = NiftiHeader {
+        sizeof_hdr: 348,
+        dim: [3, 64, 64, 10, 0, 0, 0, 0],
+        datatype: 2,
+        bitpix: 8,
+        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
+        vox_offset: 0.,
+        scl_slope: 0.,
+        scl_inter: 0.,
+        magic: *b"ni1\0",
+        ..Default::default()
+    };
+
+    const FILE_NAME: &str = "resources/minimal2.hdr";
+    // should attempt to read "resources/minimal2.img.gz"
+    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    assert_eq!(obj.header(), &minimal_hdr);
+    let volume = obj.volume();
+    assert_eq!(volume.data_type(), NiftiType::Uint8);
+    assert_eq!(volume.dim(), [64, 64, 10].as_ref());
+}
+
 #[test]
 fn minimal_by_hdr_gz() {
     let minimal_hdr = NiftiHeader {

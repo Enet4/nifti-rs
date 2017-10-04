@@ -72,6 +72,9 @@ pub trait Sliceable {
     fn get_slice(&self, axis: u16, index: u16) -> Result<Self::Slice>;
 }
 
+/// A view over a single slice of another volume.
+/// Slices are usually created by calling the `get_slice` method (see `Sliceable`).
+/// This implementation is generic and delegates most operations to the underlying volume.
 #[derive(Debug, Clone)]
 pub struct SliceView<T> {
     volume: T,

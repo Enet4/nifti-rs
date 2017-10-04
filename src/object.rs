@@ -2,7 +2,7 @@
 
 use std::fs::File;
 use std::path::Path;
-use std::io::{BufReader, Read};
+use std::io::{self, BufReader, Read};
 
 use error::NiftiError;
 use extension::{ExtensionSequence, Extender};
@@ -10,7 +10,7 @@ use header::NiftiHeader;
 use header::MAGIC_CODE_NI1;
 use volume::NiftiVolume;
 use volume::inmem::InMemNiftiVolume;
-use util::{Endianness, is_gz_file, to_img_file};
+use util::{Endianness, is_gz_file, to_img_file_gz};
 use error::Result;
 use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
@@ -54,7 +54,7 @@ impl InMemNiftiObject {
     /// The given file system path is used as reference.
     /// If the file only contains the header, this method will
     /// look for the corresponding file with the extension ".img",
-    /// or ".img.gz" if the header is also gzip-encoded.
+    /// or ".img.gz" if the former wasn't found.
     /// 
     /// # Example
     /// 
@@ -63,7 +63,7 @@ impl InMemNiftiObject {
     /// # use nifti::error::Result;
     ///
     /// # fn run() -> Result<()> {
-    /// let obj = InMemNiftiObject::from_file("minimal.gii.gz")?;
+    /// let obj = InMemNiftiObject::from_file("minimal.nii.gz")?;
     /// # Ok(())
     /// # }
     /// ```
@@ -90,15 +90,27 @@ impl InMemNiftiObject {
                 .unwrap_or_default();
             
             // look for corresponding img file
-            let mut img_path = path.as_ref().to_path_buf();
+            let img_path = path.as_ref().to_path_buf();
+            let mut img_path_gz = to_img_file_gz(img_path);
 
-            img_path = to_img_file(img_path);
-
-            InMemNiftiVolume::from_file_with_extensions(img_path, &header, endianness, extender)
-                .map_err(|e| if let NiftiError::Io(io_e) = e {
-                    NiftiError::MissingVolumeFile(io_e)
-                } else {
-                    e
+            InMemNiftiVolume::from_file_with_extensions(&img_path_gz, &header, endianness, extender)
+                .or_else(|e| {
+                    match e {
+                        NiftiError::Io(ref io_e) if io_e.kind() == io::ErrorKind::NotFound => {
+                            // try .img file instead (remove .gz extension)
+                            let has_ext = img_path_gz.set_extension("");
+                            debug_assert!(has_ext);
+                            InMemNiftiVolume::from_file_with_extensions(img_path_gz, &header, endianness, extender)
+                        },
+                        e => Err(e)
+                    }
+                })
+                .map_err(|e| {
+                    if let NiftiError::Io(io_e) = e {
+                        NiftiError::MissingVolumeFile(io_e)
+                    } else {
+                        e
+                    }
                 })?
         } else {
             // extensions and volume are in the same source

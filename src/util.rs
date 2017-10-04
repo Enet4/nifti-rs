@@ -152,6 +152,7 @@ pub fn raw_to_value<V, T>(value: V, slope: T, intercept: T) -> T
     }
 }
 
+#[cfg(feature = "ndarray_volumes")]
 pub fn convert_vec_f32(a: Vec<u8>, e: Endianness) -> Vec<f32> {
     let len = a.len() / 4;
     let mut v = Vec::with_capacity(len);
@@ -169,31 +170,29 @@ pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
 }
 
 /// Convert a file path to a header file (.hdr or .hdr.gz) to
-/// the respective volume file (.img or .img.gz).
+/// the respective volume file with GZip compression (.img.gz).
 ///
 /// # Panics
 /// Can panic if the given file path is not a valid path to a header file.
 /// If it doesn't panic in this case, the result might still not be correct.
-pub fn to_img_file(path: PathBuf) -> PathBuf {
+pub fn to_img_file_gz(path: PathBuf) -> PathBuf {
     let gz = is_gz_file(&path);
     let fname = path.file_name().unwrap().to_owned();
     let fname = fname.to_string_lossy();
-    if gz {
-        let mut fname = fname[..fname.len() - ".img.gz".len()].to_owned();
-        fname += ".img.gz";
-        path.with_file_name(fname)
+    let mut fname = if gz {
+        fname[..fname.len() - ".hdr.gz".len()].to_owned()
     } else {
-        let mut fname = fname[..fname.len() - ".img".len()].to_owned();
-        fname += ".img";
-        path.with_file_name(fname)
-    }
+        fname[..fname.len() - ".hdr".len()].to_owned()
+    };
+    fname += ".img.gz";
+    path.with_file_name(fname)
 }
 
 #[cfg(test)]
 mod tests {
     use super::Endianness;
     use super::raw_to_value;
-    use super::to_img_file;
+    use super::to_img_file_gz;
     use super::is_gz_file;
     use std::path::PathBuf;
 
@@ -237,23 +236,23 @@ mod tests {
 
         assert!(!is_gz_file("/path/to/image.hdr"));
         assert_eq!(
-            to_img_file(PathBuf::from("/path/to/image.hdr")),
-            PathBuf::from("/path/to/image.img")
+            to_img_file_gz(PathBuf::from("/path/to/image.hdr")),
+            PathBuf::from("/path/to/image.img.gz")
         );
 
         assert!(is_gz_file("/path/to/image.hdr.gz"));
         assert_eq!(
-            to_img_file(PathBuf::from("/path/to/image.hdr.gz")),
+            to_img_file_gz(PathBuf::from("/path/to/image.hdr.gz")),
             PathBuf::from("/path/to/image.img.gz")
         );
 
         assert_eq!(
-            to_img_file(PathBuf::from("my_ct_scan.1.hdr.gz")),
+            to_img_file_gz(PathBuf::from("my_ct_scan.1.hdr.gz")),
             PathBuf::from("my_ct_scan.1.img.gz")
         );
 
         assert_eq!(
-            to_img_file(PathBuf::from("../you.cant.fool.me.hdr.gz")),
+            to_img_file_gz(PathBuf::from("../you.cant.fool.me.hdr.gz")),
             PathBuf::from("../you.cant.fool.me.img.gz")
         );
     }
