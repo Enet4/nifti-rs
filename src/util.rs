@@ -161,13 +161,12 @@ where
     }
 }
 
-#[cfg(feature = "ndarray_volumes")]
 pub fn convert_vec_f32(a: Vec<u8>, e: Endianness) -> Vec<f32> {
     let len = a.len() / 4;
     let mut v = Vec::with_capacity(len);
-    let a = a.as_slice();
+    let mut a = a.as_slice();
     for _ in ::std::iter::repeat(()).take(len) {
-        v.push(e.read_f32(a).unwrap());
+        v.push(e.read_f32(&mut a).unwrap());
     }
     v
 }
@@ -233,12 +232,12 @@ mod tests {
     #[test]
     fn test_convert_vec_f32() {
         assert_eq!(
-            convert_vec_f32(vec![0x42, 0x28, 0x00, 0x00], Endianness::BE),
-            vec![42.]
+            convert_vec_f32(vec![0x42, 0x28, 0x00, 0x00, 0x42, 0x2A, 0x00, 0x00,], Endianness::BE),
+            vec![42., 42.5]
         );
         assert_eq!(
-            convert_vec_f32(vec![0x00, 0x00, 0x28, 0x42], Endianness::LE),
-            vec![42.]
+            convert_vec_f32(vec![0x00, 0x00, 0x28, 0x42, 0x00, 0x00, 0x2A, 0x42], Endianness::LE),
+            vec![42., 42.5]
         );
     }
 

@@ -190,7 +190,7 @@ impl InMemNiftiVolume {
                 Ok(a)
             }
             NiftiType::Float32 => {
-                let raw_data: Vec<f32> = convert_vec_f32(self.raw_data, self.endianness);
+                let raw_data = convert_vec_f32(self.raw_data, self.endianness);
                 let a = Array::from_shape_vec(IxDyn(&dim).f(), raw_data)
                     .expect("Inconsistent raw data size")
                     .mapv(|v| raw_to_value(v, slope.clone(), inter.clone()));
