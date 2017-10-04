@@ -47,7 +47,7 @@ fn minimal_img_gz() {
 #[cfg(feature = "ndarray_volumes")]
 mod ndarray_volumes {
     use nifti::{Endianness, InMemNiftiObject, InMemNiftiVolume, NiftiHeader, NiftiObject,
-                NiftiVolume};
+                NiftiVolume, IntoNdArray};
     use ndarray::{Array, Axis, IxDyn, ShapeBuilder};
 
     #[test]

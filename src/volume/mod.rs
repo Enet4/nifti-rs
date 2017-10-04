@@ -11,6 +11,9 @@ mod util;
 use error::{NiftiError, Result};
 use typedef::NiftiType;
 
+#[cfg(feature = "ndarray_volumes")]
+pub mod ndarray;
+
 /// Public API for NIFTI volume data, exposed as a multi-dimensional
 /// voxel array.
 ///

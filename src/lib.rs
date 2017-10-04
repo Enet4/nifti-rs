@@ -28,15 +28,17 @@
 //! # }
 //! ```
 //!
-//! You can also convert a volume to an [`ndarray::Array`](https://docs.rs/ndarray/0.9.1/ndarray/index.html)
+//! You can also convert a volume to an [`ndarray::Array`](https://docs.rs/ndarray)
 //! and work from there:
 //!
 //! ```no_run
-//! # #[cfg(feature = "ndarray_volumes")]
-//! # fn run() {
-//! # use nifti::{NiftiObject, InMemNiftiObject};
+//! # #![cfg(feature = "ndarray_volumes")]
+//! # use nifti::error::Result;
+//! # fn run() -> Result<()> {
+//! use nifti::{NiftiObject, InMemNiftiObject, IntoNdArray};
 //! # let obj = InMemNiftiObject::from_file("myvolume.hdr.gz").unwrap();
-//! let volume = obj.into_volume().to_ndarray::<f32>();
+//! let volume = obj.into_volume().to_ndarray::<f32>()?;
+//! # Ok(())
 //! # }
 //! ```
 //! 
@@ -68,5 +70,6 @@ pub use object::{NiftiObject, InMemNiftiObject};
 pub use extension::{Extender, Extension, ExtensionSequence};
 pub use header::{NiftiHeader, NiftiHeaderBuilder};
 pub use volume::{NiftiVolume, InMemNiftiVolume, Sliceable};
+#[cfg(feature = "ndarray_volumes")] pub use volume::ndarray::IntoNdArray;
 pub use typedef::{NiftiType, Unit, Intent, XForm, SliceOrder};
 pub use util::Endianness;

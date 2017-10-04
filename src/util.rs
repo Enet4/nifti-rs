@@ -161,6 +161,7 @@ where
     }
 }
 
+#[cfg(feature = "ndarray_volumes")]
 pub fn convert_vec_f32(a: Vec<u8>, e: Endianness) -> Vec<f32> {
     let len = a.len() / 4;
     let mut v = Vec::with_capacity(len);
@@ -229,6 +230,7 @@ mod tests {
         assert_eq!(le.opposite(), Endianness::LE);
     }
 
+    #[cfg(feature = "ndarray_volumes")]
     #[test]
     fn test_convert_vec_f32() {
         assert_eq!(

@@ -15,6 +15,8 @@ use typedef::NiftiType;
 use num::FromPrimitive;
 
 #[cfg(feature = "ndarray_volumes")]
+use volume::ndarray::IntoNdArray;
+#[cfg(feature = "ndarray_volumes")]
 use util::convert_vec_f32;
 #[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
@@ -167,10 +169,9 @@ impl InMemNiftiVolume {
 }
 
 #[cfg(feature = "ndarray_volumes")]
-// ndarray dependent impl
-impl InMemNiftiVolume {
+impl IntoNdArray for InMemNiftiVolume {
     /// Consume the volume into an ndarray.
-    pub fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
+    fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
         T: From<f32>,
         T: Clone,
@@ -199,9 +200,12 @@ impl InMemNiftiVolume {
             _ => Err(NiftiError::UnsupportedDataType(self.datatype)),
         }
     }
+}
 
+#[cfg(feature = "ndarray_volumes")]
+impl<'a> IntoNdArray for &'a InMemNiftiVolume {
     /// Create an ndarray from the given volume.
-    pub fn ndarray<T>(&self) -> Result<Array<T, IxDyn>>
+    fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
         T: From<f32>,
         T: Clone,
