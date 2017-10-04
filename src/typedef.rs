@@ -66,6 +66,22 @@ pub enum NiftiType {
 }
 
 impl NiftiType {
+    /// Retrieve the size of an element of this data type, in bytes.
+    pub fn size_of(&self) -> usize {
+        use NiftiType::*;
+        match *self {
+            Int8 | Uint8 => 1,
+            Int16 | Uint16 => 2,
+            Rgb24 => 3,
+            Int32 | Uint32 | Float32 | Rgba32 => 4,
+            Int64 | Uint64 | Float64 | Complex64 => 8,
+            Float128 | Complex128 => 16,
+            Complex256 => 32
+        }
+    }
+}
+
+impl NiftiType {
     /// Read a primitive voxel value from a source.
     pub fn read_primitive_value<S, T>(&self, mut source: S, endianness: Endianness, slope: f32, inter: f32) -> Result<T>
         where S: Read,

@@ -152,6 +152,16 @@ pub fn raw_to_value<V, T>(value: V, slope: T, intercept: T) -> T
     }
 }
 
+pub fn convert_vec_f32(a: Vec<u8>, e: Endianness) -> Vec<f32> {
+    let len = a.len() / 4;
+    let mut v = Vec::with_capacity(len);
+    let a = a.as_slice();
+    for _ in ::std::iter::repeat(()).take(len) {
+        v.push(e.read_f32(a).unwrap());
+    }
+    v
+}
+
 pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
     path.as_ref().file_name()
         .map(|a| a.to_string_lossy().ends_with(".gz"))

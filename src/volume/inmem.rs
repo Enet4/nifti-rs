@@ -8,7 +8,7 @@ use std::path::Path;
 use header::NiftiHeader;
 use extension::{Extender, ExtensionSequence};
 use error::{NiftiError, Result};
-use util::{raw_to_value, Endianness};
+use util::{raw_to_value, convert_vec_f32, Endianness};
 use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
 use typedef::NiftiType;
@@ -55,7 +55,7 @@ impl InMemNiftiVolume {
         let nbytes = resolution * header.bitpix as usize / 8;
         println!("Reading volume of {:?} bytes", nbytes);
         let mut raw_data = vec![0u8; nbytes];
-        source.read_exact(raw_data.as_mut_slice()).unwrap();
+        source.read_exact(&mut raw_data)?;
 
         let datatype: NiftiType =
             NiftiType::from_i16(header.datatype).ok_or_else(|| NiftiError::InvalidFormat)?;
@@ -171,7 +171,6 @@ impl InMemNiftiVolume {
     /// Consume the volume into an ndarray.
     pub fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
-        T: From<u8>,
         T: From<f32>,
         T: Clone,
         T: Num,
@@ -185,16 +184,28 @@ impl InMemNiftiVolume {
         let slope: T = self.scl_slope.into();
         let inter: T = self.scl_inter.into();
         let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
-        let a = Array::from_shape_vec(IxDyn(&dim).f(), self.raw_data)
-            .expect("Inconsistent raw data size")
-            .mapv(|v| raw_to_value(v, slope.clone(), inter.clone()));
-        Ok(a)
+
+        match self.datatype {
+            NiftiType::Uint8 => {
+                let a = Array::from_shape_vec(IxDyn(&dim).f(), self.raw_data)
+                    .expect("Inconsistent raw data size")
+                    .mapv(|v| raw_to_value(v as f32, slope.clone(), inter.clone()));
+                Ok(a)
+            }
+            NiftiType::Float32 => {
+                let raw_data: Vec<f32> = convert_vec_f32(self.raw_data, self.endianness);
+                let a = Array::from_shape_vec(IxDyn(&dim).f(), raw_data)
+                    .expect("Inconsistent raw data size")
+                    .mapv(|v| raw_to_value(v, slope.clone(), inter.clone()));
+                Ok(a)
+            }
+            _ => Err(NiftiError::UnsupportedDataType(self.datatype))
+        }
     }
 
     /// Create an ndarray from the given volume.
     pub fn ndarray<T>(&self) -> Result<Array<T, IxDyn>>
     where
-        T: From<u8>,
         T: From<f32>,
         T: Clone,
         T: Num,
@@ -244,9 +255,12 @@ impl NiftiVolume for InMemNiftiVolume {
         let index = coords_to_index(coords, self.dim())?;
         if self.datatype == NiftiType::Uint8 {
             let byte = self.raw_data[index];
-            Ok(raw_to_value(byte as f32, self.scl_slope, self.scl_inter))
+            Ok(raw_to_value(byte, self.scl_slope, self.scl_inter))
+        } else if self.datatype == NiftiType::Int8 {
+            let byte = self.raw_data[index] as i8;
+            Ok(raw_to_value(byte, self.scl_slope, self.scl_inter))
         } else {
-            let range = &self.raw_data[index..];
+            let range = &self.raw_data[index * self.datatype.size_of()..];
             self.datatype.read_primitive_value(
                 range,
                 self.endianness,
