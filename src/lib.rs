@@ -32,10 +32,12 @@
 //! and work from there:
 //!
 //! ```no_run
-//! # #![cfg(feature = "ndarray_volumes")]
+//! # #[cfg(feature = "ndarray_volumes")]
 //! # use nifti::error::Result;
+//! # #[cfg(feature = "ndarray_volumes")]
 //! # fn run() -> Result<()> {
-//! use nifti::{NiftiObject, InMemNiftiObject, IntoNdArray};
+//! # use nifti::{NiftiObject, InMemNiftiObject};
+//! use nifti::IntoNdArray;
 //! # let obj = InMemNiftiObject::from_file("myvolume.hdr.gz").unwrap();
 //! let volume = obj.into_volume().to_ndarray::<f32>()?;
 //! # Ok(())
