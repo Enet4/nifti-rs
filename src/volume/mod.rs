@@ -59,9 +59,27 @@ pub trait NiftiVolume {
     ///
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
+    #[inline]
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
         self.get_f64(coords)
             .map(|v| v as f32)
+    }
+
+    /// Fetch a single voxel's value in the given voxel index coordinates
+    /// as an unsigned 8-bit value.
+    /// All necessary conversions and transformations are made
+    /// when reading the voxel, including scaling. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    ///
+    /// # Errors
+    ///
+    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
+    /// volume's boundaries.
+    #[inline]
+    fn get_u8(&self, coords: &[u16]) -> Result<u8> {
+        self.get_f64(coords)
+            .map(|v| v as u8)
     }
 }
 
@@ -121,6 +139,7 @@ impl<V> NiftiVolume for SliceView<V>
 where
     V: NiftiVolume,
 {
+    #[inline]
     fn dim(&self) -> &[u16] {
         &self.dim
     }
@@ -137,7 +156,14 @@ where
         self.volume.get_f64(&coords)
     }
 
+    fn get_u8(&self, coords: &[u16]) -> Result<u8> {
+        let mut coords = Vec::from(coords);
+        coords.insert(self.axis as usize, self.index);
+        self.volume.get_u8(&coords)
+    }
+
     /// Get this volume's data type.
+    #[inline]
     fn data_type(&self) -> NiftiType {
         self.volume.data_type()
     }

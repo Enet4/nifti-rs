@@ -249,6 +249,10 @@ impl<'a> NiftiVolume for &'a InMemNiftiVolume {
     fn get_f64(&self, coords: &[u16]) -> Result<f64> {
         (**self).get_f64(coords)
     }
+
+    fn get_u8(&self, coords: &[u16]) -> Result<u8> {
+        (**self).get_u8(coords)
+    }
 }
 
 impl NiftiVolume for InMemNiftiVolume {
@@ -294,6 +298,25 @@ impl NiftiVolume for InMemNiftiVolume {
             ))
         } else {
             let range = &self.raw_data[index..];
+            self.datatype.read_primitive_value(
+                range,
+                self.endianness,
+                self.scl_slope,
+                self.scl_inter,
+            )
+        }
+    }
+
+    fn get_u8(&self, coords: &[u16]) -> Result<u8> {
+        let index = coords_to_index(coords, self.dim())?;
+        if self.datatype == NiftiType::Uint8 {
+            let byte = self.raw_data[index];
+            Ok(raw_to_value_via_f32(byte, self.scl_slope, self.scl_inter))
+        } else if self.datatype == NiftiType::Int8 {
+            let byte = self.raw_data[index] as i8;
+            Ok(raw_to_value_via_f32(byte, self.scl_slope, self.scl_inter))
+        } else {
+            let range = &self.raw_data[index * self.datatype.size_of()..];
             self.datatype.read_primitive_value(
                 range,
                 self.endianness,
