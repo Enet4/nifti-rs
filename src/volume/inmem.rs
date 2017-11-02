@@ -8,7 +8,7 @@ use std::path::Path;
 use header::NiftiHeader;
 use extension::{Extender, ExtensionSequence};
 use error::{NiftiError, Result};
-use util::{raw_to_value, Endianness};
+use util::{raw_to_value, raw_to_value_via_f32, Endianness};
 use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
 use typedef::NiftiType;
@@ -19,7 +19,7 @@ use asprim::AsPrim;
 #[cfg(feature = "ndarray_volumes")]
 use volume::ndarray::IntoNdArray;
 #[cfg(feature = "ndarray_volumes")]
-use util::{convert_vec_f32, raw_to_value_via_f32};
+use util::{convert_vec_f32};
 #[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
 #[cfg(feature = "ndarray_volumes")]
