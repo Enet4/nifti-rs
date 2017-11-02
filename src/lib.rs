@@ -52,8 +52,9 @@
 #[macro_use] extern crate derive_builder;
 #[cfg(feature = "ndarray_volumes")] extern crate ndarray;
 
-#[cfg(ndarray_volumes)]
-extern crate ndarray;
+#[cfg(test)]
+#[macro_use]
+extern crate approx;
 
 extern crate asprim;
 extern crate byteorder;

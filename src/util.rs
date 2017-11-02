@@ -220,7 +220,7 @@ pub fn to_img_file_gz(path: PathBuf) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::Endianness;
-    use super::raw_to_value;
+    use super::{raw_to_value, raw_to_value_via_f32};
     use super::to_img_file_gz;
     use super::is_gz_file;
     use super::convert_vec_f32;
@@ -264,8 +264,22 @@ mod tests {
     #[test]
     fn test_raw_to_value() {
         let raw: u8 = 100;
-        let val: f32 = raw_to_value(raw, 2., -1024.);
-        assert_eq!(val, -824.);
+        let val: u8 = raw_to_value_via_f32(raw, 1., 0.);
+        assert_eq!(val, 100);
+        let val: u8 = raw_to_value_via_f32(raw, 0., 0.);
+        assert_eq!(val, 100);
+        let val: f32 = raw_to_value_via_f32(raw, 2., -1024.);
+        assert_ulps_eq!(val, -824.);
+        let val: i32 = raw_to_value_via_f32(raw, 2., -1024.);
+        assert_eq!(val, -824);
+        let val: i16 = raw_to_value_via_f32(raw, 2., -1024.);
+        assert_eq!(val, -824);
+
+        let raw: f32 = 0.4;
+        let val: f32 = raw_to_value(raw, 1., 0.);
+        assert_ulps_eq!(val, 0.4);
+        let val: f64 = raw_to_value(raw, 1., 0.);
+        assert_ulps_eq!(val, 0.4_f32 as f64);
     }
 
     #[test]

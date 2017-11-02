@@ -1,9 +1,12 @@
+#[macro_use]
+extern crate approx;
 extern crate flate2;
-#[cfg(feature = "ndarray_volumes")]
-extern crate ndarray;
 extern crate nifti;
 #[macro_use]
 extern crate pretty_assertions;
+
+#[cfg(feature = "ndarray_volumes")]
+extern crate ndarray;
 
 use nifti::{Endianness, InMemNiftiVolume, NiftiHeader, NiftiVolume};
 
@@ -132,19 +135,39 @@ mod ndarray_volumes {
             .into_volume();
         assert_eq!(volume.data_type(), NiftiType::Float32);
 
-        assert_eq!(volume.get_f32(&[5, 5, 5]).unwrap(), 1.);
-
         let volume = volume.to_ndarray::<f32>().unwrap();
 
         assert_eq!(volume.shape(), [11, 11, 11].as_ref());
 
         assert!(volume.iter().any(|v| *v != 0.));
 
-        assert_eq!(volume[[5, 0, 0]], 0.0);
-        assert_eq!(volume[[0, 5, 0]], 0.0);
-        assert_eq!(volume[[0, 0, 5]], 0.0);
-        assert_eq!(volume[[5, 0, 4]], 0.4);
-        assert_eq!(volume[[0, 8, 5]], 0.8);
-        assert_eq!(volume[[5, 5, 5]], 1.0);
+        assert_ulps_eq!(volume[[5, 0, 0]], 0.0);
+        assert_ulps_eq!(volume[[0, 5, 0]], 0.0);
+        assert_ulps_eq!(volume[[0, 0, 5]], 0.0);
+        assert_ulps_eq!(volume[[5, 0, 4]], 0.4);
+        assert_ulps_eq!(volume[[0, 8, 5]], 0.8);
+        assert_ulps_eq!(volume[[5, 5, 5]], 1.0);
+    }
+
+    #[test]
+    fn f32_nii_gz_ndarray_f64() {
+        const FILE_NAME: &str = "resources/f32.nii.gz";
+        let volume = InMemNiftiObject::from_file(FILE_NAME)
+            .unwrap()
+            .into_volume();
+        assert_eq!(volume.data_type(), NiftiType::Float32);
+
+        let volume = volume.to_ndarray::<f64>().unwrap();
+
+        assert_eq!(volume.shape(), [11, 11, 11].as_ref());
+
+        assert!(volume.iter().any(|v| *v != 0.));
+
+        assert_ulps_eq!(volume[[5, 0, 0]], 0.0);
+        assert_ulps_eq!(volume[[0, 5, 0]], 0.0);
+        assert_ulps_eq!(volume[[0, 0, 5]], 0.0);
+        assert_ulps_eq!(volume[[5, 0, 4]], 0.4_f32 as f64);
+        assert_ulps_eq!(volume[[0, 8, 5]], 0.8_f32 as f64);
+        assert_ulps_eq!(volume[[5, 5, 5]], 1.0_f32 as f64);
     }
 }
