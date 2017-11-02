@@ -15,9 +15,11 @@ use typedef::NiftiType;
 use num::FromPrimitive;
 
 #[cfg(feature = "ndarray_volumes")]
+use asprim::AsPrim;
+#[cfg(feature = "ndarray_volumes")]
 use volume::ndarray::IntoNdArray;
 #[cfg(feature = "ndarray_volumes")]
-use util::convert_vec_f32;
+use util::{convert_vec_f32, raw_to_value_via_f32};
 #[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
 #[cfg(feature = "ndarray_volumes")]
@@ -173,28 +175,38 @@ impl IntoNdArray for InMemNiftiVolume {
     /// Consume the volume into an ndarray.
     fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
-        T: From<f32>,
+        T: AsPrim,
         T: Clone,
         T: Num,
         T: Mul<Output = T>,
         T: Add<Output = T>,
     {
-        let slope: T = self.scl_slope.into();
-        let inter: T = self.scl_inter.into();
         let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
 
         match self.datatype {
             NiftiType::Uint8 => {
+                let slope = self.scl_slope;
+                let inter = self.scl_inter;
                 let a = Array::from_shape_vec(IxDyn(&dim).f(), self.raw_data)
                     .expect("Inconsistent raw data size")
-                    .mapv(|v| raw_to_value(v as f32, slope.clone(), inter.clone()));
+                    .mapv(|v| raw_to_value_via_f32(v, slope, inter));
+                Ok(a)
+            }
+            NiftiType::Int8 => {
+                let slope = self.scl_slope;
+                let inter = self.scl_inter;
+                let a = Array::from_shape_vec(IxDyn(&dim).f(), self.raw_data)
+                    .expect("Inconsistent raw data size")
+                    .mapv(|v| raw_to_value_via_f32(v, slope, inter));
                 Ok(a)
             }
             NiftiType::Float32 => {
+                let slope = self.scl_slope.as_();
+                let inter = self.scl_inter.as_();
                 let raw_data = convert_vec_f32(self.raw_data, self.endianness);
                 let a = Array::from_shape_vec(IxDyn(&dim).f(), raw_data)
                     .expect("Inconsistent raw data size")
-                    .mapv(|v| raw_to_value(v, slope.clone(), inter.clone()));
+                    .mapv(|v| raw_to_value(v, slope, inter));
                 Ok(a)
             }
             _ => Err(NiftiError::UnsupportedDataType(self.datatype)),
@@ -207,7 +219,7 @@ impl<'a> IntoNdArray for &'a InMemNiftiVolume {
     /// Create an ndarray from the given volume.
     fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
-        T: From<f32>,
+        T: AsPrim,
         T: Clone,
         T: Num,
         T: Mul<Output = T>,

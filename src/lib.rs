@@ -55,9 +55,10 @@
 #[cfg(ndarray_volumes)]
 extern crate ndarray;
 
-extern crate num;
+extern crate asprim;
 extern crate byteorder;
 extern crate flate2;
+extern crate num;
 
 pub mod extension;
 pub mod header;
@@ -67,6 +68,7 @@ pub mod error;
 pub mod typedef;
 mod util;
 
+pub use asprim::AsPrim;
 pub use error::{NiftiError, Result};
 pub use object::{NiftiObject, InMemNiftiObject};
 pub use extension::{Extender, Extension, ExtensionSequence};

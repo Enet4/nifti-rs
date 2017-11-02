@@ -2,25 +2,28 @@
 authors = ["Eduardo Pinho <enet4mikeenet@gmail.com>"]
 categories = ["parser-implementations"]
 description = "Rust implementation of the NIfTI file format"
-keywords = ["nifti", "neuroimaging", "standard", "parser"]
+documentation = "https://docs.rs/crate/nifti"
+keywords = [
+    "nifti",
+    "neuroimaging",
+    "standard",
+    "parser",
+]
 license = "MIT/Apache-2.0"
 name = "nifti"
 readme = "README.md"
-documentation = "https://docs.rs/crate/nifti"
 repository = "https://github.com/Enet4/nifti-rs"
 version = "0.2.1"
 
 [[example]]
 name = "niftidump"
 path = "examples/niftidump/main.rs"
-
-[badges]
-
 [badges.travis-ci]
 branch = "master"
 repository = "Enet4/nifti-rs"
 
 [dependencies]
+asprim = "0.1.1"
 byteorder = "1.1.0"
 flate2 = "0.2.19"
 num = "0.1.40"

@@ -1,9 +1,10 @@
 //! Private utility module
 use std::io::{Read, Result as IoResult, Seek};
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use std::ops::{Add, Mul};
-use num::Num;
 use std::path::{Path, PathBuf};
+use asprim::AsPrim;
+use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
+use num::Num;
 
 /// A trait that is both Read and Seek.
 pub trait ReadSeek: Read + Seek {}
@@ -147,17 +148,35 @@ pub type OppositeNativeEndian = LittleEndian;
 
 /// Convert a raw volume value to the scale defined
 /// by the given scale slope and intercept parameters.
+/// The linear transformation is performed over the type `T`.
 pub fn raw_to_value<V, T>(value: V, slope: T, intercept: T) -> T
 where
-    V: Into<T>,
+    T: AsPrim,
+    V: AsPrim,
     T: Num,
     T: Mul<Output = T>,
     T: Add<Output = T>,
 {
     if slope != T::zero() {
-        value.into() * slope + intercept
+        slope * value.as_() + intercept
     } else {
-        value.into()
+        value.as_()
+    }
+}
+
+/// Convert a raw volume value to the scale defined
+/// by the given scale slope and intercept parameters.
+/// This implementation performs the linear transformation
+/// over the `f32` type, then converts it to the intended value type.
+pub fn raw_to_value_via_f32<V, T>(value: V, slope: f32, intercept: f32) -> T
+where
+    T: AsPrim,
+    V: AsPrim
+{
+    if slope != 0. {
+        (value.as_f32() * slope + intercept).as_()
+    } else {
+        value.as_()
     }
 }
 

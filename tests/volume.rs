@@ -47,11 +47,11 @@ fn minimal_img_gz() {
 #[cfg(feature = "ndarray_volumes")]
 mod ndarray_volumes {
     use nifti::{Endianness, InMemNiftiObject, InMemNiftiVolume, NiftiHeader, NiftiObject,
-                NiftiVolume, IntoNdArray};
+                NiftiVolume, NiftiType, IntoNdArray};
     use ndarray::{Array, Axis, IxDyn, ShapeBuilder};
 
     #[test]
-    fn minimal_img_gz_ndarray() {
+    fn minimal_img_gz_ndarray_f32() {
         let minimal_hdr = NiftiHeader {
             sizeof_hdr: 348,
             dim: [3, 64, 64, 10, 0, 0, 0, 0],
@@ -88,11 +88,49 @@ mod ndarray_volumes {
     }
 
     #[test]
+    fn minimal_img_gz_ndarray_u8() {
+        let minimal_hdr = NiftiHeader {
+            sizeof_hdr: 348,
+            dim: [3, 64, 64, 10, 0, 0, 0, 0],
+            datatype: 2,
+            bitpix: 8,
+            pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
+            vox_offset: 0.,
+            scl_slope: 0.,
+            scl_inter: 0.,
+            magic: *b"ni1\0",
+            ..Default::default()
+        };
+
+        const FILE_NAME: &str = "resources/minimal.img.gz";
+        let volume = InMemNiftiVolume::from_file(FILE_NAME, &minimal_hdr, Endianness::BE).unwrap();
+        assert_eq!(volume.data_type(), NiftiType::Uint8);
+        assert_eq!(volume.dim(), [64, 64, 10].as_ref());
+
+        let volume = volume.to_ndarray::<u8>().unwrap();
+
+        assert_eq!(volume.shape(), [64, 64, 10].as_ref());
+
+        let slices = volume.axis_iter(Axis(1));
+        let mut e = Array::zeros(IxDyn(&[64, 10]).f());
+        for (j, slice) in slices.enumerate() {
+            e.fill(j as u8);
+            assert!(
+                slice == e,
+                "slice was:\n{:?}\n, expected:\n{:?}",
+                &slice,
+                &e
+            );
+        }
+    }
+
+    #[test]
     fn f32_nii_gz_ndarray() {
         const FILE_NAME: &str = "resources/f32.nii.gz";
         let volume = InMemNiftiObject::from_file(FILE_NAME)
             .unwrap()
             .into_volume();
+        assert_eq!(volume.data_type(), NiftiType::Float32);
 
         assert_eq!(volume.get_f32(&[5, 5, 5]).unwrap(), 1.);
 
@@ -108,19 +146,5 @@ mod ndarray_volumes {
         assert_eq!(volume[[5, 0, 4]], 0.4);
         assert_eq!(volume[[0, 8, 5]], 0.8);
         assert_eq!(volume[[5, 5, 5]], 1.0);
-        /*
-        let slices = volume.axis_iter(Axis(1));
-        let mut e = Array::zeros(IxDyn(&[11, 11]).f());
-        for (j, slice) in slices.enumerate() {
-            e.fill(j as f32);
-            assert!(
-                slice == e,
-                "slice was:\n{:?}\n, expected:\n{:?}",
-                &slice,
-                &e
-            );
-        }
-        */
     }
-
 }

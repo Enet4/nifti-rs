@@ -60,8 +60,8 @@ pub trait NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
-        let v = self.get_f64(coords)?;
-        Ok(v as f32)
+        self.get_f64(coords)
+            .map(|v| v as f32)
     }
 }
 

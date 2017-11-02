@@ -4,11 +4,12 @@
 //! reading voxel values). However, primitive integer values can be
 //! converted to these types and vice-versa.
 
+use asprim::AsPrim;
 use byteorder::ReadBytesExt;
 use error::{NiftiError, Result};
 use std::io::Read;
 use std::ops::{Add, Mul};
-use util::{raw_to_value, Endianness};
+use util::{raw_to_value, raw_to_value_via_f32, Endianness};
 use num::Num;
 
 /// Data type for representing a NIFTI value type in a volume.
@@ -92,52 +93,51 @@ impl NiftiType {
     ) -> Result<T>
     where
         S: Read,
-        T: From<f32>,
+        T: AsPrim,
         T: Num,
         T: Add<Output = T>,
         T: Mul<Output = T>,
     {
-        let slope: T = slope.into();
-        let inter: T = inter.into();
         match *self {
             NiftiType::Uint8 => {
                 let raw = source.read_u8()?;
-                Ok(raw_to_value(raw as f32, slope, inter))
+                Ok(raw_to_value_via_f32(raw, slope, inter))
             }
             NiftiType::Uint16 => {
                 let raw = endianness.read_u16(source)?;
-                Ok(raw_to_value(raw as f32, slope, inter))
+                Ok(raw_to_value_via_f32(raw, slope, inter))
             }
             NiftiType::Int16 => {
                 let raw = endianness.read_i16(source)?;
-                Ok(raw_to_value(raw as f32, slope, inter))
+                Ok(raw_to_value_via_f32(raw, slope, inter))
             }
             NiftiType::Uint32 => {
                 let raw = endianness.read_u32(source)?;
-                Ok(raw_to_value(raw as f32, slope, inter))
+                Ok(raw_to_value_via_f32(raw, slope, inter))
             }
             NiftiType::Int32 => {
                 let raw = endianness.read_i32(source)?;
-                Ok(raw_to_value(raw as f32, slope, inter))
+                Ok(raw_to_value_via_f32(raw, slope, inter))
             }
             NiftiType::Uint64 => {
-                // TODO find a way to not lose precision
+                // TODO precision might be lost in parameter conversion 
+                // find a way to not lose precision
                 let raw = endianness.read_u64(source)?;
-                Ok(raw_to_value(raw as f32, slope, inter))
+                Ok(raw_to_value(raw, slope.as_(), inter.as_()))
             }
             NiftiType::Int64 => {
-                // TODO find a way to not lose precision
+                // TODO precision might be lost in parameter conversion 
+                // find a way to not lose precision
                 let raw = endianness.read_i64(source)?;
-                Ok(raw_to_value(raw as f32, slope, inter))
+                Ok(raw_to_value(raw, slope.as_(), inter.as_()))
             }
             NiftiType::Float32 => {
                 let raw = endianness.read_f32(source)?;
-                Ok(raw_to_value(raw, slope, inter))
+                Ok(raw_to_value(raw, slope.as_(), inter.as_()))
             }
             NiftiType::Float64 => {
-                // TODO find a way to not lose precision
                 let raw = endianness.read_f64(source)?;
-                Ok(raw_to_value(raw as f32, slope, inter))
+                Ok(raw_to_value(raw, slope.as_(), inter.as_()))
             }
             // TODO add support for more data types
             _ => Err(NiftiError::UnsupportedDataType(*self)),
