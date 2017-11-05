@@ -60,6 +60,7 @@ extern crate asprim;
 extern crate byteorder;
 extern crate flate2;
 extern crate num;
+extern crate safe_transmute;
 
 pub mod extension;
 pub mod header;

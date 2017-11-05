@@ -1,10 +1,13 @@
 //! Private utility module
 use std::io::{Read, Result as IoResult, Seek};
+use std::mem;
 use std::ops::{Add, Mul};
 use std::path::{Path, PathBuf};
 use asprim::AsPrim;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use num::Num;
+use safe_transmute::guarded_transmute_pod_vec_permissive;
+use safe_transmute::util::designalise_f32;
 
 /// A trait that is both Read and Seek.
 pub trait ReadSeek: Read + Seek {}
@@ -181,12 +184,17 @@ where
 }
 
 #[allow(dead_code)]
-pub fn convert_vec_f32(a: Vec<u8>, e: Endianness) -> Vec<f32> {
-    let len = a.len() / 4;
-    let mut v = Vec::with_capacity(len);
-    let mut a = a.as_slice();
-    for _ in ::std::iter::repeat(()).take(len) {
-        v.push(e.read_f32(&mut a).unwrap());
+pub fn convert_vec_f32(mut a: Vec<u8>, e: Endianness) -> Vec<f32> {
+    if e != Endianness::system() {
+        for c in a.chunks_mut(4) {
+            let (a, b) = c.split_at_mut(2);
+            mem::swap(&mut a[0], &mut b[1]);
+            mem::swap(&mut a[1], &mut b[0]);
+        }
+    }
+    let mut v: Vec<f32> = guarded_transmute_pod_vec_permissive(a);
+    for e in &mut v {
+        *e = designalise_f32(*e);
     }
     v
 }

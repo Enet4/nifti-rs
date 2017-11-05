@@ -3,21 +3,15 @@ authors = ["Eduardo Pinho <enet4mikeenet@gmail.com>"]
 categories = ["parser-implementations"]
 description = "Rust implementation of the NIfTI file format"
 documentation = "https://docs.rs/crate/nifti"
-keywords = [
-    "nifti",
-    "neuroimaging",
-    "standard",
-    "parser",
-]
+keywords = ["nifti", "neuroimaging", "standard", "parser"]
 license = "MIT/Apache-2.0"
 name = "nifti"
 readme = "README.md"
 repository = "https://github.com/Enet4/nifti-rs"
 version = "0.2.1"
 
-[[example]]
-name = "niftidump"
-path = "examples/niftidump/main.rs"
+[badges]
+
 [badges.travis-ci]
 branch = "master"
 repository = "Enet4/nifti-rs"
@@ -30,6 +24,7 @@ num = "0.1.40"
 num-derive = "0.1.41"
 num-traits = "0.1.40"
 quick-error = "1.2.0"
+safe-transmute = "0.5.0"
 
 [dependencies.derive_builder]
 git = "https://github.com/colin-kiegel/rust-derive-builder"
@@ -42,6 +37,10 @@ version = "0.10.10"
 [dev-dependencies]
 approx = "0.1.1"
 pretty_assertions = "0.4.0"
+
+[[example]]
+name = "niftidump"
+path = "examples/niftidump/main.rs"
 
 [features]
 ndarray_volumes = ["ndarray"]
