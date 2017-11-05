@@ -81,6 +81,125 @@ pub trait NiftiVolume {
         self.get_f64(coords)
             .map(|v| v as u8)
     }
+
+    /// Fetch a single voxel's value in the given voxel index coordinates
+    /// as a signed 8-bit value.
+    /// All necessary conversions and transformations are made
+    /// when reading the voxel, including scaling. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    ///
+    /// # Errors
+    ///
+    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
+    /// volume's boundaries.
+    #[inline]
+    fn get_i8(&self, coords: &[u16]) -> Result<i8> {
+        self.get_f64(coords)
+            .map(|v| v as i8)
+    }
+
+    /// Fetch a single voxel's value in the given voxel index coordinates
+    /// as an unsigned 16-bit value.
+    /// All necessary conversions and transformations are made
+    /// when reading the voxel, including scaling. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    ///
+    /// # Errors
+    ///
+    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
+    /// volume's boundaries.
+    #[inline]
+    fn get_u16(&self, coords: &[u16]) -> Result<u16> {
+        self.get_f64(coords)
+            .map(|v| v as u16)
+    }
+
+    /// Fetch a single voxel's value in the given voxel index coordinates
+    /// as a signed 16-bit value.
+    /// All necessary conversions and transformations are made
+    /// when reading the voxel, including scaling. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    ///
+    /// # Errors
+    ///
+    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
+    /// volume's boundaries.
+    #[inline]
+    fn get_i16(&self, coords: &[u16]) -> Result<i16> {
+        self.get_f64(coords)
+            .map(|v| v as i16)
+    }
+
+    /// Fetch a single voxel's value in the given voxel index coordinates
+    /// as an unsigned 32-bit value.
+    /// All necessary conversions and transformations are made
+    /// when reading the voxel, including scaling. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    ///
+    /// # Errors
+    ///
+    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
+    /// volume's boundaries.
+    #[inline]
+    fn get_u32(&self, coords: &[u16]) -> Result<u32> {
+        self.get_f64(coords)
+            .map(|v| v as u32)
+    }
+
+    /// Fetch a single voxel's value in the given voxel index coordinates
+    /// as a signed 32-bit value.
+    /// All necessary conversions and transformations are made
+    /// when reading the voxel, including scaling. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    ///
+    /// # Errors
+    ///
+    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
+    /// volume's boundaries.
+    #[inline]
+    fn get_i32(&self, coords: &[u16]) -> Result<i32> {
+        self.get_f64(coords)
+            .map(|v| v as i32)
+    }
+
+    /// Fetch a single voxel's value in the given voxel index coordinates
+    /// as an unsigned 64-bit value.
+    /// All necessary conversions and transformations are made
+    /// when reading the voxel, including scaling. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    ///
+    /// # Errors
+    ///
+    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
+    /// volume's boundaries.
+    #[inline]
+    fn get_u64(&self, coords: &[u16]) -> Result<u64> {
+        self.get_f64(coords)
+            .map(|v| v as u64)
+    }
+
+    /// Fetch a single voxel's value in the given voxel index coordinates
+    /// as a signed 64-bit value.
+    /// All necessary conversions and transformations are made
+    /// when reading the voxel, including scaling. Note that using this
+    /// function continuously to traverse the volume is inefficient.
+    /// Prefer using iterators or the `ndarray` API for volume traversal.
+    ///
+    /// # Errors
+    ///
+    /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
+    /// volume's boundaries.
+    #[inline]
+    fn get_i64(&self, coords: &[u16]) -> Result<i64> {
+        self.get_f64(coords)
+            .map(|v| v as i64)
+    }
 }
 
 /// Interface for a volume that can be sliced.
@@ -160,6 +279,48 @@ where
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_u8(&coords)
+    }
+
+    fn get_i8(&self, coords: &[u16]) -> Result<i8> {
+        let mut coords = Vec::from(coords);
+        coords.insert(self.axis as usize, self.index);
+        self.volume.get_i8(&coords)
+    }
+
+    fn get_u16(&self, coords: &[u16]) -> Result<u16> {
+        let mut coords = Vec::from(coords);
+        coords.insert(self.axis as usize, self.index);
+        self.volume.get_u16(&coords)
+    }
+
+    fn get_i16(&self, coords: &[u16]) -> Result<i16> {
+        let mut coords = Vec::from(coords);
+        coords.insert(self.axis as usize, self.index);
+        self.volume.get_i16(&coords)
+    }
+
+    fn get_u32(&self, coords: &[u16]) -> Result<u32> {
+        let mut coords = Vec::from(coords);
+        coords.insert(self.axis as usize, self.index);
+        self.volume.get_u32(&coords)
+    }
+
+    fn get_i32(&self, coords: &[u16]) -> Result<i32> {
+        let mut coords = Vec::from(coords);
+        coords.insert(self.axis as usize, self.index);
+        self.volume.get_i32(&coords)
+    }
+
+    fn get_u64(&self, coords: &[u16]) -> Result<u64> {
+        let mut coords = Vec::from(coords);
+        coords.insert(self.axis as usize, self.index);
+        self.volume.get_u64(&coords)
+    }
+
+    fn get_i64(&self, coords: &[u16]) -> Result<i64> {
+        let mut coords = Vec::from(coords);
+        coords.insert(self.axis as usize, self.index);
+        self.volume.get_i64(&coords)
     }
 
     /// Get this volume's data type.

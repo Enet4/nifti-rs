@@ -5,6 +5,7 @@ use super::util::coords_to_index;
 use std::io::{BufReader, Read};
 use std::fs::File;
 use std::path::Path;
+use asprim::AsPrim;
 use header::NiftiHeader;
 use extension::{Extender, ExtensionSequence};
 use error::{NiftiError, Result};
@@ -12,10 +13,8 @@ use util::{raw_to_value, raw_to_value_via_f32, Endianness};
 use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
 use typedef::NiftiType;
-use num::FromPrimitive;
+use num::{FromPrimitive, Num};
 
-#[cfg(feature = "ndarray_volumes")]
-use asprim::AsPrim;
 #[cfg(feature = "ndarray_volumes")]
 use volume::ndarray::IntoNdArray;
 #[cfg(feature = "ndarray_volumes")]
@@ -24,8 +23,6 @@ use util::{convert_vec_f32};
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
 #[cfg(feature = "ndarray_volumes")]
 use std::ops::{Add, Mul};
-#[cfg(feature = "ndarray_volumes")]
-use num::Num;
 
 /// A data type for a NIFTI-1 volume contained in memory.
 /// Objects of this type contain raw image data, which
@@ -168,6 +165,54 @@ impl InMemNiftiVolume {
     pub fn get_raw_data_mut(&mut self) -> &mut [u8] {
         &mut self.raw_data
     }
+
+    fn get_prim<T>(&self, coords: &[u16]) -> Result<T>
+    where
+        T: AsPrim,
+        T: Num,
+        T: Copy,
+    {
+        let index = coords_to_index(coords, self.dim())?;
+        if self.datatype == NiftiType::Uint8 {
+            let byte = self.raw_data[index];
+            Ok(raw_to_value(byte, self.scl_slope.as_(), self.scl_inter.as_()))
+        } else if self.datatype == NiftiType::Int8 {
+            let byte = self.raw_data[index] as i8;
+            Ok(raw_to_value(byte, self.scl_slope.as_(), self.scl_inter.as_()))
+        } else {
+            let range = &self.raw_data[index * self.datatype.size_of()..];
+            self.datatype.read_primitive_value(
+                range,
+                self.endianness,
+                self.scl_slope,
+                self.scl_inter,
+            )
+        }
+    }
+
+    fn get_prim_via_f32<T>(&self, coords: &[u16]) -> Result<T>
+    where
+        T: AsPrim,
+        T: Num,
+        T: Copy,
+    {
+        let index = coords_to_index(coords, self.dim())?;
+        if self.datatype == NiftiType::Uint8 {
+            let byte = self.raw_data[index];
+            Ok(raw_to_value_via_f32(byte, self.scl_slope, self.scl_inter))
+        } else if self.datatype == NiftiType::Int8 {
+            let byte = self.raw_data[index] as i8;
+            Ok(raw_to_value_via_f32(byte, self.scl_slope, self.scl_inter))
+        } else {
+            let range = &self.raw_data[index * self.datatype.size_of()..];
+            self.datatype.read_primitive_value(
+                range,
+                self.endianness,
+                self.scl_slope,
+                self.scl_inter,
+            )
+        }
+    }
 }
 
 #[cfg(feature = "ndarray_volumes")]
@@ -269,61 +314,43 @@ impl NiftiVolume for InMemNiftiVolume {
     }
 
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
-        let index = coords_to_index(coords, self.dim())?;
-        if self.datatype == NiftiType::Uint8 {
-            let byte = self.raw_data[index];
-            Ok(raw_to_value(byte, self.scl_slope, self.scl_inter))
-        } else if self.datatype == NiftiType::Int8 {
-            let byte = self.raw_data[index] as i8;
-            Ok(raw_to_value(byte, self.scl_slope, self.scl_inter))
-        } else {
-            let range = &self.raw_data[index * self.datatype.size_of()..];
-            self.datatype.read_primitive_value(
-                range,
-                self.endianness,
-                self.scl_slope,
-                self.scl_inter,
-            )
-        }
+        self.get_prim(coords)
     }
 
     fn get_f64(&self, coords: &[u16]) -> Result<f64> {
-        let index = coords_to_index(coords, self.dim())?;
-        if self.datatype == NiftiType::Uint8 {
-            let byte = self.raw_data[index];
-            Ok(raw_to_value(
-                byte as f64,
-                self.scl_slope as f64,
-                self.scl_inter as f64,
-            ))
-        } else {
-            let range = &self.raw_data[index..];
-            self.datatype.read_primitive_value(
-                range,
-                self.endianness,
-                self.scl_slope,
-                self.scl_inter,
-            )
-        }
+        self.get_prim(coords)
     }
 
     fn get_u8(&self, coords: &[u16]) -> Result<u8> {
-        let index = coords_to_index(coords, self.dim())?;
-        if self.datatype == NiftiType::Uint8 {
-            let byte = self.raw_data[index];
-            Ok(raw_to_value_via_f32(byte, self.scl_slope, self.scl_inter))
-        } else if self.datatype == NiftiType::Int8 {
-            let byte = self.raw_data[index] as i8;
-            Ok(raw_to_value_via_f32(byte, self.scl_slope, self.scl_inter))
-        } else {
-            let range = &self.raw_data[index * self.datatype.size_of()..];
-            self.datatype.read_primitive_value(
-                range,
-                self.endianness,
-                self.scl_slope,
-                self.scl_inter,
-            )
-        }
+        self.get_prim_via_f32(coords)
+    }
+
+    fn get_i8(&self, coords: &[u16]) -> Result<i8> {
+        self.get_prim_via_f32(coords)
+    }
+
+    fn get_u16(&self, coords: &[u16]) -> Result<u16> {
+        self.get_prim_via_f32(coords)
+    }
+
+    fn get_i16(&self, coords: &[u16]) -> Result<i16> {
+        self.get_prim_via_f32(coords)
+    }
+
+    fn get_u32(&self, coords: &[u16]) -> Result<u32> {
+        self.get_prim_via_f32(coords)
+    }
+
+    fn get_i32(&self, coords: &[u16]) -> Result<i32> {
+        self.get_prim_via_f32(coords)
+    }
+
+    fn get_u64(&self, coords: &[u16]) -> Result<u64> {
+        self.get_prim(coords)
+    }
+
+    fn get_i64(&self, coords: &[u16]) -> Result<i64> {
+        self.get_prim(coords)
     }
 }
 

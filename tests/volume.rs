@@ -1,10 +1,11 @@
-#[macro_use]
-extern crate approx;
 extern crate flate2;
 extern crate nifti;
 #[macro_use]
 extern crate pretty_assertions;
 
+#[cfg(feature = "ndarray_volumes")]
+#[macro_use]
+extern crate approx;
 #[cfg(feature = "ndarray_volumes")]
 extern crate ndarray;
 
