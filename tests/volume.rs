@@ -1,3 +1,4 @@
+extern crate asprim;
 extern crate flate2;
 extern crate nifti;
 #[macro_use]
@@ -8,6 +9,10 @@ extern crate pretty_assertions;
 extern crate approx;
 #[cfg(feature = "ndarray_volumes")]
 extern crate ndarray;
+#[cfg(feature = "ndarray_volumes")]
+extern crate num;
+#[cfg(feature = "ndarray_volumes")]
+extern crate safe_transmute;
 
 use nifti::{Endianness, InMemNiftiVolume, NiftiHeader, NiftiVolume};
 
@@ -50,9 +55,13 @@ fn minimal_img_gz() {
 
 #[cfg(feature = "ndarray_volumes")]
 mod ndarray_volumes {
+    use asprim::AsPrim;
     use nifti::{Endianness, InMemNiftiObject, InMemNiftiVolume, NiftiHeader, NiftiObject,
                 NiftiVolume, NiftiType, IntoNdArray};
     use ndarray::{Array, Axis, IxDyn, ShapeBuilder};
+    use num::traits::{Num};
+    use safe_transmute::PodTransmutable;
+    use std;
 
     #[test]
     fn minimal_img_gz_ndarray_f32() {
@@ -170,5 +179,93 @@ mod ndarray_volumes {
         assert_ulps_eq!(volume[[5, 0, 4]], 0.4_f32 as f64);
         assert_ulps_eq!(volume[[0, 8, 5]], 0.8_f32 as f64);
         assert_ulps_eq!(volume[[5, 5, 5]], 1.0_f32 as f64);
+    }
+
+    #[test]
+    fn test_i8() {
+        const FILE_NAME: &str = "resources/27/int8.nii";
+        test_all(FILE_NAME, NiftiType::Int8);
+    }
+
+    #[test]
+    fn test_u8() {
+        const FILE_NAME: &str = "resources/27/uint8.nii";
+        test_all(FILE_NAME, NiftiType::Uint8);
+    }
+
+    #[test]
+    fn test_i16() {
+        const FILE_NAME: &str = "resources/27/int16.nii";
+        test_all(FILE_NAME, NiftiType::Int16);
+    }
+
+    #[test]
+    fn test_u16() {
+        const FILE_NAME: &str = "resources/27/uint16.nii";
+        test_all(FILE_NAME, NiftiType::Uint16);
+    }
+
+    #[test]
+    fn test_i32() {
+        const FILE_NAME: &str = "resources/27/int32.nii";
+        test_all(FILE_NAME, NiftiType::Int32);
+    }
+
+    #[test]
+    fn test_u32() {
+        const FILE_NAME: &str = "resources/27/uint32.nii";
+        test_all(FILE_NAME, NiftiType::Uint32);
+    }
+
+    #[test]
+    fn test_i64() {
+        const FILE_NAME: &str = "resources/27/int64.nii";
+        test_all(FILE_NAME, NiftiType::Int64);
+    }
+
+    #[test]
+    fn test_u64() {
+        const FILE_NAME: &str = "resources/27/uint64.nii";
+        test_all(FILE_NAME, NiftiType::Uint64);
+    }
+
+    #[test]
+    fn test_f32() {
+        const FILE_NAME: &str = "resources/27/float32.nii";
+        test_all(FILE_NAME, NiftiType::Float32);
+    }
+
+    #[test]
+    fn test_f64() {
+        const FILE_NAME: &str = "resources/27/float64.nii";
+        test_all(FILE_NAME, NiftiType::Float64);
+    }
+
+    fn test_all(path: &str, dtype: NiftiType)
+    {
+        test_types::<i8>(path, dtype);
+        test_types::<u8>(path, dtype);
+        test_types::<i16>(path, dtype);
+        test_types::<u16>(path, dtype);
+        test_types::<i32>(path, dtype);
+        test_types::<u32>(path, dtype);
+        test_types::<i64>(path, dtype);
+        test_types::<u64>(path, dtype);
+        test_types::<f32>(path, dtype);
+        test_types::<f64>(path, dtype);
+    }
+
+    fn test_types<T>(path: &str, dtype: NiftiType)
+        where T: AsPrim + Num + PodTransmutable + std::fmt::Debug
+    {
+        let volume = InMemNiftiObject::from_file(path)
+            .expect("Can't read input file.")
+            .into_volume();
+        assert_eq!(volume.data_type(), dtype);
+
+        let data = volume.to_ndarray::<T>().unwrap();
+        for (idx, val) in data.iter().enumerate() {
+            assert_eq!(idx.as_::<T>(), *val);
+        }
     }
 }
