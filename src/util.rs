@@ -209,45 +209,17 @@ pub fn convert_bytes_to<T: PodTransmutable>(
     mut a: Vec<u8>,
     e: Endianness
 ) -> Vec<T> {
-    if e != Endianness::system() {
-        match mem::size_of::<T>() {
-            1 => { /* Endianness can't be wrong */ }
-            2 => {
-                for c in a.chunks_mut(2) {
-                    let (a, b) = c.split_at_mut(2);
-                    mem::swap(&mut a[0], &mut b[1]);
-                }
+    let nb_bytes = mem::size_of::<T>();
+    if e != Endianness::system() && nb_bytes > 1 {
+        // Swap endianness by block of nb_bytes
+        let split_at = nb_bytes / 2;
+        let split_at_m1 = split_at - 1;
+        for c in a.chunks_mut(nb_bytes) {
+            let (a, b) = c.split_at_mut(split_at);
+            for i in 0..split_at {
+                mem::swap(&mut a[i], &mut b[split_at_m1 - i]);
             }
-            4 => {
-                for c in a.chunks_mut(4) {
-                    let (a, b) = c.split_at_mut(2);
-                    mem::swap(&mut a[0], &mut b[1]);
-                    mem::swap(&mut a[1], &mut b[0]);
-                }
-            }
-            8 => {
-                for c1 in a.chunks_mut(8) {
-                    for c2 in c1.chunks_mut(4) {
-                        let (a, b) = c2.split_at_mut(2);
-                        mem::swap(&mut a[0], &mut b[1]);
-                        mem::swap(&mut a[1], &mut b[0]);
-                    }
-                }
-            }
-            16 => {
-                for c1 in a.chunks_mut(16) {
-                    for c2 in c1.chunks_mut(8) {
-                        for c3 in c2.chunks_mut(4) {
-                            let (a, b) = c3.split_at_mut(2);
-                            mem::swap(&mut a[0], &mut b[1]);
-                            mem::swap(&mut a[1], &mut b[0]);
-                        }
-                    }
-                }
-            }
-            // TODO
-            _ => {}
-        };
+        }
     }
 
     guarded_transmute_pod_vec_permissive(a)
