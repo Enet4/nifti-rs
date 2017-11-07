@@ -44,6 +44,7 @@
 //! let volume = obj.into_volume().to_ndarray::<f32>()?;
 //! # Ok(())
 //! # }
+//! # #[cfg(feature = "ndarray_volumes")]
 //! # run().unwrap()
 //! ```
 //! 
