@@ -18,9 +18,11 @@ use num::{FromPrimitive, Num};
 #[cfg(feature = "ndarray_volumes")]
 use volume::ndarray::IntoNdArray;
 #[cfg(feature = "ndarray_volumes")]
-use util::{convert_vec_f32};
+use util::{convert_bytes_and_cast_to};
 #[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
+#[cfg(feature = "ndarray_volumes")]
+use safe_transmute::PodTransmutable;
 #[cfg(feature = "ndarray_volumes")]
 use std::ops::{Add, Mul};
 
@@ -213,23 +215,29 @@ impl InMemNiftiVolume {
             )
         }
     }
+
+    // Shortcut to avoid repeating the call for all types
+    #[cfg(feature = "ndarray_volumes")]
+    fn convert_bytes_and_cast_to<I, O>(self) -> Array<O, IxDyn>
+        where I: AsPrim + PodTransmutable,
+              O: AsPrim + Num
+    {
+        let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
+        convert_bytes_and_cast_to::<I, O>(
+            self.raw_data, self.endianness, &dim,
+            self.scl_slope.as_(), self.scl_inter.as_())
+    }
 }
 
 #[cfg(feature = "ndarray_volumes")]
 impl IntoNdArray for InMemNiftiVolume {
     /// Consume the volume into an ndarray.
     fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
-    where
-        T: AsPrim,
-        T: Clone,
-        T: Num,
-        T: Mul<Output = T>,
-        T: Add<Output = T>,
+    where T: AsPrim + Num + PodTransmutable
     {
-        let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
-
         match self.datatype {
-            NiftiType::Uint8 => {
+            NiftiType::Uint8 | NiftiType::Int8 => {
+                let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
                 let slope = self.scl_slope;
                 let inter = self.scl_inter;
                 let a = Array::from_shape_vec(IxDyn(&dim).f(), self.raw_data)
@@ -237,23 +245,20 @@ impl IntoNdArray for InMemNiftiVolume {
                     .mapv(|v| raw_to_value_via_f32(v, slope, inter));
                 Ok(a)
             }
-            NiftiType::Int8 => {
-                let slope = self.scl_slope;
-                let inter = self.scl_inter;
-                let a = Array::from_shape_vec(IxDyn(&dim).f(), self.raw_data)
-                    .expect("Inconsistent raw data size")
-                    .mapv(|v| raw_to_value_via_f32(v, slope, inter));
-                Ok(a)
-            }
-            NiftiType::Float32 => {
-                let slope = self.scl_slope.as_();
-                let inter = self.scl_inter.as_();
-                let raw_data = convert_vec_f32(self.raw_data, self.endianness);
-                let a = Array::from_shape_vec(IxDyn(&dim).f(), raw_data)
-                    .expect("Inconsistent raw data size")
-                    .mapv(|v| raw_to_value(v, slope, inter));
-                Ok(a)
-            }
+            NiftiType::Uint16 => Ok(self.convert_bytes_and_cast_to::<u16, T>()),
+            NiftiType::Int16 => Ok(self.convert_bytes_and_cast_to::<i16, T>()),
+            NiftiType::Uint32 => Ok(self.convert_bytes_and_cast_to::<u32, T>()),
+            NiftiType::Int32 => Ok(self.convert_bytes_and_cast_to::<i32, T>()),
+            NiftiType::Uint64 => Ok(self.convert_bytes_and_cast_to::<u64, T>()),
+            NiftiType::Int64 => Ok(self.convert_bytes_and_cast_to::<i64, T>()),
+            NiftiType::Float32 => Ok(self.convert_bytes_and_cast_to::<f32, T>()),
+            NiftiType::Float64 => Ok(self.convert_bytes_and_cast_to::<f64, T>()),
+            //NiftiType::Float128 => {}
+            //NiftiType::Complex64 => {}
+            //NiftiType::Complex128 => {}
+            //NiftiType::Complex256 => {}
+            //NiftiType::Rgb24 => {}
+            //NiftiType::Rgba32 => {}
             _ => Err(NiftiError::UnsupportedDataType(self.datatype)),
         }
     }
@@ -269,6 +274,7 @@ impl<'a> IntoNdArray for &'a InMemNiftiVolume {
         T: Num,
         T: Mul<Output = T>,
         T: Add<Output = T>,
+        T: PodTransmutable
     {
         self.clone().to_ndarray()
     }

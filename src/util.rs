@@ -1,13 +1,17 @@
 //! Private utility module
 use std::io::{Read, Result as IoResult, Seek};
-use std::mem;
 use std::ops::{Add, Mul};
 use std::path::{Path, PathBuf};
 use asprim::AsPrim;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use num::Num;
-use safe_transmute::guarded_transmute_pod_vec_permissive;
-use safe_transmute::util::designalise_f32;
+
+#[cfg(feature = "ndarray_volumes")]
+use std::mem;
+#[cfg(feature = "ndarray_volumes")]
+use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
+#[cfg(feature = "ndarray_volumes")]
+use safe_transmute::{guarded_transmute_pod_vec_permissive, PodTransmutable};
 
 /// A trait that is both Read and Seek.
 pub trait ReadSeek: Read + Seek {}
@@ -183,20 +187,70 @@ where
     }
 }
 
-#[allow(dead_code)]
-pub fn convert_vec_f32(mut a: Vec<u8>, e: Endianness) -> Vec<f32> {
+#[cfg(feature = "ndarray_volumes")]
+pub fn convert_bytes_and_cast_to<I, O>(
+    raw_data: Vec<u8>,
+    e: Endianness,
+    dim: &Vec<Ix>,
+    slope: O,
+    inter: O
+    ) -> Array<O, IxDyn>
+    where I: AsPrim + PodTransmutable,
+          O: AsPrim + Num
+{
+    let data: Vec<I> = convert_bytes_to(raw_data, e);
+    Array::from_shape_vec(IxDyn(&dim).f(), data)
+        .expect("Inconsistent raw data size")
+        .mapv(|v| raw_to_value::<I, O>(v, slope, inter))
+}
+
+#[cfg(feature = "ndarray_volumes")]
+pub fn convert_bytes_to<T: PodTransmutable>(
+    mut a: Vec<u8>,
+    e: Endianness
+) -> Vec<T> {
     if e != Endianness::system() {
-        for c in a.chunks_mut(4) {
-            let (a, b) = c.split_at_mut(2);
-            mem::swap(&mut a[0], &mut b[1]);
-            mem::swap(&mut a[1], &mut b[0]);
-        }
+        match mem::size_of::<T>() {
+            1 => { /* Endianness can't be wrong */ }
+            2 => {
+                for c in a.chunks_mut(2) {
+                    let (a, b) = c.split_at_mut(2);
+                    mem::swap(&mut a[0], &mut b[1]);
+                }
+            }
+            4 => {
+                for c in a.chunks_mut(4) {
+                    let (a, b) = c.split_at_mut(2);
+                    mem::swap(&mut a[0], &mut b[1]);
+                    mem::swap(&mut a[1], &mut b[0]);
+                }
+            }
+            8 => {
+                for c1 in a.chunks_mut(8) {
+                    for c2 in c1.chunks_mut(4) {
+                        let (a, b) = c2.split_at_mut(2);
+                        mem::swap(&mut a[0], &mut b[1]);
+                        mem::swap(&mut a[1], &mut b[0]);
+                    }
+                }
+            }
+            16 => {
+                for c1 in a.chunks_mut(16) {
+                    for c2 in c1.chunks_mut(8) {
+                        for c3 in c2.chunks_mut(4) {
+                            let (a, b) = c3.split_at_mut(2);
+                            mem::swap(&mut a[0], &mut b[1]);
+                            mem::swap(&mut a[1], &mut b[0]);
+                        }
+                    }
+                }
+            }
+            // TODO
+            _ => {}
+        };
     }
-    let mut v: Vec<f32> = guarded_transmute_pod_vec_permissive(a);
-    for e in &mut v {
-        *e = designalise_f32(*e);
-    }
-    v
+
+    guarded_transmute_pod_vec_permissive(a)
 }
 
 pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
@@ -231,7 +285,7 @@ mod tests {
     use super::{raw_to_value, raw_to_value_via_f32};
     use super::to_img_file_gz;
     use super::is_gz_file;
-    use super::convert_vec_f32;
+    use super::convert_bytes_to;
     use std::path::PathBuf;
 
     #[test]
@@ -259,14 +313,15 @@ mod tests {
 
     #[test]
     fn test_convert_vec_f32() {
-        assert_eq!(
-            convert_vec_f32(vec![0x42, 0x28, 0x00, 0x00, 0x42, 0x2A, 0x00, 0x00,], Endianness::BE),
-            vec![42., 42.5]
-        );
-        assert_eq!(
-            convert_vec_f32(vec![0x00, 0x00, 0x28, 0x42, 0x00, 0x00, 0x2A, 0x42], Endianness::LE),
-            vec![42., 42.5]
-        );
+        let v: Vec<f32> = convert_bytes_to(
+            vec![0x42, 0x28, 0x00, 0x00, 0x42, 0x2A, 0x00, 0x00,],
+            Endianness::BE);
+        assert_eq!(v, vec![42., 42.5]);
+
+        let v: Vec<f32> = convert_bytes_to(
+            vec![0x00, 0x00, 0x28, 0x42, 0x00, 0x00, 0x2A, 0x42],
+            Endianness::LE);
+        assert_eq!(v, vec![42., 42.5]);
     }
 
     #[test]
