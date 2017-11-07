@@ -44,7 +44,21 @@ impl InMemNiftiVolume {
     /// of the volume's data must be known in advance. It it also expected that the
     /// following bytes represent the first voxels of the volume (and not part of the
     /// extensions).
+    #[deprecated(since = "0.4.0", note = "please use `with_stream` instead")]
+    #[inline]
     pub fn from_stream<R: Read>(
+        source: R,
+        header: &NiftiHeader,
+        endianness: Endianness,
+    ) -> Result<Self> {
+        Self::with_stream(source, header, endianness)
+    }
+
+    /// Read a NIFTI volume from a stream of data. The header and expected byte order
+    /// of the volume's data must be known in advance. It it also expected that the
+    /// following bytes represent the first voxels of the volume (and not part of the
+    /// extensions).
+    pub fn with_stream<R: Read>(
         mut source: R,
         header: &NiftiHeader,
         endianness: Endianness,
@@ -75,7 +89,24 @@ impl InMemNiftiVolume {
     /// Read a NIFTI volume, and extensions, from a stream of data. The header,
     /// extender code and expected byte order of the volume's data must be
     /// known in advance.
+    #[deprecated(since = "0.4.0", note = "please use `with_stream_plus_extension` instead")]
+    #[inline]
     pub fn from_stream_with_extensions<R>(
+        source: R,
+        header: &NiftiHeader,
+        extender: Extender,
+        endianness: Endianness,
+    ) -> Result<(Self, ExtensionSequence)>
+    where
+        R: Read,
+    {
+        Self::with_stream_plus_extensions(source, header, extender, endianness)
+    }
+
+    /// Read a NIFTI volume, and extensions, from a stream of data. The header,
+    /// extender code and expected byte order of the volume's data must be
+    /// known in advance.
+    pub fn with_stream_plus_extensions<R>(
         mut source: R,
         header: &NiftiHeader,
         extender: Extender,
@@ -90,21 +121,34 @@ impl InMemNiftiVolume {
 
         let ext = match endianness {
             Endianness::LE => {
-                ExtensionSequence::from_stream::<LittleEndian, _>(extender, &mut source, len)
+                ExtensionSequence::with_stream::<LittleEndian, _>(extender, &mut source, len)
             }
             Endianness::BE => {
-                ExtensionSequence::from_stream::<BigEndian, _>(extender, &mut source, len)
+                ExtensionSequence::with_stream::<BigEndian, _>(extender, &mut source, len)
             }
         }?;
 
         // fetch volume (rest of file)
-        Ok((Self::from_stream(source, &header, endianness)?, ext))
+        Ok((Self::with_stream(source, &header, endianness)?, ext))
     }
 
     /// Read a NIFTI volume from an image file. NIFTI-1 volume files usually have the
     /// extension ".img" or ".img.gz". In the latter case, the file is automatically
     /// decoded as a Gzip stream.
+    #[deprecated(since = "0.4.0", note = "please use `with_file` instead")]
+    #[inline]
     pub fn from_file<P: AsRef<Path>>(
+        path: P,
+        header: &NiftiHeader,
+        endianness: Endianness,
+    ) -> Result<Self> {
+        Self::with_file(path, header, endianness)
+    }
+
+    /// Read a NIFTI volume from an image file. NIFTI-1 volume files usually have the
+    /// extension ".img" or ".img.gz". In the latter case, the file is automatically
+    /// decoded as a Gzip stream.
+    pub fn with_file<P: AsRef<Path>>(
         path: P,
         header: &NiftiHeader,
         endianness: Endianness,
@@ -115,16 +159,33 @@ impl InMemNiftiVolume {
             .unwrap_or(false);
         let file = BufReader::new(File::open(path)?);
         if gz {
-            InMemNiftiVolume::from_stream(GzDecoder::new(file)?, &header, endianness)
+            InMemNiftiVolume::with_stream(GzDecoder::new(file)?, &header, endianness)
         } else {
-            InMemNiftiVolume::from_stream(file, &header, endianness)
+            InMemNiftiVolume::with_stream(file, &header, endianness)
         }
     }
 
     /// Read a NIFTI volume, along with the extensions, from an image file. NIFTI-1 volume
     /// files usually have the extension ".img" or ".img.gz". In the latter case, the file
     /// is automatically decoded as a Gzip stream.
+    #[deprecated(since = "0.4.0", note = "please use `with_file_plus_extensions` instead")]
+    #[inline]
     pub fn from_file_with_extensions<P>(
+        path: P,
+        header: &NiftiHeader,
+        endianness: Endianness,
+        extender: Extender,
+    ) -> Result<(Self, ExtensionSequence)>
+    where
+        P: AsRef<Path>,
+    {
+        Self::with_file_plus_extensions(path, header, endianness, extender)
+    }
+
+    /// Read a NIFTI volume, along with the extensions, from an image file. NIFTI-1 volume
+    /// files usually have the extension ".img" or ".img.gz". In the latter case, the file
+    /// is automatically decoded as a Gzip stream.
+    pub fn with_file_plus_extensions<P>(
         path: P,
         header: &NiftiHeader,
         endianness: Endianness,
@@ -140,14 +201,14 @@ impl InMemNiftiVolume {
         let stream = BufReader::new(File::open(path)?);
 
         if gz {
-            InMemNiftiVolume::from_stream_with_extensions(
+            InMemNiftiVolume::with_stream_plus_extensions(
                 GzDecoder::new(stream)?,
                 &header,
                 extender,
                 endianness,
             )
         } else {
-            InMemNiftiVolume::from_stream_with_extensions(stream, &header, extender, endianness)
+            InMemNiftiVolume::with_stream_plus_extensions(stream, &header, extender, endianness)
         }
     }
 

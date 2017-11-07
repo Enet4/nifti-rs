@@ -14,7 +14,14 @@ pub struct Extender([u8; 4]);
 
 impl Extender {
     /// Fetch the extender code from the given source, while expecting it to exist.
-    pub fn from_stream<S: Read>(mut source: S) -> Result<Self> {
+    #[deprecated(since = "0.4.0", note = "please use `with_stream` instead")]
+    #[inline]
+    pub fn from_stream<S: Read>(source: S) -> Result<Self> {
+        Self::with_stream(source)
+    }
+
+    /// Fetch the extender code from the given source, while expecting it to exist.
+    pub fn with_stream<S: Read>(mut source: S) -> Result<Self> {
         let mut extension = [0u8; 4];
         source.read_exact(&mut extension)?;
         Ok(extension.into())
@@ -24,12 +31,21 @@ impl Extender {
     /// being possible to not be available.
     /// Returns `None` if the source reaches EoF prematurely.
     /// Any other I/O error is delegated to a `NiftiError`.
-    pub fn from_stream_optional<S: Read>(mut source: S) -> Result<Option<Self>> {
+    #[deprecated(since = "0.4.0", note = "please use `with_stream_optional` instead")]
+    #[inline]
+    pub fn from_stream_optional<S: Read>(source: S) -> Result<Option<Self>> {
+        Self::with_stream_optional(source)
+    }
+
+    /// Fetch the extender code from the given source, while
+    /// being possible to not be available.
+    /// Returns `None` if the source reaches EoF prematurely.
+    /// Any other I/O error is delegated to a `NiftiError`.
+    pub fn with_stream_optional<S: Read>(mut source: S) -> Result<Option<Self>> {
         let mut extension = [0u8; 4];
         match source.read_exact(&mut extension) {
             Ok(()) => Ok(Some(extension.into())),
             Err(ref e) if e.kind() == IoErrorKind::UnexpectedEof => {
-                println!("[Extender]: No data!");
                 Ok(None)
             }
             Err(e) => Err(NiftiError::from(e)),
@@ -134,7 +150,18 @@ impl<'a> IntoIterator for &'a ExtensionSequence {
 
 impl ExtensionSequence {
     /// Read a sequence of extensions from a source, up until `len` bytes.
+    #[deprecated(since = "0.4.0", note = "please use `with_stream` instead")]
+    #[inline]
     pub fn from_stream<B: ByteOrder, S: Read>(
+        extender: Extender,
+        source: S,
+        len: usize,
+    ) -> Result<Self> {
+        Self::with_stream::<B, S>(extender, source, len)
+    }
+
+    /// Read a sequence of extensions from a source, up until `len` bytes.
+    pub fn with_stream<B: ByteOrder, S: Read>(
         extender: Extender,
         mut source: S,
         len: usize,

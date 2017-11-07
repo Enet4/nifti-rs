@@ -27,7 +27,7 @@ fn minimal_img_gz() {
     };
 
     const FILE_NAME: &str = "resources/minimal.img.gz";
-    let volume = InMemNiftiVolume::from_file(FILE_NAME, &minimal_hdr, Endianness::BE).unwrap();
+    let volume = InMemNiftiVolume::with_file(FILE_NAME, &minimal_hdr, Endianness::BE).unwrap();
 
     assert_eq!(volume.dim(), [64, 64, 10].as_ref());
 
@@ -70,7 +70,7 @@ mod ndarray_volumes {
         };
 
         const FILE_NAME: &str = "resources/minimal.img.gz";
-        let volume = InMemNiftiVolume::from_file(FILE_NAME, &minimal_hdr, Endianness::BE).unwrap();
+        let volume = InMemNiftiVolume::with_file(FILE_NAME, &minimal_hdr, Endianness::BE).unwrap();
 
         assert_eq!(volume.dim(), [64, 64, 10].as_ref());
 
@@ -107,7 +107,7 @@ mod ndarray_volumes {
         };
 
         const FILE_NAME: &str = "resources/minimal.img.gz";
-        let volume = InMemNiftiVolume::from_file(FILE_NAME, &minimal_hdr, Endianness::BE).unwrap();
+        let volume = InMemNiftiVolume::with_file(FILE_NAME, &minimal_hdr, Endianness::BE).unwrap();
         assert_eq!(volume.data_type(), NiftiType::Uint8);
         assert_eq!(volume.dim(), [64, 64, 10].as_ref());
 
@@ -131,7 +131,7 @@ mod ndarray_volumes {
     #[test]
     fn f32_nii_gz_ndarray() {
         const FILE_NAME: &str = "resources/f32.nii.gz";
-        let volume = InMemNiftiObject::from_file(FILE_NAME)
+        let volume = InMemNiftiObject::with_file(FILE_NAME)
             .unwrap()
             .into_volume();
         assert_eq!(volume.data_type(), NiftiType::Float32);
@@ -153,7 +153,7 @@ mod ndarray_volumes {
     #[test]
     fn f32_nii_gz_ndarray_f64() {
         const FILE_NAME: &str = "resources/f32.nii.gz";
-        let volume = InMemNiftiObject::from_file(FILE_NAME)
+        let volume = InMemNiftiObject::with_file(FILE_NAME)
             .unwrap()
             .into_volume();
         assert_eq!(volume.data_type(), NiftiType::Float32);

@@ -7,13 +7,14 @@
 //! # use nifti::error::Result;
 //! 
 //! # fn run() -> Result<()> {
-//! let obj = InMemNiftiObject::from_file("myvolume.nii.gz")?;
+//! let obj = InMemNiftiObject::with_file("myvolume.nii.gz")?;
 //! // use obj
 //! let header = obj.header();
 //! let volume = obj.volume();
 //! let dims = volume.dim();
 //! # Ok(())
 //! # }
+//! # run().unwrap()
 //! ```
 //!
 //! The library will automatically look for the respective volume when
@@ -23,9 +24,10 @@
 //! use nifti::{NiftiObject, InMemNiftiObject};
 //! # use nifti::error::Result;
 //! # fn run() -> Result<()> {
-//! let obj = InMemNiftiObject::from_file("myvolume.hdr.gz")?;
+//! let obj = InMemNiftiObject::with_file("myvolume.hdr.gz")?;
 //! # Ok(())
 //! # }
+//! # run().unwrap()
 //! ```
 //!
 //! You can also convert a volume to an [`ndarray::Array`](https://docs.rs/ndarray)
@@ -38,10 +40,11 @@
 //! # fn run() -> Result<()> {
 //! # use nifti::{NiftiObject, InMemNiftiObject};
 //! use nifti::IntoNdArray;
-//! # let obj = InMemNiftiObject::from_file("myvolume.hdr.gz").unwrap();
+//! # let obj = InMemNiftiObject::with_file("myvolume.hdr.gz").unwrap();
 //! let volume = obj.into_volume().to_ndarray::<f32>()?;
 //! # Ok(())
 //! # }
+//! # run().unwrap()
 //! ```
 //! 
 #![deny(missing_debug_implementations)]

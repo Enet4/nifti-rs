@@ -21,7 +21,7 @@ fn minimal_hdr() {
     };
 
     const FILE_NAME: &str = "resources/minimal.hdr";
-    let (h, e) = NiftiHeader::from_file(FILE_NAME).unwrap();
+    let (h, e) = NiftiHeader::with_file(FILE_NAME).unwrap();
     
     assert_eq!(h, minimal_hdr);
     assert_eq!(e, Endianness::BE);
@@ -43,7 +43,7 @@ fn minimal_hdr_gz() {
     };
 
     const FILE_NAME: &str = "resources/minimal.hdr.gz";
-    let (h, e) = NiftiHeader::from_file(FILE_NAME).unwrap();
+    let (h, e) = NiftiHeader::with_file(FILE_NAME).unwrap();
     
     assert_eq!(h, minimal_hdr);
     assert_eq!(e, Endianness::BE);
@@ -66,7 +66,7 @@ fn minimal_nii() {
 
     const FILE_NAME: &str = "resources/minimal.nii";
     let file = File::open(FILE_NAME).unwrap();
-    let (h, e) = NiftiHeader::from_stream(file).unwrap();
+    let (h, e) = NiftiHeader::with_stream(file).unwrap();
     
     assert_eq!(h, minimal_hdr);
     assert_eq!(e, Endianness::BE);
@@ -105,7 +105,7 @@ fn avg152T1_LR_hdr_gz() {
     };
 
     const FILE_NAME: &str = "resources/avg152T1_LR_nifti.hdr.gz";
-    let (h, e) = NiftiHeader::from_file(FILE_NAME).unwrap();
+    let (h, e) = NiftiHeader::with_file(FILE_NAME).unwrap();
     
     assert_eq!(h, avg152t1_lr_hdr);
     assert_eq!(e, Endianness::BE);
@@ -144,7 +144,7 @@ fn avg152T1_LR_nii_gz() {
     };
 
     const FILE_NAME: &str = "resources/avg152T1_LR_nifti.nii.gz";
-    let (h, e) = NiftiHeader::from_file(FILE_NAME).unwrap();
+    let (h, e) = NiftiHeader::with_file(FILE_NAME).unwrap();
     
     assert_eq!(h, avg152t1_lr_hdr);
     assert_eq!(e, Endianness::BE);
@@ -179,7 +179,7 @@ fn zstat1_nii_gz() {
     };
 
     const FILE_NAME: &str = "resources/zstat1.nii.gz";
-    let (h, e) = NiftiHeader::from_file(FILE_NAME).unwrap();
+    let (h, e) = NiftiHeader::with_file(FILE_NAME).unwrap();
     
     assert_eq!(h, zstat1_hdr);
     assert_eq!(e, Endianness::BE);

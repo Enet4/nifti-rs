@@ -27,12 +27,13 @@ pub const MAGIC_CODE_NIP1: &'static [u8; 4] = b"n+1\0";
 ///
 /// # fn run() -> Result<()> {
 /// let (hdr1, endianness): (NiftiHeader, Endianness) =
-///     NiftiHeader::from_file("0000.hdr")?;
+///     NiftiHeader::with_file("0000.hdr")?;
 ///
-/// let hdr2: NiftiHeader = NiftiHeader::from_file("0001.hdr.gz")?.0;
-/// let (hdr3, end3) = NiftiHeader::from_file("4321.nii.gz")?;
+/// let hdr2: NiftiHeader = NiftiHeader::with_file("0001.hdr.gz")?.0;
+/// let (hdr3, end3) = NiftiHeader::with_file("4321.nii.gz")?;
 /// # Ok(())
 /// # }
+/// # run().unwrap();
 /// ```
 ///
 /// Or to build one yourself:
@@ -207,20 +208,37 @@ impl Default for NiftiHeader {
 impl NiftiHeader {
     /// Retrieve a NIFTI header, along with its byte order, from a file in the file system.
     /// If the file's name ends with ".gz", the file is assumed to need GZip decoding.
+    #[deprecated(since = "0.4.0", note = "please use `with_file` instead")]
+    #[inline]
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<(NiftiHeader, Endianness)> {
+        Self::with_file(path)
+    }
+
+    /// Retrieve a NIFTI header, along with its byte order, from a file in the file system.
+    /// If the file's name ends with ".gz", the file is assumed to need GZip decoding.
+    pub fn with_file<P: AsRef<Path>>(path: P) -> Result<(NiftiHeader, Endianness)> {
         let gz = is_gz_file(&path);
         let file = BufReader::new(File::open(path)?);
         if gz {
-            NiftiHeader::from_stream(GzDecoder::new(file)?)
+            NiftiHeader::with_stream(GzDecoder::new(file)?)
         } else {
-            NiftiHeader::from_stream(file)
+            NiftiHeader::with_stream(file)
         }
     }
 
     /// Read a NIfTI-1 header, along with its byte order, from the given byte stream.
     /// It is assumed that the input is currently at the start of the
     /// NIFTI header.
+    #[deprecated(since = "0.4.0", note = "please use `with_stream` instead")]
+    #[inline]
     pub fn from_stream<S: Read>(input: S) -> Result<(NiftiHeader, Endianness)> {
+        Self::with_stream(input)
+    }
+
+    /// Read a NIfTI-1 header, along with its byte order, from the given byte stream.
+    /// It is assumed that the input is currently at the start of the
+    /// NIFTI header.
+    pub fn with_stream<S: Read>(input: S) -> Result<(NiftiHeader, Endianness)> {
         parse_header_1(input)
     }
 }

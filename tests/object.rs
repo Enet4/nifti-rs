@@ -23,7 +23,7 @@ fn minimal_nii_gz() {
     };
 
     const FILE_NAME: &str = "resources/minimal.nii.gz";
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = InMemNiftiObject::with_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -46,7 +46,7 @@ fn minimal_nii() {
     };
 
     const FILE_NAME: &str = "resources/minimal.nii";
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = InMemNiftiObject::with_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -69,7 +69,7 @@ fn minimal_by_hdr() {
     };
 
     const FILE_NAME: &str = "resources/minimal.hdr";
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = InMemNiftiObject::with_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -94,7 +94,7 @@ fn minimal_by_hdr_and_img_gz() {
 
     const FILE_NAME: &str = "resources/minimal2.hdr";
     // should attempt to read "resources/minimal2.img.gz"
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = InMemNiftiObject::with_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -117,7 +117,7 @@ fn minimal_by_hdr_gz() {
     };
 
     const FILE_NAME: &str = "resources/minimal.hdr.gz";
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = InMemNiftiObject::with_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -141,7 +141,7 @@ fn minimal_by_pair() {
 
     const HDR_FILE_NAME: &str = "resources/minimal.hdr.gz";
     const IMG_FILE_NAME: &str = "resources/minimal.img.gz";
-    let obj = InMemNiftiObject::from_file_pair(HDR_FILE_NAME, IMG_FILE_NAME).unwrap();
+    let obj = InMemNiftiObject::with_file_pair(HDR_FILE_NAME, IMG_FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -168,7 +168,7 @@ fn f32_nii_gz() {
     };
 
     const FILE_NAME: &str = "resources/f32.nii.gz";
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = InMemNiftiObject::with_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &f32_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Float32);
