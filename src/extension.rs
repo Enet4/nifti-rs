@@ -9,7 +9,7 @@ use error::{NiftiError, Result};
 use byteorder::{ByteOrder, ReadBytesExt};
 
 /// Data type for the extender code.
-#[derive(Debug, Default, PartialEq, Clone, Copy)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Extender([u8; 4]);
 
 impl Extender {
