@@ -257,7 +257,6 @@ mod tests {
     use super::{raw_to_value, raw_to_value_via_f32};
     use super::to_img_file_gz;
     use super::is_gz_file;
-    use super::convert_bytes_to;
     use std::path::PathBuf;
 
     #[test]
@@ -282,6 +281,65 @@ mod tests {
         assert_eq!(le, Endianness::BE);
         assert_eq!(le.opposite(), Endianness::LE);
     }
+
+    #[test]
+    fn test_raw_to_value() {
+        let raw: u8 = 100;
+        let val: u8 = raw_to_value_via_f32(raw, 1., 0.);
+        assert_eq!(val, 100);
+        let val: u8 = raw_to_value_via_f32(raw, 0., 0.);
+        assert_eq!(val, 100);
+        let val: f32 = raw_to_value_via_f32(raw, 2., -1024.);
+        assert_ulps_eq!(val, -824.);
+        let val: i32 = raw_to_value_via_f32(raw, 2., -1024.);
+        assert_eq!(val, -824);
+        let val: i16 = raw_to_value_via_f32(raw, 2., -1024.);
+        assert_eq!(val, -824);
+
+        let raw: f32 = 0.4;
+        let val: f32 = raw_to_value(raw, 1., 0.);
+        assert_ulps_eq!(val, 0.4);
+        let val: f64 = raw_to_value(raw, 1., 0.);
+        assert_ulps_eq!(val, 0.4_f32 as f64);
+    }
+
+    #[test]
+    fn filenames() {
+        assert!(!is_gz_file("/path/to/something.nii"));
+        assert!(is_gz_file("/path/to/something.nii.gz"));
+        assert!(!is_gz_file("volume.não"));
+        assert!(is_gz_file("1.2.3.nii.gz"));
+        assert!(!is_gz_file("não_é_gz.hdr"));
+
+        assert!(!is_gz_file("/path/to/image.hdr"));
+        assert_eq!(
+            to_img_file_gz(PathBuf::from("/path/to/image.hdr")),
+            PathBuf::from("/path/to/image.img.gz")
+        );
+
+        assert!(is_gz_file("/path/to/image.hdr.gz"));
+        assert_eq!(
+            to_img_file_gz(PathBuf::from("/path/to/image.hdr.gz")),
+            PathBuf::from("/path/to/image.img.gz")
+        );
+
+        assert_eq!(
+            to_img_file_gz(PathBuf::from("my_ct_scan.1.hdr.gz")),
+            PathBuf::from("my_ct_scan.1.img.gz")
+        );
+
+        assert_eq!(
+            to_img_file_gz(PathBuf::from("../you.cant.fool.me.hdr.gz")),
+            PathBuf::from("../you.cant.fool.me.img.gz")
+        );
+    }
+}
+
+#[cfg(feature = "ndarray_volumes")]
+#[cfg(test)]
+mod test_nd_array {
+    use super::Endianness;
+    use super::convert_bytes_to;
 
     #[test]
     fn test_convert_vec_i8() {
@@ -427,57 +485,5 @@ mod tests {
                  0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x45, 0x40],
             Endianness::LE);
         assert_eq!(v, vec![42.0, 42.5]);
-    }
-
-    #[test]
-    fn test_raw_to_value() {
-        let raw: u8 = 100;
-        let val: u8 = raw_to_value_via_f32(raw, 1., 0.);
-        assert_eq!(val, 100);
-        let val: u8 = raw_to_value_via_f32(raw, 0., 0.);
-        assert_eq!(val, 100);
-        let val: f32 = raw_to_value_via_f32(raw, 2., -1024.);
-        assert_ulps_eq!(val, -824.);
-        let val: i32 = raw_to_value_via_f32(raw, 2., -1024.);
-        assert_eq!(val, -824);
-        let val: i16 = raw_to_value_via_f32(raw, 2., -1024.);
-        assert_eq!(val, -824);
-
-        let raw: f32 = 0.4;
-        let val: f32 = raw_to_value(raw, 1., 0.);
-        assert_ulps_eq!(val, 0.4);
-        let val: f64 = raw_to_value(raw, 1., 0.);
-        assert_ulps_eq!(val, 0.4_f32 as f64);
-    }
-
-    #[test]
-    fn filenames() {
-        assert!(!is_gz_file("/path/to/something.nii"));
-        assert!(is_gz_file("/path/to/something.nii.gz"));
-        assert!(!is_gz_file("volume.não"));
-        assert!(is_gz_file("1.2.3.nii.gz"));
-        assert!(!is_gz_file("não_é_gz.hdr"));
-
-        assert!(!is_gz_file("/path/to/image.hdr"));
-        assert_eq!(
-            to_img_file_gz(PathBuf::from("/path/to/image.hdr")),
-            PathBuf::from("/path/to/image.img.gz")
-        );
-
-        assert!(is_gz_file("/path/to/image.hdr.gz"));
-        assert_eq!(
-            to_img_file_gz(PathBuf::from("/path/to/image.hdr.gz")),
-            PathBuf::from("/path/to/image.img.gz")
-        );
-
-        assert_eq!(
-            to_img_file_gz(PathBuf::from("my_ct_scan.1.hdr.gz")),
-            PathBuf::from("my_ct_scan.1.img.gz")
-        );
-
-        assert_eq!(
-            to_img_file_gz(PathBuf::from("../you.cant.fool.me.hdr.gz")),
-            PathBuf::from("../you.cant.fool.me.img.gz")
-        );
     }
 }
