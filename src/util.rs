@@ -213,11 +213,10 @@ pub fn convert_bytes_to<T: PodTransmutable>(
     if e != Endianness::system() && nb_bytes > 1 {
         // Swap endianness by block of nb_bytes
         let split_at = nb_bytes / 2;
-        let split_at_m1 = split_at - 1;
         for c in a.chunks_mut(nb_bytes) {
             let (a, b) = c.split_at_mut(split_at);
-            for i in 0..split_at {
-                mem::swap(&mut a[i], &mut b[split_at_m1 - i]);
+            for (l, r) in a.iter_mut().zip(b.iter_mut().rev()) {
+                mem::swap(l, r);
             }
         }
     }
