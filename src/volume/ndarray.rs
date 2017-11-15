@@ -5,6 +5,7 @@ use volume::NiftiVolume;
 use std::ops::{Add, Mul};
 use num::Num;
 use error::Result;
+use safe_transmute::PodTransmutable;
 
 /// Trait for volumes which can be converted to an ndarray.
 pub trait IntoNdArray {
@@ -15,7 +16,8 @@ pub trait IntoNdArray {
         T: Clone,
         T: Num,
         T: Mul<Output = T>,
-        T: Add<Output = T>;
+        T: Add<Output = T>,
+        T: PodTransmutable;
 }
 
 impl<V> IntoNdArray for super::SliceView<V>
@@ -29,6 +31,7 @@ where
         T: Num,
         T: Mul<Output = T>,
         T: Add<Output = T>,
+        T: PodTransmutable
     {
         // TODO optimize this implementation (we don't need the whole volume)
         let volume = self.volume.to_ndarray()?;

@@ -51,6 +51,7 @@
 #[macro_use] extern crate num_derive;
 #[macro_use] extern crate derive_builder;
 #[cfg(feature = "ndarray_volumes")] extern crate ndarray;
+#[cfg(feature = "ndarray_volumes")] extern crate safe_transmute;
 
 #[cfg(test)]
 #[macro_use]
@@ -60,7 +61,6 @@ extern crate asprim;
 extern crate byteorder;
 extern crate flate2;
 extern crate num;
-extern crate safe_transmute;
 
 pub mod extension;
 pub mod header;
