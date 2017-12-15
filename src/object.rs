@@ -70,7 +70,7 @@ impl InMemNiftiObject {
 
         let file = BufReader::new(File::open(&path)?);
         if gz {
-            Self::from_file_2(path, GzDecoder::new(file)?)
+            Self::from_file_2(path, GzDecoder::new(file))
         } else {
             Self::from_file_2(path, file)
         }
@@ -153,7 +153,7 @@ impl InMemNiftiObject {
 
         let file = BufReader::new(File::open(&hdr_path)?);
         if gz {
-            Self::from_file_pair_2(GzDecoder::new(file)?, vol_path)
+            Self::from_file_pair_2(GzDecoder::new(file), vol_path)
         } else {
             Self::from_file_pair_2(file, vol_path)
         }

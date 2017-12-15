@@ -117,7 +117,7 @@ impl InMemNiftiVolume {
             .unwrap_or(false);
         let file = BufReader::new(File::open(path)?);
         if gz {
-            InMemNiftiVolume::from_stream(GzDecoder::new(file)?, &header, endianness)
+            InMemNiftiVolume::from_stream(GzDecoder::new(file), &header, endianness)
         } else {
             InMemNiftiVolume::from_stream(file, &header, endianness)
         }
@@ -143,7 +143,7 @@ impl InMemNiftiVolume {
 
         if gz {
             InMemNiftiVolume::from_stream_with_extensions(
-                GzDecoder::new(stream)?,
+                GzDecoder::new(stream),
                 &header,
                 extender,
                 endianness,

@@ -211,7 +211,7 @@ impl NiftiHeader {
         let gz = is_gz_file(&path);
         let file = BufReader::new(File::open(path)?);
         if gz {
-            NiftiHeader::from_stream(GzDecoder::new(file)?)
+            NiftiHeader::from_stream(GzDecoder::new(file))
         } else {
             NiftiHeader::from_stream(file)
         }
