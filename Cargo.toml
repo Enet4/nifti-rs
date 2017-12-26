@@ -24,8 +24,8 @@ num = "0.1.40"
 num-derive = "0.1.41"
 num-traits = "0.1.40"
 quick-error = "1.2.0"
-safe-transmute = "0.6.0"
-derive_builder = "0.5.0"
+safe-transmute = "0.7.0"
+derive_builder = "0.5.1"
 
 [dependencies.ndarray]
 optional = true
