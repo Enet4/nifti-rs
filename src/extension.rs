@@ -29,7 +29,6 @@ impl Extender {
         match source.read_exact(&mut extension) {
             Ok(()) => Ok(Some(extension.into())),
             Err(ref e) if e.kind() == IoErrorKind::UnexpectedEof => {
-                println!("[Extender]: No data!");
                 Ok(None)
             }
             Err(e) => Err(NiftiError::from(e)),
