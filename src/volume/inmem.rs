@@ -57,7 +57,6 @@ impl InMemNiftiVolume {
             .map(|d| *d as usize)
             .product();
         let nbytes = resolution * header.bitpix as usize / 8;
-        println!("Reading volume of {:?} bytes", nbytes);
         let mut raw_data = vec![0u8; nbytes];
         source.read_exact(&mut raw_data)?;
 
