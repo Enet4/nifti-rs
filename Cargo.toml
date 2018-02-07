@@ -17,15 +17,14 @@ branch = "master"
 repository = "Enet4/nifti-rs"
 
 [dependencies]
-asprim = "0.1.1"
 byteorder = "1.2.1"
+derive_builder = "0.5.1"
 flate2 = "1.0.1"
-num = "0.1.40"
+num = "0.1.41"
 num-derive = "0.1.41"
-num-traits = "0.1.40"
+num-traits = "0.2.0"
 quick-error = "1.2.0"
 safe-transmute = "0.7.0"
-derive_builder = "0.5.1"
 
 [dependencies.ndarray]
 optional = true

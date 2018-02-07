@@ -51,16 +51,11 @@
 #[macro_use] extern crate num_derive;
 #[macro_use] extern crate derive_builder;
 #[cfg(feature = "ndarray_volumes")] extern crate ndarray;
-#[cfg(feature = "ndarray_volumes")] extern crate safe_transmute;
 
-#[cfg(test)]
-#[macro_use]
-extern crate approx;
-
-extern crate asprim;
 extern crate byteorder;
 extern crate flate2;
-extern crate num;
+extern crate num_traits;
+extern crate safe_transmute;
 
 pub mod extension;
 pub mod header;
@@ -70,12 +65,12 @@ pub mod error;
 pub mod typedef;
 mod util;
 
-pub use asprim::AsPrim;
 pub use error::{NiftiError, Result};
 pub use object::{NiftiObject, InMemNiftiObject};
 pub use extension::{Extender, Extension, ExtensionSequence};
 pub use header::{NiftiHeader, NiftiHeaderBuilder};
 pub use volume::{NiftiVolume, InMemNiftiVolume, Sliceable};
+pub use volume::element::DataElement;
 #[cfg(feature = "ndarray_volumes")] pub use volume::ndarray::IntoNdArray;
 pub use typedef::{NiftiType, Unit, Intent, XForm, SliceOrder};
 pub use util::Endianness;

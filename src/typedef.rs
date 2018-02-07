@@ -4,13 +4,12 @@
 //! reading voxel values). However, primitive integer values can be
 //! converted to these types and vice-versa.
 
-use asprim::AsPrim;
-use byteorder::ReadBytesExt;
+use volume::element::{DataElement, LinearTransform};
 use error::{NiftiError, Result};
 use std::io::Read;
 use std::ops::{Add, Mul};
-use util::{raw_to_value, raw_to_value_via_f32, Endianness};
-use num::Num;
+use util::Endianness;
+use num_traits::AsPrimitive;
 
 /// Data type for representing a NIFTI value type in a volume.
 /// Methods for reading values of that type from a source are also included.
@@ -86,58 +85,67 @@ impl NiftiType {
     /// Read a primitive voxel value from a source.
     pub fn read_primitive_value<S, T>(
         &self,
-        mut source: S,
+        source: S,
         endianness: Endianness,
         slope: f32,
         inter: f32,
     ) -> Result<T>
     where
         S: Read,
-        T: AsPrim,
-        T: Num,
-        T: Add<Output = T>,
         T: Mul<Output = T>,
+        T: Add<Output = T>,
+        T: DataElement,
+        u8: AsPrimitive<T>,
+        i8: AsPrimitive<T>,
+        u16: AsPrimitive<T>,
+        i16: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i32: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        f32: AsPrimitive<T>,
+        f64: AsPrimitive<T>,
     {
         match *self {
             NiftiType::Uint8 => {
-                let raw = source.read_u8()?;
-                Ok(raw_to_value_via_f32(raw, slope, inter))
+                let raw = u8::from_raw(source, endianness)?;
+                Ok(<u8 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
+            }
+            NiftiType::Int8 => {
+                let raw = i8::from_raw(source, endianness)?;
+                Ok(<i8 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
             }
             NiftiType::Uint16 => {
                 let raw = endianness.read_u16(source)?;
-                Ok(raw_to_value_via_f32(raw, slope, inter))
+                Ok(<u16 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
             }
             NiftiType::Int16 => {
                 let raw = endianness.read_i16(source)?;
-                Ok(raw_to_value_via_f32(raw, slope, inter))
+                Ok(<i16 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
             }
             NiftiType::Uint32 => {
                 let raw = endianness.read_u32(source)?;
-                Ok(raw_to_value_via_f32(raw, slope, inter))
+                Ok(<u32 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
             }
             NiftiType::Int32 => {
                 let raw = endianness.read_i32(source)?;
-                Ok(raw_to_value_via_f32(raw, slope, inter))
+                Ok(<i32 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
             }
             NiftiType::Uint64 => {
-                // TODO precision might be lost in parameter conversion 
-                // find a way to not lose precision
                 let raw = endianness.read_u64(source)?;
-                Ok(raw_to_value(raw, slope.as_(), inter.as_()))
+                Ok(<u64 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
             }
             NiftiType::Int64 => {
-                // TODO precision might be lost in parameter conversion 
-                // find a way to not lose precision
                 let raw = endianness.read_i64(source)?;
-                Ok(raw_to_value(raw, slope.as_(), inter.as_()))
+                Ok(<i64 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
             }
             NiftiType::Float32 => {
                 let raw = endianness.read_f32(source)?;
-                Ok(raw_to_value(raw, slope.as_(), inter.as_()))
+                Ok(<f32 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
             }
             NiftiType::Float64 => {
                 let raw = endianness.read_f64(source)?;
-                Ok(raw_to_value(raw, slope.as_(), inter.as_()))
+                Ok(<f64 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
             }
             // TODO add support for more data types
             _ => Err(NiftiError::UnsupportedDataType(*self)),
