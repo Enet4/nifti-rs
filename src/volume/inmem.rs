@@ -5,26 +5,21 @@ use super::util::coords_to_index;
 use std::io::{BufReader, Read};
 use std::fs::File;
 use std::path::Path;
-use asprim::AsPrim;
+use std::ops::{Add, Mul};
 use header::NiftiHeader;
 use extension::{Extender, ExtensionSequence};
 use error::{NiftiError, Result};
-use util::{raw_to_value, raw_to_value_via_f32, Endianness};
+use volume::element::DataElement;
+use util::Endianness;
 use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
 use typedef::NiftiType;
-use num::{FromPrimitive, Num};
+use num_traits::{AsPrimitive, FromPrimitive, Num};
 
 #[cfg(feature = "ndarray_volumes")]
 use volume::ndarray::IntoNdArray;
 #[cfg(feature = "ndarray_volumes")]
-use util::{convert_bytes_and_cast_to};
-#[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
-#[cfg(feature = "ndarray_volumes")]
-use safe_transmute::PodTransmutable;
-#[cfg(feature = "ndarray_volumes")]
-use std::ops::{Add, Mul};
 
 /// A data type for a NIFTI-1 volume contained in memory.
 /// Objects of this type contain raw image data, which
@@ -169,62 +164,54 @@ impl InMemNiftiVolume {
 
     fn get_prim<T>(&self, coords: &[u16]) -> Result<T>
     where
-        T: AsPrim,
+        T: DataElement,
         T: Num,
         T: Copy,
+        T: Mul<Output = T>,
+        T: Add<Output = T>,
+        T: AsPrimitive<u8>,
+        T: AsPrimitive<f32>,
+        T: AsPrimitive<f64>,
+        T: AsPrimitive<u16>,
+        u8: AsPrimitive<T>,
+        i8: AsPrimitive<T>,
+        u16: AsPrimitive<T>,
+        i16: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i32: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        f32: AsPrimitive<T>,
+        f64: AsPrimitive<T>,
     {
         let index = coords_to_index(coords, self.dim())?;
-        if self.datatype == NiftiType::Uint8 {
-            let byte = self.raw_data[index];
-            Ok(raw_to_value(byte, self.scl_slope.as_(), self.scl_inter.as_()))
-        } else if self.datatype == NiftiType::Int8 {
-            let byte = self.raw_data[index] as i8;
-            Ok(raw_to_value(byte, self.scl_slope.as_(), self.scl_inter.as_()))
-        } else {
-            let range = &self.raw_data[index * self.datatype.size_of()..];
-            self.datatype.read_primitive_value(
-                range,
-                self.endianness,
-                self.scl_slope,
-                self.scl_inter,
-            )
-        }
-    }
-
-    fn get_prim_via_f32<T>(&self, coords: &[u16]) -> Result<T>
-    where
-        T: AsPrim,
-        T: Num,
-        T: Copy,
-    {
-        let index = coords_to_index(coords, self.dim())?;
-        if self.datatype == NiftiType::Uint8 {
-            let byte = self.raw_data[index];
-            Ok(raw_to_value_via_f32(byte, self.scl_slope, self.scl_inter))
-        } else if self.datatype == NiftiType::Int8 {
-            let byte = self.raw_data[index] as i8;
-            Ok(raw_to_value_via_f32(byte, self.scl_slope, self.scl_inter))
-        } else {
-            let range = &self.raw_data[index * self.datatype.size_of()..];
-            self.datatype.read_primitive_value(
-                range,
-                self.endianness,
-                self.scl_slope,
-                self.scl_inter,
-            )
-        }
+        let range = &self.raw_data[index * self.datatype.size_of()..];
+        self.datatype.read_primitive_value(
+            range,
+            self.endianness,
+            self.scl_slope,
+            self.scl_inter,
+        )
     }
 
     // Shortcut to avoid repeating the call for all types
     #[cfg(feature = "ndarray_volumes")]
-    fn convert_bytes_and_cast_to<I, O>(self) -> Array<O, IxDyn>
-        where I: AsPrim + PodTransmutable,
-              O: AsPrim + Num
+    fn convert_bytes_and_cast_to<I, O>(self) -> Result<Array<O, IxDyn>>
+        where
+            I: DataElement,
+            I: AsPrimitive<O>,
+            O: DataElement,
     {
+        use volume::element::LinearTransform;
+
         let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
-        convert_bytes_and_cast_to::<I, O>(
-            self.raw_data, self.endianness, &dim,
-            self.scl_slope.as_(), self.scl_inter.as_())
+
+        let data: Vec<_> = <I as DataElement>::from_raw_vec(self.raw_data, self.endianness)?;
+        let mut data: Vec<O> = data.into_iter().map(AsPrimitive::as_).collect();
+        <O as DataElement>::Transform::linear_transform_many_inline(&mut data, self.scl_slope, self.scl_inter);
+
+        Ok(Array::from_shape_vec(IxDyn(&dim).f(), data)
+            .expect("Inconsistent raw data size"))
     }
 }
 
@@ -232,26 +219,30 @@ impl InMemNiftiVolume {
 impl IntoNdArray for InMemNiftiVolume {
     /// Consume the volume into an ndarray.
     fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
-    where T: AsPrim + Num + PodTransmutable
+    where
+        T: DataElement,
+        u8: AsPrimitive<T>,
+        i8: AsPrimitive<T>,
+        u16: AsPrimitive<T>,
+        i16: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i32: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        f32: AsPrimitive<T>,
+        f64: AsPrimitive<T>,
     {
         match self.datatype {
-            NiftiType::Uint8 | NiftiType::Int8 => {
-                let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
-                let slope = self.scl_slope;
-                let inter = self.scl_inter;
-                let a = Array::from_shape_vec(IxDyn(&dim).f(), self.raw_data)
-                    .expect("Inconsistent raw data size")
-                    .mapv(|v| raw_to_value_via_f32(v, slope, inter));
-                Ok(a)
-            }
-            NiftiType::Uint16 => Ok(self.convert_bytes_and_cast_to::<u16, T>()),
-            NiftiType::Int16 => Ok(self.convert_bytes_and_cast_to::<i16, T>()),
-            NiftiType::Uint32 => Ok(self.convert_bytes_and_cast_to::<u32, T>()),
-            NiftiType::Int32 => Ok(self.convert_bytes_and_cast_to::<i32, T>()),
-            NiftiType::Uint64 => Ok(self.convert_bytes_and_cast_to::<u64, T>()),
-            NiftiType::Int64 => Ok(self.convert_bytes_and_cast_to::<i64, T>()),
-            NiftiType::Float32 => Ok(self.convert_bytes_and_cast_to::<f32, T>()),
-            NiftiType::Float64 => Ok(self.convert_bytes_and_cast_to::<f64, T>()),
+            NiftiType::Uint8 => self.convert_bytes_and_cast_to::<u8, T>(),
+            NiftiType::Int8 => self.convert_bytes_and_cast_to::<i8, T>(),
+            NiftiType::Uint16 => self.convert_bytes_and_cast_to::<u16, T>(),
+            NiftiType::Int16 => self.convert_bytes_and_cast_to::<i16, T>(),
+            NiftiType::Uint32 => self.convert_bytes_and_cast_to::<u32, T>(),
+            NiftiType::Int32 => self.convert_bytes_and_cast_to::<i32, T>(),
+            NiftiType::Uint64 => self.convert_bytes_and_cast_to::<u64, T>(),
+            NiftiType::Int64 => self.convert_bytes_and_cast_to::<i64, T>(),
+            NiftiType::Float32 => self.convert_bytes_and_cast_to::<f32, T>(),
+            NiftiType::Float64 => self.convert_bytes_and_cast_to::<f64, T>(),
             //NiftiType::Float128 => {}
             //NiftiType::Complex64 => {}
             //NiftiType::Complex128 => {}
@@ -268,12 +259,19 @@ impl<'a> IntoNdArray for &'a InMemNiftiVolume {
     /// Create an ndarray from the given volume.
     fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
-        T: AsPrim,
-        T: Clone,
-        T: Num,
         T: Mul<Output = T>,
         T: Add<Output = T>,
-        T: PodTransmutable
+        T: DataElement,
+        u8: AsPrimitive<T>,
+        i8: AsPrimitive<T>,
+        u16: AsPrimitive<T>,
+        i16: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i32: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        f32: AsPrimitive<T>,
+        f64: AsPrimitive<T>,
     {
         self.clone().to_ndarray()
     }
@@ -327,27 +325,27 @@ impl NiftiVolume for InMemNiftiVolume {
     }
 
     fn get_u8(&self, coords: &[u16]) -> Result<u8> {
-        self.get_prim_via_f32(coords)
+        self.get_prim(coords)
     }
 
     fn get_i8(&self, coords: &[u16]) -> Result<i8> {
-        self.get_prim_via_f32(coords)
+        self.get_prim(coords)
     }
 
     fn get_u16(&self, coords: &[u16]) -> Result<u16> {
-        self.get_prim_via_f32(coords)
+        self.get_prim(coords)
     }
 
     fn get_i16(&self, coords: &[u16]) -> Result<i16> {
-        self.get_prim_via_f32(coords)
+        self.get_prim(coords)
     }
 
     fn get_u32(&self, coords: &[u16]) -> Result<u32> {
-        self.get_prim_via_f32(coords)
+        self.get_prim(coords)
     }
 
     fn get_i32(&self, coords: &[u16]) -> Result<i32> {
-        self.get_prim_via_f32(coords)
+        self.get_prim(coords)
     }
 
     fn get_u64(&self, coords: &[u16]) -> Result<u64> {

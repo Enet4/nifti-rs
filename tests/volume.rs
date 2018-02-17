@@ -1,4 +1,3 @@
-extern crate asprim;
 extern crate flate2;
 extern crate nifti;
 #[macro_use]
@@ -10,7 +9,7 @@ extern crate approx;
 #[cfg(feature = "ndarray_volumes")]
 extern crate ndarray;
 #[cfg(feature = "ndarray_volumes")]
-extern crate num;
+extern crate num_traits;
 #[cfg(feature = "ndarray_volumes")]
 extern crate safe_transmute;
 
@@ -55,13 +54,12 @@ fn minimal_img_gz() {
 
 #[cfg(feature = "ndarray_volumes")]
 mod ndarray_volumes {
-    use asprim::AsPrim;
-    use nifti::{Endianness, InMemNiftiObject, InMemNiftiVolume, NiftiHeader, NiftiObject,
-                NiftiVolume, NiftiType, IntoNdArray};
+    use std::fmt;
+    use std::ops::{Add, Mul};
+    use nifti::{DataElement, Endianness, InMemNiftiObject, InMemNiftiVolume,
+                NiftiHeader, NiftiObject, NiftiVolume, NiftiType, IntoNdArray};
     use ndarray::{Array, Axis, IxDyn, ShapeBuilder};
-    use num::traits::{Num};
-    use safe_transmute::PodTransmutable;
-    use std;
+    use num_traits::AsPrimitive;
 
     #[test]
     fn minimal_img_gz_ndarray_f32() {
@@ -256,7 +254,23 @@ mod ndarray_volumes {
     }
 
     fn test_types<T>(path: &str, dtype: NiftiType)
-        where T: AsPrim + Num + PodTransmutable + std::fmt::Debug
+        where
+            T: fmt::Debug,
+            T: Add<Output = T>,
+            T: Mul<Output = T>,
+            T: DataElement,
+            T: PartialEq<T>,
+            u8: AsPrimitive<T>,
+            i8: AsPrimitive<T>,
+            u16: AsPrimitive<T>,
+            i16: AsPrimitive<T>,
+            u32: AsPrimitive<T>,
+            i32: AsPrimitive<T>,
+            u64: AsPrimitive<T>,
+            i64: AsPrimitive<T>,
+            f32: AsPrimitive<T>,
+            f64: AsPrimitive<T>,
+            usize: AsPrimitive<T>,
     {
         let volume = InMemNiftiObject::from_file(path)
             .expect("Can't read input file.")
@@ -265,7 +279,7 @@ mod ndarray_volumes {
 
         let data = volume.to_ndarray::<T>().unwrap();
         for (idx, val) in data.iter().enumerate() {
-            assert_eq!(idx.as_::<T>(), *val);
+            assert_eq!(idx.as_(), *val);
         }
     }
 }

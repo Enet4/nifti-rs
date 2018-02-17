@@ -6,7 +6,9 @@
 //! to this crate.
 
 pub mod inmem;
+pub mod element;
 pub use self::inmem::*;
+
 mod util;
 use error::{NiftiError, Result};
 use typedef::NiftiType;
