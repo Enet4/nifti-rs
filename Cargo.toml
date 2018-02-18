@@ -24,15 +24,15 @@ num = "0.1.41"
 num-derive = "0.1.41"
 num-traits = "0.2.0"
 quick-error = "1.2.0"
-safe-transmute = "0.7.0"
+safe-transmute = "0.8.0"
 
 [dependencies.ndarray]
 optional = true
-version = "0.10.12"
+version = ">=0.10.12,<0.12.0"
 
 [dev-dependencies]
 approx = "0.1.1"
-pretty_assertions = "0.4.0"
+pretty_assertions = "0.5.0"
 
 [[example]]
 name = "niftidump"
