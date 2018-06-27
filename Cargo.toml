@@ -31,7 +31,7 @@ optional = true
 version = ">=0.10.12,<0.12.0"
 
 [dev-dependencies]
-approx = "0.1.1"
+approx = "0.2.0"
 pretty_assertions = "0.5.0"
 
 [[example]]
