@@ -210,8 +210,7 @@ impl InMemNiftiVolume {
         let mut data: Vec<O> = data.into_iter().map(AsPrimitive::as_).collect();
         <O as DataElement>::Transform::linear_transform_many_inline(&mut data, self.scl_slope, self.scl_inter);
 
-        Ok(Array::from_shape_vec(IxDyn(&dim).f(), data)
-            .expect("Inconsistent raw data size"))
+        Ok(Array::from_shape_vec(IxDyn(&dim), data).expect("Inconsistent raw data size"))
     }
 }
 
