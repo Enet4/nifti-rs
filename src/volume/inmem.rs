@@ -21,11 +21,16 @@ use volume::ndarray::IntoNdArray;
 #[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
 
-/// A data type for a NIFTI-1 volume contained in memory.
-/// Objects of this type contain raw image data, which
-/// is converted automatically when using reading methods
-/// or converting it to an `ndarray` (with the
-/// `ndarray_volumes` feature).
+/// A data type for a NIFTI-1 volume contained in memory. Objects of this type
+/// contain raw image data, which is converted automatically when using reading
+/// methods or [converting it to an `ndarray`] (only with the `ndarray_volumes`
+/// feature).
+/// 
+/// Since NIfTI volumes are stored in disk in column major order (also called
+/// Fortran order), this data type will also retain this memory order.
+/// 
+/// [converting it to an `ndarray`]: ../ndarray/index.html
+/// 
 #[derive(Debug, PartialEq, Clone)]
 pub struct InMemNiftiVolume {
     dim: [u16; 8],

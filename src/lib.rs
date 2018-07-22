@@ -28,8 +28,9 @@
 //! # }
 //! ```
 //!
-//! You can also convert a volume to an [`ndarray::Array`](https://docs.rs/ndarray)
-//! and work from there:
+//! With the `ndarray_volumes` Cargo feature enabled, you can also convert a
+//! volume to an [`ndarray::Array`](https://docs.rs/ndarray) and work from
+//! there:
 //!
 //! ```no_run
 //! # #[cfg(feature = "ndarray_volumes")]
