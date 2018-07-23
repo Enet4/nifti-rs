@@ -58,8 +58,8 @@ mod ndarray_volumes {
     use std::ops::{Add, Mul};
     use nifti::{DataElement, Endianness, InMemNiftiObject, InMemNiftiVolume,
                 NiftiHeader, NiftiObject, NiftiVolume, NiftiType, IntoNdArray};
-    use ndarray::{Array, Axis, IxDyn, ShapeBuilder};
-    use num_traits::AsPrimitive;
+    use ndarray::{Array, ArrayBase, Axis, Data, Dimension, IxDyn, ShapeBuilder};
+    use num_traits::{AsPrimitive, Zero};
 
     #[test]
     fn minimal_img_gz_ndarray_f32() {
@@ -133,6 +133,38 @@ mod ndarray_volumes {
                 &e
             );
         }
+    }
+
+    #[test]
+    fn minimal_img_gz_ndarray_u8_c_order() {
+        let minimal_hdr = NiftiHeader {
+            sizeof_hdr: 348,
+            dim: [3, 64, 64, 10, 0, 0, 0, 0],
+            datatype: 2,
+            bitpix: 8,
+            pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
+            vox_offset: 0.,
+            scl_slope: 0.,
+            scl_inter: 0.,
+            magic: *b"ni1\0",
+            ..Default::default()
+        };
+
+        const FILE_NAME: &str = "resources/minimal.img.gz";
+        let volume = InMemNiftiVolume::from_file(FILE_NAME, &minimal_hdr, Endianness::BE).unwrap();
+        assert_eq!(volume.data_type(), NiftiType::Uint8);
+        assert_eq!(volume.dim(), [64, 64, 10].as_ref());
+
+        let volume = volume.to_ndarray::<u8>().unwrap();
+
+        // volume is loaded from disk in Fortran order
+        assert!(array_is_f_order(&volume));
+
+        let c_volume = array_to_standard(&volume);
+
+        // this new volume is logically the same, but in C memory layout
+        assert!(c_volume.is_standard_layout());
+        assert_eq!(volume, c_volume);
     }
 
     #[test]
@@ -281,5 +313,28 @@ mod ndarray_volumes {
         for (idx, val) in data.iter().enumerate() {
             assert_eq!(idx.as_(), *val);
         }
+    }
+
+    fn array_to_standard<A, D>(arr: &Array<A, D>) -> Array<A, D>
+    where
+        D: Dimension,
+        A: Zero,
+        A: Clone,
+    {
+        let mut x = Array::zeros(arr.raw_dim());
+        debug_assert!(x.is_standard_layout());
+        for (l, r) in x.iter_mut().zip(arr) {
+            *l = r.clone();
+        }
+        x
+    }
+
+    fn array_is_f_order<T, D>(arr: &ArrayBase<T, D>) -> bool
+    where
+        T: Data,
+        D: Dimension,
+    {
+        arr.as_slice_memory_order().is_some() // is contiguous
+        && !arr.is_standard_layout() // but is not in C order
     }
 }
