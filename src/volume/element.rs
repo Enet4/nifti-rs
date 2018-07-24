@@ -11,8 +11,11 @@ use num_traits::cast::AsPrimitive;
 use util::{Endianness, convert_bytes_to};
 
 /// Interface for linear (affine) transformations to values. Multiple
-/// implementations are needed because the original type `T` may not
-/// have enough precision to obtain an appropriate outcome.
+/// implementations are needed because the original type `T` may not have
+/// enough precision to obtain an appropriate outcome. For example,
+/// transforming a `u8` is always done through `f32`, but an `f64` is instead
+/// manipulated through its own type by first converting the slope and
+/// intercept arguments to `f64`.
 pub trait LinearTransform<T: 'static + Copy> {
     /// Linearly transform a value with the given slope and intercept.
     fn linear_transform(value: T, slope: f32, intercept: f32) -> T;
@@ -88,7 +91,9 @@ where
     }
 }
 
-/// Trait type for characterizing a NIfTI data element.
+/// Trait type for characterizing a NIfTI data element, implemented for
+/// primitive numeric types which are used by the crate to represent voxel
+/// values.
 pub trait DataElement: 'static + Sized + Copy + AsPrimitive<u8> + AsPrimitive<f32> + AsPrimitive<f64>
 {
     /// For defining how this element is linearly transformed to another.
