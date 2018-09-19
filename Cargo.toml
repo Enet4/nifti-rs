@@ -18,7 +18,7 @@ repository = "Enet4/nifti-rs"
 
 [dependencies]
 byteorder = "1.2.1"
-derive_builder = "0.5.1"
+derive_builder = "0.6.0"
 flate2 = "1.0.1"
 num = "0.2.0"
 num-derive = "0.2.0"
