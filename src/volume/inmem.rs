@@ -49,7 +49,6 @@ impl InMemNiftiVolume {
     pub fn from_stream<R: Read>(
         mut source: R,
         header: &NiftiHeader,
-        endianness: Endianness,
     ) -> Result<Self> {
         let ndims = header.dim[0];
         let resolution: usize = header.dim[1..(ndims + 1) as usize]
@@ -69,7 +68,7 @@ impl InMemNiftiVolume {
             scl_slope: header.scl_slope,
             scl_inter: header.scl_inter,
             raw_data,
-            endianness,
+            endianness: header.endianness,
         })
     }
 
@@ -80,7 +79,6 @@ impl InMemNiftiVolume {
         mut source: R,
         header: &NiftiHeader,
         extender: Extender,
-        endianness: Endianness,
     ) -> Result<(Self, ExtensionSequence)>
     where
         R: Read,
@@ -89,7 +87,7 @@ impl InMemNiftiVolume {
         let len = header.vox_offset as usize;
         let len = if len < 352 { 0 } else { len - 352 };
 
-        let ext = match endianness {
+        let ext = match header.endianness {
             Endianness::LE => {
                 ExtensionSequence::from_stream::<LittleEndian, _>(extender, &mut source, len)
             }
@@ -99,7 +97,7 @@ impl InMemNiftiVolume {
         }?;
 
         // fetch volume (rest of file)
-        Ok((Self::from_stream(source, &header, endianness)?, ext))
+        Ok((Self::from_stream(source, &header)?, ext))
     }
 
     /// Read a NIFTI volume from an image file. NIFTI-1 volume files usually have the
@@ -108,7 +106,6 @@ impl InMemNiftiVolume {
     pub fn from_file<P: AsRef<Path>>(
         path: P,
         header: &NiftiHeader,
-        endianness: Endianness,
     ) -> Result<Self> {
         let gz = path.as_ref()
             .extension()
@@ -116,9 +113,9 @@ impl InMemNiftiVolume {
             .unwrap_or(false);
         let file = BufReader::new(File::open(path)?);
         if gz {
-            InMemNiftiVolume::from_stream(GzDecoder::new(file), &header, endianness)
+            InMemNiftiVolume::from_stream(GzDecoder::new(file), &header)
         } else {
-            InMemNiftiVolume::from_stream(file, &header, endianness)
+            InMemNiftiVolume::from_stream(file, &header)
         }
     }
 
@@ -128,7 +125,6 @@ impl InMemNiftiVolume {
     pub fn from_file_with_extensions<P>(
         path: P,
         header: &NiftiHeader,
-        endianness: Endianness,
         extender: Extender,
     ) -> Result<(Self, ExtensionSequence)>
     where
@@ -145,10 +141,9 @@ impl InMemNiftiVolume {
                 GzDecoder::new(stream),
                 &header,
                 extender,
-                endianness,
             )
         } else {
-            InMemNiftiVolume::from_stream_with_extensions(stream, &header, extender, endianness)
+            InMemNiftiVolume::from_stream_with_extensions(stream, &header, extender)
         }
     }
 

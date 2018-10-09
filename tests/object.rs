@@ -5,7 +5,7 @@ extern crate nifti;
 #[macro_use]
 extern crate pretty_assertions;
 
-use nifti::{InMemNiftiObject, NiftiHeader, NiftiObject, NiftiType, NiftiVolume};
+use nifti::{Endianness, InMemNiftiObject, NiftiHeader, NiftiObject, NiftiType, NiftiVolume};
 
 #[test]
 fn minimal_nii_gz() {
@@ -19,6 +19,7 @@ fn minimal_nii_gz() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"n+1\0",
+        endianness: Endianness::BE,
         ..Default::default()
     };
 
@@ -42,6 +43,7 @@ fn minimal_nii() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"n+1\0",
+        endianness: Endianness::BE,
         ..Default::default()
     };
 
@@ -65,6 +67,7 @@ fn minimal_by_hdr() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"ni1\0",
+        endianness: Endianness::BE,
         ..Default::default()
     };
 
@@ -89,6 +92,7 @@ fn minimal_by_hdr_and_img_gz() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"ni1\0",
+        endianness: Endianness::BE,
         ..Default::default()
     };
 
@@ -113,6 +117,7 @@ fn minimal_by_hdr_gz() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"ni1\0",
+        endianness: Endianness::BE,
         ..Default::default()
     };
 
@@ -136,6 +141,7 @@ fn minimal_by_pair() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"ni1\0",
+        endianness: Endianness::BE,
         ..Default::default()
     };
 
@@ -164,6 +170,7 @@ fn f32_nii_gz() {
         srow_z: [0., 0., 1., 0.],
         sform_code: 2,
         magic: *b"n+1\0",
+        endianness: Endianness::LE,
         ..Default::default()
     };
 
