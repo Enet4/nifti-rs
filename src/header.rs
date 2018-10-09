@@ -26,11 +26,9 @@ pub const MAGIC_CODE_NIP1: &'static [u8; 4] = b"n+1\0";
 /// # use nifti::Result;
 ///
 /// # fn run() -> Result<()> {
-/// let (hdr1, endianness): (NiftiHeader, Endianness) =
-///     NiftiHeader::from_file("0000.hdr")?;
-///
-/// let hdr2: NiftiHeader = NiftiHeader::from_file("0001.hdr.gz")?.0;
-/// let (hdr3, end3) = NiftiHeader::from_file("4321.nii.gz")?;
+/// let hdr1 = NiftiHeader::from_file("0000.hdr")?;
+/// let hdr2 = NiftiHeader::from_file("0001.hdr.gz")?;
+/// let hdr3 = NiftiHeader::from_file("4321.nii.gz")?;
 /// # Ok(())
 /// # }
 /// ```
@@ -148,6 +146,10 @@ pub struct NiftiHeader {
 
     /// Magic code. Must be `b"ni1\0"` or `b"ni+\0"`
     pub magic: [u8; 4],
+
+    /// Original data Endianness
+    #[builder(default = "Endianness::system()")]
+    pub endianness: Endianness,
 }
 
 impl Default for NiftiHeader {
@@ -200,6 +202,8 @@ impl Default for NiftiHeader {
             intent_name: [0; 16],
 
             magic: *MAGIC_CODE_NI1,
+
+            endianness: Endianness::LE,
         }
     }
 }
@@ -207,7 +211,7 @@ impl Default for NiftiHeader {
 impl NiftiHeader {
     /// Retrieve a NIFTI header, along with its byte order, from a file in the file system.
     /// If the file's name ends with ".gz", the file is assumed to need GZip decoding.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<(NiftiHeader, Endianness)> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<NiftiHeader> {
         let gz = is_gz_file(&path);
         let file = BufReader::new(File::open(path)?);
         if gz {
@@ -220,12 +224,12 @@ impl NiftiHeader {
     /// Read a NIfTI-1 header, along with its byte order, from the given byte stream.
     /// It is assumed that the input is currently at the start of the
     /// NIFTI header.
-    pub fn from_stream<S: Read>(input: S) -> Result<(NiftiHeader, Endianness)> {
+    pub fn from_stream<S: Read>(input: S) -> Result<NiftiHeader> {
         parse_header_1(input)
     }
 }
 
-fn parse_header_1<S: Read>(mut input: S) -> Result<(NiftiHeader, Endianness)> {
+fn parse_header_1<S: Read>(mut input: S) -> Result<NiftiHeader> {
     let mut h = NiftiHeader::default();
 
     // try the system's native endianness first
@@ -241,16 +245,18 @@ fn parse_header_1<S: Read>(mut input: S) -> Result<(NiftiHeader, Endianness)> {
     h.dim[0] = input.read_u16::<B>()?;
 
     if h.dim[0] > 7 {
+        h.endianness = Endianness::system().opposite();
+
         // swap bytes read so far, continue with the opposite endianness
         h.sizeof_hdr = h.sizeof_hdr.swap_bytes();
         h.extents = h.extents.swap_bytes();
         h.session_error = h.session_error.swap_bytes();
         h.dim[0] = h.dim[0].swap_bytes();
         parse_header_2::<OppositeNativeEndian, _>(h, input)
-            .map(|a| (a, Endianness::system().opposite()))
     } else {
         // all is well
-        parse_header_2::<B, _>(h, input).map(|a| (a, Endianness::system()))
+        h.endianness = Endianness::system();
+        parse_header_2::<B, _>(h, input)
     }
 }
 
