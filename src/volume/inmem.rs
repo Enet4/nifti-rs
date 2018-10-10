@@ -10,7 +10,7 @@ use header::NiftiHeader;
 use extension::{Extender, ExtensionSequence};
 use error::{NiftiError, Result};
 use volume::element::DataElement;
-use util::Endianness;
+use util::{Endianness, nb_bytes_for_data};
 use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
 use typedef::NiftiType;
@@ -25,12 +25,12 @@ use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
 /// contain raw image data, which is converted automatically when using reading
 /// methods or [converting it to an `ndarray`] (only with the `ndarray_volumes`
 /// feature).
-/// 
+///
 /// Since NIfTI volumes are stored in disk in column major order (also called
 /// Fortran order), this data type will also retain this memory order.
-/// 
+///
 /// [converting it to an `ndarray`]: ../ndarray/index.html
-/// 
+///
 #[derive(Debug, PartialEq, Clone)]
 pub struct InMemNiftiVolume {
     dim: [u16; 8],
@@ -42,6 +42,23 @@ pub struct InMemNiftiVolume {
 }
 
 impl InMemNiftiVolume {
+    /// Build a InMemNiftiVolume from a header and a buffer. The buffer length and the dimensions
+    /// declared in the header are expected to fit.
+    pub fn from_raw_data(header: &NiftiHeader, raw_data: Vec<u8>) -> Result<Self> {
+        assert!(nb_bytes_for_data(header) == raw_data.len(),
+            "The buffer length and the header dimensions are incompatible.");
+        let datatype: NiftiType =
+            NiftiType::from_i16(header.datatype).ok_or_else(|| NiftiError::InvalidFormat)?;
+        Ok(InMemNiftiVolume {
+            dim: header.dim,
+            datatype,
+            scl_slope: header.scl_slope,
+            scl_inter: header.scl_inter,
+            raw_data,
+            endianness: header.endianness
+        })
+    }
+
     /// Read a NIFTI volume from a stream of data. The header and expected byte order
     /// of the volume's data must be known in advance. It it also expected that the
     /// following bytes represent the first voxels of the volume (and not part of the
@@ -50,13 +67,7 @@ impl InMemNiftiVolume {
         mut source: R,
         header: &NiftiHeader,
     ) -> Result<Self> {
-        let ndims = header.dim[0];
-        let resolution: usize = header.dim[1..(ndims + 1) as usize]
-            .iter()
-            .map(|d| *d as usize)
-            .product();
-        let nbytes = resolution * header.bitpix as usize / 8;
-        let mut raw_data = vec![0u8; nbytes];
+        let mut raw_data = vec![0u8; nb_bytes_for_data(header)];
         source.read_exact(&mut raw_data)?;
 
         let datatype: NiftiType =
