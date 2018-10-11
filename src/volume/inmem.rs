@@ -42,7 +42,7 @@ pub struct InMemNiftiVolume {
 }
 
 impl InMemNiftiVolume {
-    /// Build a InMemNiftiVolume from a header and a buffer. The buffer length and the dimensions
+    /// Build an InMemNiftiVolume from a header and a buffer. The buffer length and the dimensions
     /// declared in the header are expected to fit.
     pub fn from_raw_data(header: &NiftiHeader, raw_data: Vec<u8>) -> Result<Self> {
         assert!(nb_bytes_for_data(header) == raw_data.len(),

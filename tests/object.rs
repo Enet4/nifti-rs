@@ -79,7 +79,6 @@ fn minimal_by_hdr() {
     assert_eq!(volume.dim(), [64, 64, 10].as_ref());
 }
 
-
 #[test]
 fn minimal_by_hdr_and_img_gz() {
     let minimal_hdr = NiftiHeader {
