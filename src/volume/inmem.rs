@@ -45,8 +45,10 @@ impl InMemNiftiVolume {
     /// Build an InMemNiftiVolume from a header and a buffer. The buffer length and the dimensions
     /// declared in the header are expected to fit.
     pub fn from_raw_data(header: &NiftiHeader, raw_data: Vec<u8>) -> Result<Self> {
-        assert!(nb_bytes_for_data(header) == raw_data.len(),
-            "The buffer length and the header dimensions are incompatible.");
+        if nb_bytes_for_data(header) != raw_data.len() {
+            return Err(NiftiError::IncompatibleLengthError);
+        }
+
         let datatype: NiftiType =
             NiftiType::from_i16(header.datatype).ok_or_else(|| NiftiError::InvalidFormat)?;
         Ok(InMemNiftiVolume {
