@@ -46,7 +46,7 @@ impl InMemNiftiVolume {
     /// declared in the header are expected to fit.
     pub fn from_raw_data(header: &NiftiHeader, raw_data: Vec<u8>) -> Result<Self> {
         if nb_bytes_for_data(header) != raw_data.len() {
-            return Err(NiftiError::IncompatibleLengthError);
+            return Err(NiftiError::IncompatibleLength);
         }
 
         let datatype: NiftiType =

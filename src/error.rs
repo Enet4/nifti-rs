@@ -47,8 +47,8 @@ quick_error! {
             cause(err)
             description(err.description())
         }
-        /// Raw data and buffer length incompatible
-        IncompatibleLengthError {
+        /// Raw data and buffer length are incompatible
+        IncompatibleLength {
             description("The buffer length and the header dimensions are incompatible.")
         }
     }
