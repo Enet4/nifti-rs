@@ -6,6 +6,8 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
 use safe_transmute::{guarded_transmute_pod_vec_permissive, PodTransmutable};
 
+use NiftiHeader;
+
 /// A trait that is both Read and Seek.
 pub trait ReadSeek: Read + Seek {}
 impl<T: Read + Seek> ReadSeek for T {}
@@ -160,6 +162,15 @@ pub fn convert_bytes_to<T: PodTransmutable>(mut a: Vec<u8>, e: Endianness) -> Ve
     }
 
     guarded_transmute_pod_vec_permissive(a)
+}
+
+pub fn nb_bytes_for_data(header: &NiftiHeader) -> usize {
+    let ndims = header.dim[0];
+    let resolution: usize = header.dim[1..(ndims + 1) as usize]
+        .iter()
+        .map(|d| *d as usize)
+        .product();
+    resolution * header.bitpix as usize / 8
 }
 
 pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
