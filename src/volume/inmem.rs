@@ -161,17 +161,35 @@ impl InMemNiftiVolume {
     }
 
     /// Retrieve the raw data, consuming the volume.
+    #[deprecated(since = "0.6.0", note = "naming was unconventional, please use `into_raw_data` instead")]
     pub fn to_raw_data(self) -> Vec<u8> {
+        self.into_raw_data()
+    }
+
+    /// Retrieve the raw data, consuming the volume.
+    pub fn into_raw_data(self) -> Vec<u8> {
         self.raw_data
     }
 
     /// Retrieve a reference to the raw data.
+    #[deprecated(note = "unconventional naming, please use `raw_data` instead")]
     pub fn get_raw_data(&self) -> &[u8] {
+        self.raw_data()
+    }
+
+    /// Retrieve a reference to the raw data.
+    pub fn raw_data(&self) -> &[u8] {
         &self.raw_data
     }
 
     /// Retrieve a mutable reference to the raw data.
+    #[deprecated(note = "unconventional naming, please use `raw_data_mut` instead")]
     pub fn get_raw_data_mut(&mut self) -> &mut [u8] {
+        self.raw_data_mut()
+    }
+
+    /// Retrieve a mutable reference to the raw data.
+    pub fn raw_data_mut(&mut self) -> &mut [u8] {
         &mut self.raw_data
     }
 
@@ -231,7 +249,7 @@ impl InMemNiftiVolume {
 #[cfg(feature = "ndarray_volumes")]
 impl IntoNdArray for InMemNiftiVolume {
     /// Consume the volume into an ndarray.
-    fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
+    fn into_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
         T: DataElement,
         u8: AsPrimitive<T>,
@@ -270,7 +288,7 @@ impl IntoNdArray for InMemNiftiVolume {
 #[cfg(feature = "ndarray_volumes")]
 impl<'a> IntoNdArray for &'a InMemNiftiVolume {
     /// Create an ndarray from the given volume.
-    fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
+    fn into_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
         T: Mul<Output = T>,
         T: Add<Output = T>,
@@ -286,7 +304,7 @@ impl<'a> IntoNdArray for &'a InMemNiftiVolume {
         f32: AsPrimitive<T>,
         f64: AsPrimitive<T>,
     {
-        self.clone().to_ndarray()
+        self.clone().into_ndarray()
     }
 }
 
@@ -444,14 +462,14 @@ mod tests {
         assert_eq!(volume.dimensionality(), 4);
         if header.dim[header.dim[0] as usize] == 1 {
             header.dim[0] -= 1;
-            volume = InMemNiftiVolume::from_raw_data(&header, volume.to_raw_data()).unwrap();
+            volume = InMemNiftiVolume::from_raw_data(&header, volume.into_raw_data()).unwrap();
         }
         assert_eq!(volume.dimensionality(), 3);
 
         #[cfg(feature = "ndarray_volumes")] {
             use ndarray::Ix3;
 
-            let dyn_data = volume.to_ndarray::<f32>().unwrap();
+            let dyn_data = volume.into_ndarray::<f32>().unwrap();
             assert_eq!(dyn_data.ndim(), 3);
             let data = dyn_data.into_dimensionality::<Ix3>().unwrap();
             assert_eq!(data.ndim(), 3); // Obvious, but it's to avoid being optimized away

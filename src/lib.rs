@@ -40,7 +40,7 @@
 //! # use nifti::{NiftiObject, InMemNiftiObject};
 //! use nifti::IntoNdArray;
 //! # let obj = InMemNiftiObject::from_file("myvolume.hdr.gz").unwrap();
-//! let volume = obj.into_volume().to_ndarray::<f32>()?;
+//! let volume = obj.into_volume().into_ndarray::<f32>()?;
 //! # Ok(())
 //! # }
 //! ```

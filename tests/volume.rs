@@ -83,7 +83,7 @@ mod ndarray_volumes {
 
         assert_eq!(volume.dim(), [64, 64, 10].as_ref());
 
-        let volume = volume.to_ndarray::<f32>().unwrap();
+        let volume = volume.into_ndarray::<f32>().unwrap();
 
         assert_eq!(volume.shape(), [64, 64, 10].as_ref());
 
@@ -121,7 +121,7 @@ mod ndarray_volumes {
         assert_eq!(volume.data_type(), NiftiType::Uint8);
         assert_eq!(volume.dim(), [64, 64, 10].as_ref());
 
-        let volume = volume.to_ndarray::<u8>().unwrap();
+        let volume = volume.into_ndarray::<u8>().unwrap();
 
         assert_eq!(volume.shape(), [64, 64, 10].as_ref());
 
@@ -146,7 +146,7 @@ mod ndarray_volumes {
             .into_volume();
         assert_eq!(volume.data_type(), NiftiType::Float32);
 
-        let volume = volume.to_ndarray::<f32>().unwrap();
+        let volume = volume.into_ndarray::<f32>().unwrap();
 
         assert_eq!(volume.shape(), [11, 11, 11].as_ref());
 
@@ -168,7 +168,7 @@ mod ndarray_volumes {
             .into_volume();
         assert_eq!(volume.data_type(), NiftiType::Float32);
 
-        let volume = volume.to_ndarray::<f64>().unwrap();
+        let volume = volume.into_ndarray::<f64>().unwrap();
 
         assert_eq!(volume.shape(), [11, 11, 11].as_ref());
 
@@ -280,7 +280,7 @@ mod ndarray_volumes {
             .into_volume();
         assert_eq!(volume.data_type(), dtype);
 
-        let data = volume.to_ndarray::<T>().unwrap();
+        let data = volume.into_ndarray::<T>().unwrap();
         for (idx, val) in data.iter().enumerate() {
             assert_eq!(idx.as_(), *val);
         }
