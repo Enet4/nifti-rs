@@ -10,7 +10,7 @@ use header::NiftiHeader;
 use header::MAGIC_CODE_NI1;
 use volume::NiftiVolume;
 use volume::inmem::InMemNiftiVolume;
-use util::{is_gz_file, to_img_file_gz, Endianness};
+use util::{is_gz_file, into_img_file_gz, Endianness};
 use error::Result;
 use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
@@ -89,7 +89,7 @@ impl InMemNiftiObject {
 
             // look for corresponding img file
             let img_path = path.as_ref().to_path_buf();
-            let mut img_path_gz = to_img_file_gz(img_path);
+            let mut img_path_gz = into_img_file_gz(img_path);
 
             InMemNiftiVolume::from_file_with_extensions(&img_path_gz, &header, extender)
                 .or_else(|e| {

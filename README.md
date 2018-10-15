@@ -26,7 +26,7 @@ let obj = InMemNiftiObject::from_file("myvolume.hdr.gz")?;
 With the "ndarray_volumes" feature enabled, you can also convert a volume to an [`ndarray::Array`](https://docs.rs/ndarray/0.11.1/ndarray/index.html) and work from there:
 
 ```rust
-let volume = obj.into_volume().to_ndarray::<f32>();
+let volume = obj.into_volume().into_ndarray::<f32>();
 ```
 
 ## Roadmap

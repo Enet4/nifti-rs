@@ -186,7 +186,7 @@ pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
 /// # Panics
 /// Can panic if the given file path is not a valid path to a header file.
 /// If it doesn't panic in this case, the result might still not be correct.
-pub fn to_img_file_gz(path: PathBuf) -> PathBuf {
+pub fn into_img_file_gz(path: PathBuf) -> PathBuf {
     let gz = is_gz_file(&path);
     let fname = path.file_name().unwrap().to_owned();
     let fname = fname.to_string_lossy();
@@ -202,7 +202,7 @@ pub fn to_img_file_gz(path: PathBuf) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::Endianness;
-    use super::to_img_file_gz;
+    use super::into_img_file_gz;
     use super::is_gz_file;
     use std::path::PathBuf;
 
@@ -239,23 +239,23 @@ mod tests {
 
         assert!(!is_gz_file("/path/to/image.hdr"));
         assert_eq!(
-            to_img_file_gz(PathBuf::from("/path/to/image.hdr")),
+            into_img_file_gz(PathBuf::from("/path/to/image.hdr")),
             PathBuf::from("/path/to/image.img.gz")
         );
 
         assert!(is_gz_file("/path/to/image.hdr.gz"));
         assert_eq!(
-            to_img_file_gz(PathBuf::from("/path/to/image.hdr.gz")),
+            into_img_file_gz(PathBuf::from("/path/to/image.hdr.gz")),
             PathBuf::from("/path/to/image.img.gz")
         );
 
         assert_eq!(
-            to_img_file_gz(PathBuf::from("my_ct_scan.1.hdr.gz")),
+            into_img_file_gz(PathBuf::from("my_ct_scan.1.hdr.gz")),
             PathBuf::from("my_ct_scan.1.img.gz")
         );
 
         assert_eq!(
-            to_img_file_gz(PathBuf::from("../you.cant.fool.me.hdr.gz")),
+            into_img_file_gz(PathBuf::from("../you.cant.fool.me.hdr.gz")),
             PathBuf::from("../you.cant.fool.me.img.gz")
         );
     }
