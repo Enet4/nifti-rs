@@ -1,13 +1,15 @@
 //! This module defines the `NiftiHeader` struct, which is used
 //! to provide important information about NIFTI-1 volumes.
 
+use byteorder::{ByteOrder, NativeEndian, ReadBytesExt};
 use error::{NiftiError, Result};
-use util::{is_gz_file, Endianness, OppositeNativeEndian};
+use flate2::bufread::GzDecoder;
+use num_traits::FromPrimitive;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
-use byteorder::{ByteOrder, NativeEndian, ReadBytesExt};
-use flate2::bufread::GzDecoder;
+use typedef::*;
+use util::{is_gz_file, Endianness, OppositeNativeEndian};
 
 /// Magic code for NIFTI-1 header files (extention ".hdr[.gz]").
 pub const MAGIC_CODE_NI1: &'static [u8; 4] = b"ni1\0";
@@ -226,6 +228,55 @@ impl NiftiHeader {
     /// NIFTI header.
     pub fn from_stream<S: Read>(input: S) -> Result<NiftiHeader> {
         parse_header_1(input)
+    }
+
+    /// Get the data type as a validated enum.
+    pub fn data_type(&self) -> Result<NiftiType> {
+        FromPrimitive::from_i16(self.datatype)
+            .ok_or_else(|| NiftiError::InvalidCode("datatype", self.datatype))
+    }
+
+    /// Get the spatial units type as a validated unit enum.
+    pub fn xyzt_to_space(&self) -> Result<Unit> {
+        let space_code = self.xyzt_units & 0o0007;
+        FromPrimitive::from_u8(space_code)
+            .ok_or_else(|| NiftiError::InvalidCode("xyzt units (space)", space_code as i16))
+    }
+
+    /// Get the time units type as a validated unit enum.
+    pub fn xyzt_to_time(&self) -> Result<Unit> {
+        let time_code = self.xyzt_units & 0o0070;
+        FromPrimitive::from_u8(time_code)
+            .ok_or_else(|| NiftiError::InvalidCode("xyzt units (time)", time_code as i16))
+    }
+
+    /// Get the xyzt units type as a validated pair of space and time unit enum.
+    pub fn xyzt_units(&self) -> Result<(Unit, Unit)> {
+        Ok((self.xyzt_to_space()?, self.xyzt_to_time()?))
+    }
+
+    /// Get the slice order as a validated enum.
+    pub fn slice_order(&self) -> Result<SliceOrder> {
+        FromPrimitive::from_u8(self.slice_code)
+            .ok_or_else(|| NiftiError::InvalidCode("slice order", self.slice_code as i16))
+    }
+
+    /// Get the intent as a validated enum.
+    pub fn intent(&self) -> Result<Intent> {
+        FromPrimitive::from_i16(self.intent_code)
+            .ok_or_else(|| NiftiError::InvalidCode("intent", self.intent_code))
+    }
+
+    /// Get the qform coordinate mapping method as a validated enum.
+    pub fn qform(&self) -> Result<XForm> {
+        FromPrimitive::from_i16(self.qform_code)
+            .ok_or_else(|| NiftiError::InvalidCode("qform", self.qform_code as i16))
+    }
+
+    /// Get the sform coordinate mapping method as a validated enum.
+    pub fn sform(&self) -> Result<XForm> {
+        FromPrimitive::from_i16(self.sform_code)
+            .ok_or_else(|| NiftiError::InvalidCode("sform", self.sform_code as i16))
     }
 }
 
