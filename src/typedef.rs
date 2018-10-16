@@ -14,6 +14,7 @@ use num_traits::AsPrimitive;
 /// Data type for representing a NIFTI value type in a volume.
 /// Methods for reading values of that type from a source are also included.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
+#[repr(u16)]
 pub enum NiftiType {
     /// unsigned char.
     // NIFTI_TYPE_UINT8           2
@@ -67,9 +68,9 @@ pub enum NiftiType {
 
 impl NiftiType {
     /// Retrieve the size of an element of this data type, in bytes.
-    pub fn size_of(&self) -> usize {
+    pub fn size_of(self) -> usize {
         use NiftiType::*;
-        match *self {
+        match self {
             Int8 | Uint8 => 1,
             Int16 | Uint16 => 2,
             Rgb24 => 3,
@@ -84,7 +85,7 @@ impl NiftiType {
 impl NiftiType {
     /// Read a primitive voxel value from a source.
     pub fn read_primitive_value<S, T>(
-        &self,
+        self,
         source: S,
         endianness: Endianness,
         slope: f32,
@@ -106,7 +107,7 @@ impl NiftiType {
         f32: AsPrimitive<T>,
         f64: AsPrimitive<T>,
     {
-        match *self {
+        match self {
             NiftiType::Uint8 => {
                 let raw = u8::from_raw(source, endianness)?;
                 Ok(<u8 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
@@ -148,13 +149,14 @@ impl NiftiType {
                 Ok(<f64 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
             }
             // TODO add support for more data types
-            _ => Err(NiftiError::UnsupportedDataType(*self)),
+            _ => Err(NiftiError::UnsupportedDataType(self)),
         }
     }
 }
 
 /// An enum type which represents a unit type.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
+#[repr(u8)]
 pub enum Unit {
     /// NIFTI code for unspecified units.
     Unknown = 0,
@@ -183,6 +185,7 @@ pub enum Unit {
 
 /// An enum type for representing a NIFTI intent code.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
+#[repr(u16)]
 pub enum Intent {
     /// default: no intention is indicated in the header.
     None = 0,
@@ -373,14 +376,15 @@ pub enum Intent {
 }
 
 impl Intent {
-    /// Check whether this intent code are used for statistics.
-    pub fn is_statcode(&self) -> bool {
-        *self as i16 >= 2 && *self as i16 <= 24
+    /// Check whether this intent code is used for statistics.
+    pub fn is_statcode(self) -> bool {
+        self as i16 >= 2 && self as i16 <= 24
     }
 }
 
 /// An enum type for representing a NIFTI XForm.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
+#[repr(u16)]
 pub enum XForm {
     /// Arbitrary coordinates (Method 1).
     Unknown = 0,
@@ -398,6 +402,7 @@ pub enum XForm {
 
 /// An enum type for representing the slice order.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
+#[repr(u8)]
 pub enum SliceOrder {
     /// NIFTI_SLICE_UNKNOWN
     Unknown = 0,

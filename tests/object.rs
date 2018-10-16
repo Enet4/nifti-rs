@@ -5,7 +5,7 @@ extern crate nifti;
 #[macro_use]
 extern crate pretty_assertions;
 
-use nifti::{Endianness, InMemNiftiObject, NiftiHeader, NiftiObject, NiftiType, NiftiVolume};
+use nifti::{Endianness, InMemNiftiObject, NiftiHeader, NiftiObject, NiftiType, NiftiVolume, XForm};
 
 #[test]
 fn minimal_nii_gz() {
@@ -176,6 +176,9 @@ fn f32_nii_gz() {
     const FILE_NAME: &str = "resources/f32.nii.gz";
     let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &f32_hdr);
+
+    assert_eq!(obj.header().sform().unwrap(), XForm::AlignedAnat);
+
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Float32);
     assert_eq!(volume.dim(), [11, 11, 11].as_ref());

@@ -14,7 +14,7 @@ use util::{Endianness, nb_bytes_for_data};
 use byteorder::{BigEndian, LittleEndian};
 use flate2::bufread::GzDecoder;
 use typedef::NiftiType;
-use num_traits::{AsPrimitive, FromPrimitive, Num};
+use num_traits::{AsPrimitive, Num};
 
 #[cfg(feature = "ndarray_volumes")]
 use volume::ndarray::IntoNdArray;
@@ -49,8 +49,7 @@ impl InMemNiftiVolume {
             return Err(NiftiError::IncompatibleLength);
         }
 
-        let datatype: NiftiType =
-            NiftiType::from_i16(header.datatype).ok_or_else(|| NiftiError::InvalidFormat)?;
+        let datatype = header.data_type()?;
         Ok(InMemNiftiVolume {
             dim: header.dim,
             datatype,
@@ -72,9 +71,7 @@ impl InMemNiftiVolume {
         let mut raw_data = vec![0u8; nb_bytes_for_data(header)];
         source.read_exact(&mut raw_data)?;
 
-        let datatype: NiftiType =
-            NiftiType::from_i16(header.datatype).ok_or_else(|| NiftiError::InvalidFormat)?;
-
+        let datatype = header.data_type()?;
         Ok(InMemNiftiVolume {
             dim: header.dim,
             datatype,

@@ -2,8 +2,8 @@ extern crate nifti;
 #[macro_use]
 extern crate pretty_assertions;
 
+use nifti::{Endianness, Intent, NiftiHeader, NiftiType, SliceOrder, Unit, XForm};
 use std::fs::File;
-use nifti::{Endianness, NiftiHeader};
 
 #[test]
 fn minimal_hdr() {
@@ -23,8 +23,15 @@ fn minimal_hdr() {
 
     const FILE_NAME: &str = "resources/minimal.hdr";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
-    
+
     assert_eq!(header, minimal_hdr);
+
+    assert_eq!(header.intent().unwrap(), Intent::None);
+    assert_eq!(header.data_type().unwrap(), NiftiType::Uint8);
+    assert_eq!(header.xyzt_units().unwrap(), (Unit::Unknown, Unit::Unknown));
+    assert_eq!(header.slice_order().unwrap(), SliceOrder::Unknown);
+    assert_eq!(header.qform().unwrap(), XForm::Unknown);
+    assert_eq!(header.sform().unwrap(), XForm::Unknown);
 }
 
 #[test]
@@ -45,8 +52,15 @@ fn minimal_hdr_gz() {
 
     const FILE_NAME: &str = "resources/minimal.hdr.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
-    
+
     assert_eq!(header, minimal_hdr);
+
+    assert_eq!(header.intent().unwrap(), Intent::None);
+    assert_eq!(header.data_type().unwrap(), NiftiType::Uint8);
+    assert_eq!(header.xyzt_units().unwrap(), (Unit::Unknown, Unit::Unknown));
+    assert_eq!(header.slice_order().unwrap(), SliceOrder::Unknown);
+    assert_eq!(header.qform().unwrap(), XForm::Unknown);
+    assert_eq!(header.sform().unwrap(), XForm::Unknown);
 }
 
 #[test]
@@ -68,9 +82,16 @@ fn minimal_nii() {
     const FILE_NAME: &str = "resources/minimal.nii";
     let file = File::open(FILE_NAME).unwrap();
     let header = NiftiHeader::from_stream(file).unwrap();
-    
+
     assert_eq!(header, minimal_hdr);
     assert_eq!(header.endianness, Endianness::BE);
+
+    assert_eq!(header.intent().unwrap(), Intent::None);
+    assert_eq!(header.data_type().unwrap(), NiftiType::Uint8);
+    assert_eq!(header.xyzt_units().unwrap(), (Unit::Unknown, Unit::Unknown));
+    assert_eq!(header.slice_order().unwrap(), SliceOrder::Unknown);
+    assert_eq!(header.qform().unwrap(), XForm::Unknown);
+    assert_eq!(header.sform().unwrap(), XForm::Unknown);
 }
 
 #[test]
@@ -93,9 +114,10 @@ fn avg152T1_LR_hdr_gz() {
         cal_max: 255.,
         cal_min: 0.,
         descrip,
-        aux_file: [b'n', b'o', b'n', b'e',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', 0],
+        aux_file: [
+            b'n', b'o', b'n', b'e', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
+            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', 0,
+        ],
         qform_code: 0,
         sform_code: 4,
         srow_x: [-2., 0., 0., 90.],
@@ -108,9 +130,16 @@ fn avg152T1_LR_hdr_gz() {
 
     const FILE_NAME: &str = "resources/avg152T1_LR_nifti.hdr.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
-    
+
     assert_eq!(header, avg152t1_lr_hdr);
     assert_eq!(header.endianness, Endianness::BE);
+
+    assert_eq!(header.intent().unwrap(), Intent::None);
+    assert_eq!(header.data_type().unwrap(), NiftiType::Uint8);
+    assert_eq!(header.xyzt_units().unwrap(), (Unit::Mm, Unit::Sec));
+    assert_eq!(header.slice_order().unwrap(), SliceOrder::Unknown);
+    assert_eq!(header.qform().unwrap(), XForm::Unknown);
+    assert_eq!(header.sform().unwrap(), XForm::Mni152);
 }
 
 #[test]
@@ -133,9 +162,10 @@ fn avg152T1_LR_nii_gz() {
         cal_max: 255.,
         cal_min: 0.,
         descrip,
-        aux_file: [b'n', b'o', b'n', b'e',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', 0],
+        aux_file: [
+            b'n', b'o', b'n', b'e', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
+            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', 0,
+        ],
         qform_code: 0,
         sform_code: 4,
         srow_x: [-2., 0., 0., 90.],
@@ -148,8 +178,15 @@ fn avg152T1_LR_nii_gz() {
 
     const FILE_NAME: &str = "resources/avg152T1_LR_nifti.nii.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
-    
+
     assert_eq!(header, avg152t1_lr_hdr);
+
+    assert_eq!(header.intent().unwrap(), Intent::None);
+    assert_eq!(header.data_type().unwrap(), NiftiType::Uint8);
+    assert_eq!(header.xyzt_units().unwrap(), (Unit::Mm, Unit::Sec));
+    assert_eq!(header.slice_order().unwrap(), SliceOrder::Unknown);
+    assert_eq!(header.qform().unwrap(), XForm::Unknown);
+    assert_eq!(header.sform().unwrap(), XForm::Mni152);
 }
 
 #[test]
@@ -183,6 +220,13 @@ fn zstat1_nii_gz() {
 
     const FILE_NAME: &str = "resources/zstat1.nii.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
-    
+
     assert_eq!(header, zstat1_hdr);
+
+    assert_eq!(header.data_type().unwrap(), NiftiType::Float32);
+    assert_eq!(header.intent().unwrap(), Intent::Zscore);
+    assert_eq!(header.xyzt_units().unwrap(), (Unit::Mm, Unit::Sec));
+    assert_eq!(header.slice_order().unwrap(), SliceOrder::Unknown);
+    assert_eq!(header.qform().unwrap(), XForm::ScannerAnat);
+    assert_eq!(header.sform().unwrap(), XForm::Unknown);
 }
