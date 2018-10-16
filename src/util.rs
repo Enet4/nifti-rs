@@ -186,7 +186,7 @@ pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
 /// # Panics
 /// Can panic if the given file path is not a valid path to a header file.
 /// If it doesn't panic in this case, the result might still not be correct.
-pub fn into_img_file_gz(path: PathBuf) -> PathBuf {
+pub fn into_img_file_gz(mut path: PathBuf) -> PathBuf {
     let gz = is_gz_file(&path);
     let fname = path.file_name().unwrap().to_owned();
     let fname = fname.to_string_lossy();
@@ -196,7 +196,8 @@ pub fn into_img_file_gz(path: PathBuf) -> PathBuf {
         fname[..fname.len() - ".hdr".len()].to_owned()
     };
     fname += ".img.gz";
-    path.with_file_name(fname)
+    path.set_file_name(fname);
+    path
 }
 
 #[cfg(test)]
