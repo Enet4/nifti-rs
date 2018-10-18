@@ -245,3 +245,129 @@ fn write<A, S, D, W>(
 fn to_bytes<T>(data: &[T], size: usize) -> &[u8] {
     unsafe { from_raw_parts::<u8>(data.as_ptr() as *const u8, size) }
 }
+
+#[cfg(test)]
+pub mod tests {
+    extern crate tempfile;
+
+    use super::*;
+
+    use ndarray::{Array, Array2, Ix2, IxDyn, ShapeBuilder};
+    use self::tempfile::tempdir;
+
+    use {InMemNiftiObject, IntoNdArray, header::MAGIC_CODE_NIP1, object::NiftiObject};
+
+    fn get_random_path(ext: &str) -> String {
+        let dir = tempdir().unwrap();
+        let path = if ext == "" {
+            dir.into_path()
+        } else {
+            dir.into_path().join(ext)
+        };
+        path.to_str().unwrap().to_string()
+    }
+
+    pub fn generate_nifti_header(
+        dim: [u16; 8],
+        scl_slope: f32,
+        scl_inter: f32,
+        datatype: i16
+    ) -> NiftiHeader {
+        let bitpix = (mem::size_of::<f32>() * 8) as i16;
+        let magic = *MAGIC_CODE_NIP1;
+        NiftiHeader {
+            dim, datatype, bitpix, magic, scl_slope, scl_inter, ..NiftiHeader::default()
+        }
+    }
+
+    fn read_2d_image(path: &str) -> Array2<f32> {
+        let nifti_object = InMemNiftiObject::from_file(path).expect("Nifti file is unreadable.");
+        let volume = nifti_object.into_volume();
+        let dyn_data = volume.into_ndarray().unwrap();
+        dyn_data.into_dimensionality::<Ix2>().unwrap()
+    }
+
+    fn test_write_read(arr: &Array<f32, IxDyn>, path: &str) {
+        let path = get_random_path(path);
+        let mut dim = [1; 8];
+        dim[0] = arr.ndim() as u16;
+        for (i, s) in arr.shape().iter().enumerate() {
+            dim[i + 1] = *s as u16;
+        }
+        let header = generate_nifti_header(dim, 1.0, 0.0, 16);
+        write_nifti(&path, &arr, Some(&header));
+
+        let read_nifti = read_2d_image(&path);
+        assert!(read_nifti.all_close(&arr, 1e-10) == true);
+    }
+
+    fn f_order_array() -> Array<f32, IxDyn> {
+        let dim = vec![4, 4];
+        let vec = (0..16).map(|x| x as f32).collect();
+        Array::from_shape_vec(IxDyn(&dim).f(), vec).unwrap()
+    }
+
+    fn c_order_array() -> Array<f32, IxDyn> {
+        let dim = vec![4, 4];
+        let vec = (0..16).map(|x| x as f32).collect();
+        Array::from_shape_vec(IxDyn(&dim), vec).unwrap()
+    }
+
+    #[test]
+    fn test_fortran_writing() {
+        // Test .nii
+        let arr = f_order_array();
+        test_write_read(&arr, "test.nii");
+        let mut arr = f_order_array();
+        arr.invert_axis(Axis(1));
+        test_write_read(&arr, "test_non_contiguous.nii");
+
+        // Test .nii.gz
+        let arr = f_order_array();
+        test_write_read(&arr, "test.nii.gz");
+        let mut arr = f_order_array();
+        arr.invert_axis(Axis(1));
+        test_write_read(&arr, "test_non_contiguous.nii.gz");
+    }
+
+    #[test]
+    fn test_c_writing() {
+        // Test .nii
+        let arr = c_order_array();
+        test_write_read(&arr, "test.nii");
+
+        let mut arr = c_order_array();
+        arr.invert_axis(Axis(1));
+        test_write_read(&arr, "test_non_contiguous.nii");
+
+        // Test .nii.gz
+        let arr = c_order_array();
+        test_write_read(&arr, "test.nii.gz");
+
+        let mut arr = c_order_array();
+        arr.invert_axis(Axis(1));
+        test_write_read(&arr, "test_non_contiguous.nii.gz");
+    }
+
+    #[test]
+    fn test_header_slope_inter() {
+        use std::ops::{Add, Mul};
+
+        let arr = f_order_array();
+        let slope = 2.2;
+        let inter = 101.1;
+
+        let path = get_random_path("test_slope_inter.nii");
+        let mut dim = [1; 8];
+        dim[0] = arr.ndim() as u16;
+        for (i, s) in arr.shape().iter().enumerate() {
+            dim[i + 1] = *s as u16;
+        }
+        let header = generate_nifti_header(dim, slope, inter, 16);
+        let transformed_data = arr.mul(slope).add(inter);
+        write_nifti(&path, &transformed_data, Some(&header));
+
+        let read_nifti = read_2d_image(&path);
+        assert!(read_nifti.all_close(&transformed_data, 1e-10) == true);
+    }
+}
