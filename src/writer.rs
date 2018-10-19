@@ -12,7 +12,7 @@ use flate2::write::GzEncoder;
 use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis, ScalarOperand};
 use num_traits::FromPrimitive;
 
-use {NiftiHeader, volume::element::DataElement, util::is_gz_file};
+use {NiftiHeader, Result, volume::element::DataElement, util::is_gz_file};
 
 type B = LittleEndian;
 
@@ -27,7 +27,8 @@ type B = LittleEndian;
 pub fn write_nifti<A, S, D>(
     path: &str,
     data: &ArrayBase<S, D>,
-    reference: Option<&NiftiHeader>)
+    reference: Option<&NiftiHeader>
+) -> Result<()>
     where S: Data<Elem=A>,
           A: Copy + DataElement + Div<Output = A> + FromPrimitive + ScalarOperand + Sub<Output = A>,
           D: Dimension + RemoveAxis
@@ -55,80 +56,85 @@ pub fn write_nifti<A, S, D>(
     let mut writer = BufWriter::new(f);
     if is_gz_file(&path) {
         let mut buffer = Vec::new();
-        write_header(&mut buffer, &header);
-        write_data(&mut buffer, header, data);
+        write_header(&mut buffer, &header)?;
+        write_data(&mut buffer, header, data)?;
 
         let mut e = GzEncoder::new(Vec::new(), Compression::default());
-        e.write_all(&buffer).unwrap();
+        e.write_all(&buffer)?;
 
-        let buffer = e.finish().unwrap();
-        writer.write_all(&buffer).unwrap();
+        let buffer = e.finish()?;
+        writer.write_all(&buffer)?;
     } else {
-        write_header(&mut writer, &header);
-        write_data(&mut writer, header, data);
+        write_header(&mut writer, &header)?;
+        write_data(&mut writer, header, data)?;
     }
+    Ok(())
 }
 
 fn write_header<W>(
     writer: &mut W,
-    header: &NiftiHeader)
+    header: &NiftiHeader
+) -> Result<()>
     where W: WriteBytesExt
 {
-    writer.write_i32::<B>(header.sizeof_hdr).unwrap();
-    writer.write_all(&header.data_type).unwrap();
-    writer.write_all(&header.db_name).unwrap();
-    writer.write_i32::<B>(header.extents).unwrap();
-    writer.write_i16::<B>(header.session_error).unwrap();
-    writer.write_u8(header.regular).unwrap();
-    writer.write_u8(header.dim_info).unwrap();
+    writer.write_i32::<B>(header.sizeof_hdr)?;
+    writer.write_all(&header.data_type)?;
+    writer.write_all(&header.db_name)?;
+    writer.write_i32::<B>(header.extents)?;
+    writer.write_i16::<B>(header.session_error)?;
+    writer.write_u8(header.regular)?;
+    writer.write_u8(header.dim_info)?;
     for s in &header.dim {
-        writer.write_u16::<B>(*s).unwrap();
+        writer.write_u16::<B>(*s)?;
     }
-    writer.write_f32::<B>(header.intent_p1).unwrap();
-    writer.write_f32::<B>(header.intent_p2).unwrap();
-    writer.write_f32::<B>(header.intent_p3).unwrap();
-    writer.write_i16::<B>(header.intent_code).unwrap();
-    writer.write_i16::<B>(header.datatype).unwrap();
-    writer.write_i16::<B>(header.bitpix).unwrap();
-    writer.write_i16::<B>(header.slice_start).unwrap();
+    writer.write_f32::<B>(header.intent_p1)?;
+    writer.write_f32::<B>(header.intent_p2)?;
+    writer.write_f32::<B>(header.intent_p3)?;
+    writer.write_i16::<B>(header.intent_code)?;
+    writer.write_i16::<B>(header.datatype)?;
+    writer.write_i16::<B>(header.bitpix)?;
+    writer.write_i16::<B>(header.slice_start)?;
     for f in &header.pixdim {
-        writer.write_f32::<B>(*f).unwrap();
+        writer.write_f32::<B>(*f)?;
     }
-    writer.write_f32::<B>(header.vox_offset).unwrap();
-    writer.write_f32::<B>(header.scl_slope).unwrap();
-    writer.write_f32::<B>(header.scl_inter).unwrap();
-    writer.write_i16::<B>(header.slice_end).unwrap();
-    writer.write_u8(header.slice_code).unwrap();
-    writer.write_u8(header.xyzt_units).unwrap();
-    writer.write_f32::<B>(header.cal_max).unwrap();
-    writer.write_f32::<B>(header.cal_min).unwrap();
-    writer.write_f32::<B>(header.slice_duration).unwrap();
-    writer.write_f32::<B>(header.toffset).unwrap();
-    writer.write_i32::<B>(header.glmax).unwrap();
-    writer.write_i32::<B>(header.glmin).unwrap();
+    writer.write_f32::<B>(header.vox_offset)?;
+    writer.write_f32::<B>(header.scl_slope)?;
+    writer.write_f32::<B>(header.scl_inter)?;
+    writer.write_i16::<B>(header.slice_end)?;
+    writer.write_u8(header.slice_code)?;
+    writer.write_u8(header.xyzt_units)?;
+    writer.write_f32::<B>(header.cal_max)?;
+    writer.write_f32::<B>(header.cal_min)?;
+    writer.write_f32::<B>(header.slice_duration)?;
+    writer.write_f32::<B>(header.toffset)?;
+    writer.write_i32::<B>(header.glmax)?;
+    writer.write_i32::<B>(header.glmin)?;
 
-    writer.write_all(&header.descrip).unwrap();
-    writer.write_all(&header.aux_file).unwrap();
-    writer.write_i16::<B>(header.qform_code).unwrap();
-    writer.write_i16::<B>(header.sform_code).unwrap();
+    writer.write_all(&header.descrip)?;
+    writer.write_all(&header.aux_file)?;
+    writer.write_i16::<B>(header.qform_code)?;
+    writer.write_i16::<B>(header.sform_code)?;
     for f in &[header.quatern_b, header.quatern_c, header.quatern_d,
                header.quatern_x, header.quatern_y, header.quatern_z] {
-        writer.write_f32::<B>(*f).unwrap();
+        writer.write_f32::<B>(*f)?;
     }
     for f in header.srow_x.iter().chain(&header.srow_y).chain(&header.srow_z) {
-        writer.write_f32::<B>(*f).unwrap();
+        writer.write_f32::<B>(*f)?;
     }
-    writer.write_all(&header.intent_name).unwrap();
-    writer.write_all(&header.magic).unwrap();
+    writer.write_all(&header.intent_name)?;
+    writer.write_all(&header.magic)?;
 
     // Empty 4 bytes after the header
-    writer.write_u32::<B>(0).unwrap();
+    writer.write_u32::<B>(0)?;
+
+    Ok(())
 }
 
 fn write_data<A, S, D, W>(
     writer: &mut W,
     header: NiftiHeader,
-    data: &ArrayBase<S, D>)
+    data: &ArrayBase<S, D>
+) -> Result<()>
     where S: Data<Elem=A>,
           A: Copy + DataElement + Div<Output = A> + FromPrimitive + ScalarOperand + Sub<Output = A>,
           D: Dimension + RemoveAxis,
@@ -157,7 +163,7 @@ fn write_data<A, S, D, W>(
             let arr_data = arr_data.as_slice().unwrap();
 
             let buffer = to_bytes(&arr_data, nb_bytes / dim0_size);
-            writer.write_all(&buffer).unwrap();
+            writer.write_all(&buffer)?;
         }
     } else {
         for arr_data in data.axis_iter(Axis(0)) {
@@ -167,9 +173,10 @@ fn write_data<A, S, D, W>(
             let arr_data = arr_data.as_slice().unwrap();
 
             let buffer = to_bytes(&arr_data, nb_bytes / dim0_size);
-            writer.write_all(&buffer).unwrap();
+            writer.write_all(&buffer)?;
         }
     }
+    Ok(())
 }
 
 fn to_bytes<T>(data: &[T], size: usize) -> &[u8] {
@@ -225,7 +232,7 @@ pub mod tests {
             dim[i + 1] = *s as u16;
         }
         let header = generate_nifti_header(dim, 1.0, 0.0, 16);
-        write_nifti(&path, &arr, Some(&header));
+        write_nifti(&path, &arr, Some(&header)).unwrap();
 
         let read_nifti = read_2d_image(&path);
         assert!(read_nifti.all_close(&arr, 1e-10) == true);
@@ -295,7 +302,7 @@ pub mod tests {
         }
         let header = generate_nifti_header(dim, slope, inter, 16);
         let transformed_data = arr.mul(slope).add(inter);
-        write_nifti(&path, &transformed_data, Some(&header));
+        write_nifti(&path, &transformed_data, Some(&header)).unwrap();
 
         let read_nifti = read_2d_image(&path);
         assert!(read_nifti.all_close(&transformed_data, 1e-10) == true);
