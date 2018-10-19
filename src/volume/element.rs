@@ -9,6 +9,7 @@ use safe_transmute::guarded_transmute_pod_vec_permissive;
 use error::Result;
 use num_traits::cast::AsPrimitive;
 use util::{Endianness, convert_bytes_to};
+use NiftiType;
 
 /// Interface for linear (affine) transformations to values. Multiple
 /// implementations are needed because the original type `T` may not have
@@ -96,6 +97,9 @@ where
 /// values.
 pub trait DataElement: 'static + Sized + Copy + AsPrimitive<u8> + AsPrimitive<f32> + AsPrimitive<f64>
 {
+    /// The `datatype` mapped to the type T
+    const DATA_TYPE: NiftiType;
+
     /// For defining how this element is linearly transformed to another.
     type Transform: LinearTransform<Self>;
 
@@ -111,6 +115,7 @@ pub trait DataElement: 'static + Sized + Copy + AsPrimitive<u8> + AsPrimitive<f3
 }
 
 impl DataElement for u8 {
+    const DATA_TYPE: NiftiType = NiftiType::Uint8;
     type Transform = LinearTransformViaF32;
     fn from_raw_vec(vec: Vec<u8>, _: Endianness) -> Result<Vec<Self>> {
         Ok(vec)
@@ -120,6 +125,7 @@ impl DataElement for u8 {
     }
 }
 impl DataElement for i8 {
+    const DATA_TYPE: NiftiType = NiftiType::Int8;
     type Transform = LinearTransformViaF32;
     fn from_raw_vec(vec: Vec<u8>, _: Endianness) -> Result<Vec<Self>> {
         Ok(guarded_transmute_pod_vec_permissive(vec))
@@ -129,6 +135,7 @@ impl DataElement for i8 {
     }
 }
 impl DataElement for u16 {
+    const DATA_TYPE: NiftiType = NiftiType::Uint16;
     type Transform = LinearTransformViaF32;
     fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
         Ok(convert_bytes_to(vec, e))
@@ -138,6 +145,7 @@ impl DataElement for u16 {
     }
 }
 impl DataElement for i16 {
+    const DATA_TYPE: NiftiType = NiftiType::Int16;
     type Transform = LinearTransformViaF32;
     fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
         Ok(convert_bytes_to(vec, e))
@@ -147,6 +155,7 @@ impl DataElement for i16 {
     }
 }
 impl DataElement for u32 {
+    const DATA_TYPE: NiftiType = NiftiType::Uint32;
     type Transform = LinearTransformViaF32;
     fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
         Ok(convert_bytes_to(vec, e))
@@ -156,6 +165,7 @@ impl DataElement for u32 {
     }
 }
 impl DataElement for i32 {
+    const DATA_TYPE: NiftiType = NiftiType::Int32;
     type Transform = LinearTransformViaF32;
     fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
         Ok(convert_bytes_to(vec, e))
@@ -165,6 +175,7 @@ impl DataElement for i32 {
     }
 }
 impl DataElement for u64 {
+    const DATA_TYPE: NiftiType = NiftiType::Uint64;
     type Transform = LinearTransformViaF64;
     fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
         Ok(convert_bytes_to(vec, e))
@@ -174,6 +185,7 @@ impl DataElement for u64 {
     }
 }
 impl DataElement for i64 {
+    const DATA_TYPE: NiftiType = NiftiType::Int64;
     type Transform = LinearTransformViaF64;
     fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
         Ok(convert_bytes_to(vec, e))
@@ -183,6 +195,7 @@ impl DataElement for i64 {
     }
 }
 impl DataElement for f32 {
+    const DATA_TYPE: NiftiType = NiftiType::Float32;
     type Transform = LinearTransformViaOriginal;
     fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
         Ok(convert_bytes_to(vec, e))
@@ -192,6 +205,7 @@ impl DataElement for f32 {
     }
 }
 impl DataElement for f64 {
+    const DATA_TYPE: NiftiType = NiftiType::Float64;
     type Transform = LinearTransformViaOriginal;
     fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
         Ok(convert_bytes_to(vec, e))

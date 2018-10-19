@@ -1,4 +1,4 @@
-//! Utility traits and functions to write nifti images.
+//! Utility functions to write nifti images.
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -12,87 +12,9 @@ use flate2::write::GzEncoder;
 use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis, ScalarOperand};
 use num_traits::FromPrimitive;
 
-use {NiftiHeader, util::is_gz_file};
+use {NiftiHeader, volume::element::DataElement, util::is_gz_file};
 
 type B = LittleEndian;
-
-/// Specific actions and header information that depend on the ndarray type.
-pub trait TypeTool<T> {
-
-    /// Returns the `datatype` mapped to the type T
-    fn to_data_type() -> i16;
-
-    /// Calls the right `write` method. For example, if T is i16, call `write_i16`.
-    fn write<W: WriteBytesExt>(bytes: &mut W, d: T);
-}
-
-impl TypeTool<u8> for u8 {
-    fn to_data_type() -> i16 { 2 }
-    fn write<W: WriteBytesExt>(writer: &mut W, d: u8)
-    {
-        writer.write_u8(d).unwrap();
-    }
-}
-impl TypeTool<i16> for i16 {
-    fn to_data_type() -> i16 { 4 }
-    fn write<W: WriteBytesExt>(writer: &mut W, d: i16) {
-        writer.write_i16::<B>(d).unwrap();
-    }
-}
-impl TypeTool<i32> for i32 {
-    fn to_data_type() -> i16 { 8 }
-    fn write<W: WriteBytesExt>(writer: &mut W, d: i32) {
-        writer.write_i32::<B>(d).unwrap();
-    }
-}
-impl TypeTool<f32> for f32 {
-    fn to_data_type() -> i16 { 16 }
-    fn write<W: WriteBytesExt>(writer: &mut W, d: f32) {
-        writer.write_f32::<B>(d).unwrap();
-    }
-}
-// NIFTI_TYPE_COMPLEX64      32
-impl TypeTool<f64> for f64 {
-    fn to_data_type() -> i16 { 64 }
-    fn write<W: WriteBytesExt>(writer: &mut W, d: f64) {
-        writer.write_f64::<B>(d).unwrap();
-    }
-}
-// NIFTI_TYPE_RGB24         128
-impl TypeTool<i8> for i8 {
-    fn to_data_type() -> i16 { 256 }
-    fn write<W: WriteBytesExt>(writer: &mut W, d: i8) {
-        writer.write_i8(d).unwrap();
-    }
-}
-impl TypeTool<u16> for u16 {
-    fn to_data_type() -> i16 { 512 }
-    fn write<W: WriteBytesExt>(writer: &mut W, d: u16) {
-        writer.write_u16::<B>(d).unwrap();
-    }
-}
-impl TypeTool<u32> for u32 {
-    fn to_data_type() -> i16 { 768 }
-    fn write<W: WriteBytesExt>(writer: &mut W, d: u32) {
-        writer.write_u32::<B>(d).unwrap();
-    }
-}
-impl TypeTool<i64> for i64 {
-    fn to_data_type() -> i16 { 1024 }
-    fn write<W: WriteBytesExt>(writer: &mut W, d: i64) {
-        writer.write_i64::<B>(d).unwrap();
-    }
-}
-impl TypeTool<u64> for u64 {
-    fn to_data_type() -> i16 { 1280 }
-    fn write<W: WriteBytesExt>(writer: &mut W, d: u64) {
-        writer.write_u64::<B>(d).unwrap();
-    }
-}
-// NIFTI_TYPE_FLOAT128     1536
-// NIFTI_TYPE_COMPLEX128   1792
-// NIFTI_TYPE_COMPLEX256   2048
-// NIFTI_TYPE_RGBA32       2304
 
 /// Write a nifti file (.nii or .nii.gz).
 ///
@@ -107,7 +29,7 @@ pub fn write_nifti<A, S, D>(
     data: &ArrayBase<S, D>,
     reference: Option<&NiftiHeader>)
     where S: Data<Elem=A>,
-          A: TypeTool<A> + Copy + Div<Output = A> + FromPrimitive + ScalarOperand + Sub<Output = A>,
+          A: Copy + DataElement + Div<Output = A> + FromPrimitive + ScalarOperand + Sub<Output = A>,
           D: Dimension + RemoveAxis
 {
     let mut dim = [1; 8];
@@ -123,7 +45,7 @@ pub fn write_nifti<A, S, D>(
     };
     let header = NiftiHeader {
         dim,
-        datatype: A::to_data_type(),
+        datatype: A::DATA_TYPE as i16,
         bitpix: (mem::size_of::<A>() * 8) as i16,
         // All other fields are copied from reference header
         ..reference
@@ -150,7 +72,7 @@ fn write<A, S, D, W>(
     header: NiftiHeader,
     data: &ArrayBase<S, D>,)
     where S: Data<Elem=A>,
-          A: TypeTool<A> + Copy + Div<Output = A> + FromPrimitive + ScalarOperand + Sub<Output = A>,
+          A: Copy + DataElement + Div<Output = A> + FromPrimitive + ScalarOperand + Sub<Output = A>,
           D: Dimension + RemoveAxis,
           W: WriteBytesExt
 {
