@@ -1,7 +1,7 @@
 //! Utility functions to write nifti images.
 
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::BufWriter;
 use std::mem;
 use std::ops::{Div, Sub};
 use std::slice::from_raw_parts;
@@ -55,15 +55,10 @@ pub fn write_nifti<A, S, D>(
     let f = File::create(path).expect("Can't create new nifti file");
     let mut writer = BufWriter::new(f);
     if is_gz_file(&path) {
-        let mut buffer = Vec::new();
-        write_header(&mut buffer, &header)?;
-        write_data(&mut buffer, header, data)?;
-
-        let mut e = GzEncoder::new(Vec::new(), Compression::default());
-        e.write_all(&buffer)?;
-
-        let buffer = e.finish()?;
-        writer.write_all(&buffer)?;
+        let mut e = GzEncoder::new(writer, Compression::default());
+        write_header(&mut e, &header)?;
+        write_data(&mut e, header, data)?;
+        let _ = e.finish()?; // Must use result
     } else {
         write_header(&mut writer, &header)?;
         write_data(&mut writer, header, data)?;
