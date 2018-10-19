@@ -4,19 +4,21 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::mem;
 use std::ops::{Div, Sub};
-use std::slice::from_raw_parts;
 
 use byteorder::{LittleEndian, WriteBytesExt};
-use flate2::Compression;
 use flate2::write::GzEncoder;
-use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis, ScalarOperand};
+use flate2::Compression;
+use ndarray::{Array, ArrayBase, Axis, Data, Dimension, RemoveAxis, ScalarOperand};
 use num_traits::FromPrimitive;
+use safe_transmute::{guarded_transmute_to_bytes_pod_many, PodTransmutable};
 
-use {NiftiHeader, Result, volume::element::DataElement, util::is_gz_file};
+use {util::is_gz_file, volume::element::DataElement, NiftiHeader, Result};
 
+// TODO make this configurable. The Nifti standard does not specify a specific field for endianness,
+// but it is encoded in `dim[0]`. "if dim[0] is outside range 1..7, then swap".
 type B = LittleEndian;
 
-/// Write a nifti file (.nii or .nii.gz).
+/// Write a nifti file (.nii or .nii.gz) in Little Endian.
 ///
 /// If a `reference` is given, it will be used to fill most of the header's fields. The voxels
 /// intensity will be subtracted by `scl_slope` and divided by `scl_inter`. If `reference` is not
@@ -24,14 +26,22 @@ type B = LittleEndian;
 ///
 /// In all cases, the `dim`, `datatype` and `bitpix` fields will depend only on `data`, not on the
 /// header. In other words, the `datatype` defined in `reference` will be ignored.
-pub fn write_nifti<A, S, D>(
-    path: &str,
+pub fn write_nifti<P, A, S, D>(
+    path: P,
     data: &ArrayBase<S, D>,
-    reference: Option<&NiftiHeader>
+    reference: Option<&NiftiHeader>,
 ) -> Result<()>
-    where S: Data<Elem=A>,
-          A: Copy + DataElement + Div<Output = A> + FromPrimitive + ScalarOperand + Sub<Output = A>,
-          D: Dimension + RemoveAxis
+where
+    P: AsRef<::std::path::Path>,
+    S: Data<Elem = A>,
+    A: Copy,
+    A: DataElement,
+    A: Div<Output = A>,
+    A: FromPrimitive,
+    A: PodTransmutable,
+    A: ScalarOperand,
+    A: Sub<Output = A>,
+    D: Dimension + RemoveAxis,
 {
     let mut dim = [1; 8];
     dim[0] = data.ndim() as u16;
@@ -42,7 +52,7 @@ pub fn write_nifti<A, S, D>(
     // If no reference header is given, use the default.
     let reference = match reference {
         Some(r) => r.clone(),
-        None => NiftiHeader::default()
+        None => NiftiHeader::default(),
     };
     let header = NiftiHeader {
         dim,
@@ -52,7 +62,7 @@ pub fn write_nifti<A, S, D>(
         ..reference
     };
 
-    let f = File::create(path).expect("Can't create new nifti file");
+    let f = File::create(&path).expect("Can't create new nifti file");
     let mut writer = BufWriter::new(f);
     if is_gz_file(&path) {
         let mut e = GzEncoder::new(writer, Compression::default());
@@ -66,12 +76,7 @@ pub fn write_nifti<A, S, D>(
     Ok(())
 }
 
-fn write_header<W>(
-    writer: &mut W,
-    header: &NiftiHeader
-) -> Result<()>
-    where W: WriteBytesExt
-{
+fn write_header<W: WriteBytesExt>(writer: &mut W, header: &NiftiHeader) -> Result<()> {
     writer.write_i32::<B>(header.sizeof_hdr)?;
     writer.write_all(&header.data_type)?;
     writer.write_all(&header.db_name)?;
@@ -109,73 +114,80 @@ fn write_header<W>(
     writer.write_all(&header.aux_file)?;
     writer.write_i16::<B>(header.qform_code)?;
     writer.write_i16::<B>(header.sform_code)?;
-    for f in &[header.quatern_b, header.quatern_c, header.quatern_d,
-               header.quatern_x, header.quatern_y, header.quatern_z] {
+    for f in &[
+        header.quatern_b,
+        header.quatern_c,
+        header.quatern_d,
+        header.quatern_x,
+        header.quatern_y,
+        header.quatern_z,
+    ] {
         writer.write_f32::<B>(*f)?;
     }
-    for f in header.srow_x.iter().chain(&header.srow_y).chain(&header.srow_z) {
+    for f in header
+        .srow_x
+        .iter()
+        .chain(&header.srow_y)
+        .chain(&header.srow_z)
+    {
         writer.write_f32::<B>(*f)?;
     }
     writer.write_all(&header.intent_name)?;
     writer.write_all(&header.magic)?;
 
     // Empty 4 bytes after the header
+    // TODO Support writing extension data.
     writer.write_u32::<B>(0)?;
 
     Ok(())
 }
 
-fn write_data<A, S, D, W>(
-    writer: &mut W,
-    header: NiftiHeader,
-    data: &ArrayBase<S, D>
-) -> Result<()>
-    where S: Data<Elem=A>,
-          A: Copy + DataElement + Div<Output = A> + FromPrimitive + ScalarOperand + Sub<Output = A>,
-          D: Dimension + RemoveAxis,
-          W: WriteBytesExt
+/// Write the data in 'f' order.
+///
+/// Like NiBabel, we iterate by "slice" to improve speed and use less memory.
+fn write_data<A, S, D, W>(writer: &mut W, header: NiftiHeader, data: &ArrayBase<S, D>) -> Result<()>
+where
+    S: Data<Elem = A>,
+    A: Copy,
+    A: DataElement,
+    A: Div<Output = A>,
+    A: FromPrimitive,
+    A: PodTransmutable,
+    A: ScalarOperand,
+    A: Sub<Output = A>,
+    D: Dimension + RemoveAxis,
+    W: WriteBytesExt,
 {
-    // We finally write the data.
-    // Like NiBabel, we iterate by "slice" to improve speed and use less memory
-
-    // Need the transpose for fortran used in nifti file format.
+    // Need the transpose for fortran ordering used in nifti file format.
     let data = data.t();
 
-    let arr_len = data.subview(Axis(0), 0).len();
-    let resolution: usize = header.dim[1..(header.dim[0] + 1) as usize]
-        .iter().map(|d| *d as usize).product();
-    let nb_bytes = resolution * header.bitpix as usize / 8;
-    let dim0_size = data.shape()[0];
+    let mut write_slice = |data: Array<A, D::Smaller>| -> Result<()> {
+        let len = data.len();
+        let arr_data = data.into_shape(len).unwrap();
+        let slice = arr_data.as_slice().unwrap();
+        writer.write_all(guarded_transmute_to_bytes_pod_many(slice))?;
+        Ok(())
+    };
 
     // `1.0x + 0.0` would give the same results, but we avoid a lot of divisions
-    let slope = if header.scl_slope == 0.0 { 1.0 } else { header.scl_slope };
+    let slope = if header.scl_slope == 0.0 {
+        1.0
+    } else {
+        header.scl_slope
+    };
     if slope != 1.0 || header.scl_inter != 0.0 {
         let slope = A::from_f32(slope).unwrap();
         let inter = A::from_f32(header.scl_inter).unwrap();
         for arr_data in data.axis_iter(Axis(0)) {
-            let arr_data = arr_data.sub(inter).div(slope);
-            let arr_data = arr_data.into_shape(arr_len).unwrap();
-            let arr_data = arr_data.as_slice().unwrap();
-
-            let buffer = to_bytes(&arr_data, nb_bytes / dim0_size);
-            writer.write_all(&buffer)?;
+            write_slice(arr_data.sub(inter).div(slope))?;
         }
     } else {
         for arr_data in data.axis_iter(Axis(0)) {
-            // We need to own the data because of the into_shape() for `C` ordering.
-            let arr_data = arr_data.to_owned();
-            let arr_data = arr_data.into_shape(arr_len).unwrap();
-            let arr_data = arr_data.as_slice().unwrap();
-
-            let buffer = to_bytes(&arr_data, nb_bytes / dim0_size);
-            writer.write_all(&buffer)?;
+            // We need to own the data because of the into_shape() for `c` ordering.
+            write_slice(arr_data.to_owned())?;
         }
     }
     Ok(())
-}
-
-fn to_bytes<T>(data: &[T], size: usize) -> &[u8] {
-    unsafe { from_raw_parts::<u8>(data.as_ptr() as *const u8, size) }
 }
 
 #[cfg(test)]
@@ -183,36 +195,42 @@ pub mod tests {
     extern crate tempfile;
 
     use super::*;
+    use std::ops::{Add, Mul};
+    use std::path::PathBuf;
 
-    use ndarray::{Array, Array2, Ix2, IxDyn, ShapeBuilder};
     use self::tempfile::tempdir;
+    use ndarray::{Array, Array2, Ix2, IxDyn, ShapeBuilder};
 
-    use {InMemNiftiObject, IntoNdArray, header::MAGIC_CODE_NIP1, object::NiftiObject};
+    use {header::MAGIC_CODE_NIP1, object::NiftiObject, InMemNiftiObject, IntoNdArray};
 
-    fn get_random_path(ext: &str) -> String {
+    fn get_random_path(ext: &str) -> PathBuf {
         let dir = tempdir().unwrap();
         let path = if ext == "" {
             dir.into_path()
         } else {
             dir.into_path().join(ext)
         };
-        path.to_str().unwrap().to_string()
+        PathBuf::from(path.to_str().unwrap())
     }
 
     pub fn generate_nifti_header(
         dim: [u16; 8],
         scl_slope: f32,
         scl_inter: f32,
-        datatype: i16
+        datatype: i16,
     ) -> NiftiHeader {
-        let bitpix = (mem::size_of::<f32>() * 8) as i16;
-        let magic = *MAGIC_CODE_NIP1;
         NiftiHeader {
-            dim, datatype, bitpix, magic, scl_slope, scl_inter, ..NiftiHeader::default()
+            dim,
+            datatype,
+            bitpix: (mem::size_of::<f32>() * 8) as i16,
+            magic: *MAGIC_CODE_NIP1,
+            scl_slope,
+            scl_inter,
+            ..NiftiHeader::default()
         }
     }
 
-    fn read_2d_image(path: &str) -> Array2<f32> {
+    fn read_2d_image<P: AsRef<::std::path::Path>>(path: P) -> Array2<f32> {
         let nifti_object = InMemNiftiObject::from_file(path).expect("Nifti file is unreadable.");
         let volume = nifti_object.into_volume();
         let dyn_data = volume.into_ndarray().unwrap();
@@ -229,8 +247,8 @@ pub mod tests {
         let header = generate_nifti_header(dim, 1.0, 0.0, 16);
         write_nifti(&path, &arr, Some(&header)).unwrap();
 
-        let read_nifti = read_2d_image(&path);
-        assert!(read_nifti.all_close(&arr, 1e-10) == true);
+        let read_nifti = read_2d_image(path);
+        assert!(read_nifti.all_close(&arr, 1e-10));
     }
 
     fn f_order_array() -> Array<f32, IxDyn> {
@@ -283,8 +301,6 @@ pub mod tests {
 
     #[test]
     fn test_header_slope_inter() {
-        use std::ops::{Add, Mul};
-
         let arr = f_order_array();
         let slope = 2.2;
         let inter = 101.1;
@@ -299,7 +315,7 @@ pub mod tests {
         let transformed_data = arr.mul(slope).add(inter);
         write_nifti(&path, &transformed_data, Some(&header)).unwrap();
 
-        let read_nifti = read_2d_image(&path);
-        assert!(read_nifti.all_close(&transformed_data, 1e-10) == true);
+        let read_nifti = read_2d_image(path);
+        assert!(read_nifti.all_close(&transformed_data, 1e-10));
     }
 }
