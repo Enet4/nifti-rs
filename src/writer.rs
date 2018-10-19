@@ -55,7 +55,8 @@ pub fn write_nifti<A, S, D>(
     let mut writer = BufWriter::new(f);
     if is_gz_file(&path) {
         let mut buffer = Vec::new();
-        write(&mut buffer, header, data);
+        write_header(&mut buffer, &header);
+        write_data(&mut buffer, header, data);
 
         let mut e = GzEncoder::new(Vec::new(), Compression::default());
         e.write_all(&buffer).unwrap();
@@ -63,18 +64,15 @@ pub fn write_nifti<A, S, D>(
         let buffer = e.finish().unwrap();
         writer.write_all(&buffer).unwrap();
     } else {
-        write(&mut writer, header, data);
+        write_header(&mut writer, &header);
+        write_data(&mut writer, header, data);
     }
 }
 
-fn write<A, S, D, W>(
+fn write_header<W>(
     writer: &mut W,
-    header: NiftiHeader,
-    data: &ArrayBase<S, D>,)
-    where S: Data<Elem=A>,
-          A: Copy + DataElement + Div<Output = A> + FromPrimitive + ScalarOperand + Sub<Output = A>,
-          D: Dimension + RemoveAxis,
-          W: WriteBytesExt
+    header: &NiftiHeader)
+    where W: WriteBytesExt
 {
     writer.write_i32::<B>(header.sizeof_hdr).unwrap();
     writer.write_all(&header.data_type).unwrap();
@@ -125,7 +123,17 @@ fn write<A, S, D, W>(
 
     // Empty 4 bytes after the header
     writer.write_u32::<B>(0).unwrap();
+}
 
+fn write_data<A, S, D, W>(
+    writer: &mut W,
+    header: NiftiHeader,
+    data: &ArrayBase<S, D>)
+    where S: Data<Elem=A>,
+          A: Copy + DataElement + Div<Output = A> + FromPrimitive + ScalarOperand + Sub<Output = A>,
+          D: Dimension + RemoveAxis,
+          W: WriteBytesExt
+{
     // We finally write the data.
     // Like NiBabel, we iterate by "slice" to improve speed and use less memory
 
