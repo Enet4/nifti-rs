@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::mem;
 use std::ops::{Div, Sub};
+use std::path::Path;
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use flate2::write::GzEncoder;
@@ -32,7 +33,7 @@ pub fn write_nifti<P, A, S, D>(
     reference: Option<&NiftiHeader>,
 ) -> Result<()>
 where
-    P: AsRef<::std::path::Path>,
+    P: AsRef<Path>,
     S: Data<Elem = A>,
     A: Copy,
     A: DataElement,
@@ -76,7 +77,9 @@ where
     Ok(())
 }
 
-fn write_header<W: WriteBytesExt>(writer: &mut W, header: &NiftiHeader) -> Result<()> {
+fn write_header<W>(writer: &mut W, header: &NiftiHeader) -> Result<()>
+    where W: WriteBytesExt
+{
     writer.write_i32::<B>(header.sizeof_hdr)?;
     writer.write_all(&header.data_type)?;
     writer.write_all(&header.db_name)?;
@@ -205,12 +208,11 @@ pub mod tests {
 
     fn get_random_path(ext: &str) -> PathBuf {
         let dir = tempdir().unwrap();
-        let path = if ext == "" {
-            dir.into_path()
-        } else {
-            dir.into_path().join(ext)
-        };
-        PathBuf::from(path.to_str().unwrap())
+        let mut path = dir.into_path();
+        if !ext.is_empty() {
+            path.push(ext);
+        }
+        path
     }
 
     pub fn generate_nifti_header(
@@ -230,7 +232,9 @@ pub mod tests {
         }
     }
 
-    fn read_2d_image<P: AsRef<::std::path::Path>>(path: P) -> Array2<f32> {
+    fn read_2d_image<P>(path: P) -> Array2<f32>
+        where P: AsRef<Path>
+    {
         let nifti_object = InMemNiftiObject::from_file(path).expect("Nifti file is unreadable.");
         let volume = nifti_object.into_volume();
         let dyn_data = volume.into_ndarray().unwrap();
