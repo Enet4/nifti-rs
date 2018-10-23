@@ -5,7 +5,7 @@
 //! ```no_run
 //! use nifti::{NiftiObject, InMemNiftiObject, NiftiVolume};
 //! # use nifti::error::Result;
-//! 
+//!
 //! # fn run() -> Result<()> {
 //! let obj = InMemNiftiObject::from_file("myvolume.nii.gz")?;
 //! // use obj
@@ -44,7 +44,7 @@
 //! # Ok(())
 //! # }
 //! ```
-//! 
+//!
 #![deny(missing_debug_implementations)]
 #![warn(missing_docs, unused_extern_crates, trivial_casts, unused_results)]
 
@@ -64,6 +64,7 @@ pub mod object;
 pub mod volume;
 pub mod error;
 pub mod typedef;
+#[cfg(feature = "ndarray_volumes")] pub mod writer;
 mod util;
 
 pub use error::{NiftiError, Result};
