@@ -78,7 +78,8 @@ where
 }
 
 fn write_header<W>(writer: &mut W, header: &NiftiHeader) -> Result<()>
-    where W: WriteBytesExt
+where
+    W: WriteBytesExt,
 {
     writer.write_i32::<B>(header.sizeof_hdr)?;
     writer.write_all(&header.data_type)?;
@@ -233,7 +234,8 @@ pub mod tests {
     }
 
     fn read_2d_image<P>(path: P) -> Array2<f32>
-        where P: AsRef<Path>
+    where
+        P: AsRef<Path>,
     {
         let nifti_object = InMemNiftiObject::from_file(path).expect("Nifti file is unreadable.");
         let volume = nifti_object.into_volume();
