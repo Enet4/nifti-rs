@@ -63,7 +63,7 @@ where
         ..reference
     };
 
-    let f = File::create(&path).expect("Can't create new nifti file");
+    let f = File::create(&path)?;
     let mut writer = BufWriter::new(f);
     if is_gz_file(&path) {
         let mut e = GzEncoder::new(writer, Compression::fast());
