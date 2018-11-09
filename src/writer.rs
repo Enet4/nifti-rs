@@ -386,4 +386,30 @@ pub mod tests {
         let read_nifti = read_2d_image(path);
         assert!(read_nifti.all_close(&transformed_data, 1e-10));
     }
+
+    #[test]
+    fn test_write_3d_rgb() {
+        let mut data = Array::from_elem((10, 10, 8), [255u8, 255u8, 255u8]);
+        data[(5, 5, 2)] = [55, 55, 0];
+        data[(5, 5, 3)] = [55, 0, 55];
+        data[(5, 5, 4)] = [0, 55, 55];
+
+        let path = get_temporary_path("rgb.nii.gz");
+        write_rgb_nifti(path, &data, None).unwrap();
+        // TODO Don't just test if the writing compiles and runs, we also need to read it back
+    }
+
+    #[test]
+    fn test_write_4d_rgb() {
+        let mut data = Array::from_elem((10, 10, 10, 2), [255u8, 255u8, 255u8]);
+        for i in 0..2 {
+            data[(5, 5, 2, i)] = [55, 55, 0];
+            data[(5, 5, 3, i)] = [55, 0, 55];
+            data[(5, 5, 4, i)] = [0, 55, 55];
+        }
+
+        let path = get_temporary_path("rgb.nii.gz");
+        write_rgb_nifti(path, &data, None).unwrap();
+        // TODO Don't just test if the writing compiles and runs, we also need to read it back
+    }
 }
