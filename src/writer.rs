@@ -118,8 +118,19 @@ where
     // If no reference header is given, use the default.
     let reference = match reference {
         Some(r) => r.clone(),
-        None => NiftiHeader::default(),
+        None => {
+            let mut header = NiftiHeader::default();
+
+            // Some programs require a non-zero spacing
+            for i in 0..data.ndim() {
+                if header.pixdim[i] == 0.0 {
+                    header.pixdim[i] = 1.0;
+                }
+            }
+            header
+        },
     };
+
     NiftiHeader {
         dim,
         datatype: datatype as i16,
