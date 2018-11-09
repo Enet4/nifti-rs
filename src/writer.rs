@@ -70,7 +70,7 @@ where
 pub fn write_rgb_nifti<P, D>(
     path: P,
     data: &Array<[u8; 3], D>,
-    reference: Option<&NiftiHeader>
+    reference: Option<&NiftiHeader>,
 ) -> Result<()>
 where
     P: AsRef<Path>,
@@ -103,11 +103,11 @@ where
 fn build_header<T, D>(
     data: &ArrayBase<T, D>,
     reference: Option<&NiftiHeader>,
-    datatype: NiftiType
+    datatype: NiftiType,
 ) -> NiftiHeader
 where
     T: Data,
-    D: Dimension
+    D: Dimension,
 {
     let mut dim = [1; 8];
     dim[0] = data.ndim() as u16;
@@ -128,7 +128,7 @@ where
                 }
             }
             header
-        },
+        }
     };
 
     NiftiHeader {
@@ -245,7 +245,7 @@ fn write_slices<T, D, W>(writer: &mut W, data: ArrayView<T, D>) -> Result<()>
 where
     T: Clone + PodTransmutable,
     D: Dimension + RemoveAxis,
-    W: WriteBytesExt
+    W: WriteBytesExt,
 {
     for arr_data in data.axis_iter(Axis(0)) {
         // We need to own the data because of the into_shape() for `C` ordering.
@@ -258,7 +258,7 @@ fn write_slice<T, D, W>(writer: &mut W, data: Array<T, D>) -> Result<()>
 where
     T: Clone + PodTransmutable,
     D: Dimension,
-    W: WriteBytesExt
+    W: WriteBytesExt,
 {
     let len = data.len();
     let arr_data = data.into_shape(len).unwrap();
