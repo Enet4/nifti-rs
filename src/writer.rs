@@ -53,11 +53,11 @@ where
     if is_gz_file(&path) {
         let mut e = GzEncoder::new(writer, Compression::fast());
         write_header(&mut e, &header)?;
-        write_data(&mut e, header, data)?;
+        write_data(&mut e, &header, data)?;
         let _ = e.finish()?; // Must use result
     } else {
         write_header(&mut writer, &header)?;
-        write_data(&mut writer, header, data)?;
+        write_data(&mut writer, &header, data)?;
     }
     Ok(())
 }
@@ -67,13 +67,14 @@ where
 /// If a `reference` is given, it will be used to fill most of the header's fields, except those
 /// necessary to be recognized as a RGB image. `scl_slope` will be set to 1.0 and `scl_inter` to
 /// 0.0.  If `reference` is not given, a default `NiftiHeader` will be built and written.
-pub fn write_rgb_nifti<P, D>(
+pub fn write_rgb_nifti<P, S, D>(
     path: P,
-    data: &Array<[u8; 3], D>,
+    data: &ArrayBase<S, D>,
     reference: Option<&NiftiHeader>,
 ) -> Result<()>
 where
     P: AsRef<Path>,
+    S: Data<Elem = [u8; 3]>,
     D: Dimension + RemoveAxis,
 {
     // Copy most of the reference header, but the `bitpix`, `scl_slope` and `scl_inter` fields must
@@ -92,7 +93,7 @@ where
         let mut e = GzEncoder::new(writer, Compression::fast());
         write_header(&mut e, &header)?;
         write_slices(&mut e, data)?;
-        let _ = e.finish().unwrap(); // Must use result
+        let _ = e.finish()?; // Must use result
     } else {
         write_header(&mut writer, &header)?;
         write_slices(&mut writer, data)?;
@@ -212,7 +213,7 @@ where
 /// Write the data in 'f' order.
 ///
 /// Like NiBabel, we iterate by "slice" to improve speed and use less memory.
-fn write_data<T, D, W>(writer: &mut W, header: NiftiHeader, data: ArrayView<T, D>) -> Result<()>
+fn write_data<T, D, W>(writer: &mut W, header: &NiftiHeader, data: ArrayView<T, D>) -> Result<()>
 where
     T: Clone + PodTransmutable,
     T: Div<Output = T>,
@@ -230,6 +231,8 @@ where
         header.scl_slope
     };
     if slope != 1.0 || header.scl_inter != 0.0 {
+        // TODO Use linear transformation like when reading. An scl_slope of 0.5 would turn all
+        // voxel values to 0 if we pass an ndarray of integers.
         let slope = T::from_f32(slope).unwrap();
         let inter = T::from_f32(header.scl_inter).unwrap();
         for arr_data in data.axis_iter(Axis(0)) {
