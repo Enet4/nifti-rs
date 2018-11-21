@@ -8,7 +8,7 @@ use std::path::Path;
 use byteorder::{LittleEndian, WriteBytesExt};
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use ndarray::{Array, ArrayBase, ArrayView, Axis, Data, Dimension, RemoveAxis, ScalarOperand};
+use ndarray::{ArrayBase, ArrayView, Axis, Data, Dimension, RemoveAxis, ScalarOperand};
 use num_traits::FromPrimitive;
 use safe_transmute::{guarded_transmute_to_bytes_pod_many, PodTransmutable};
 
@@ -246,22 +246,30 @@ where
     Ok(())
 }
 
-fn write_slices<T, D, W>(writer: &mut W, data: ArrayView<T, D>) -> Result<()>
+fn write_slices<A, S, D, W>(writer: &mut W, data: ArrayBase<S, D>) -> Result<()>
 where
-    T: Clone + PodTransmutable,
+    S: Data<Elem = A>,
+    A: Clone + PodTransmutable,
     D: Dimension + RemoveAxis,
     W: WriteBytesExt,
 {
-    for arr_data in data.axis_iter(Axis(0)) {
-        // We need to own the data because of the into_shape() for `C` ordering.
-        write_slice(writer, arr_data.to_owned())?;
+    let mut iter = data.axis_iter(Axis(0));
+    if let Some(arr_data) = iter.next() {
+        // Keep slice voxels in a separate array to ensure `C` ordering even after `into_shape`.
+        let mut slice = arr_data.to_owned();
+        write_slice(writer, slice.view())?;
+        for arr_data in iter {
+            slice.assign(&arr_data);
+            write_slice(writer, slice.view())?;
+        }
     }
     Ok(())
 }
 
-fn write_slice<T, D, W>(writer: &mut W, data: Array<T, D>) -> Result<()>
+fn write_slice<A, S, D, W>(writer: &mut W, data: ArrayBase<S, D>) -> Result<()>
 where
-    T: Clone + PodTransmutable,
+    S: Data<Elem = A>,
+    A: Clone + PodTransmutable,
     D: Dimension,
     W: WriteBytesExt,
 {
