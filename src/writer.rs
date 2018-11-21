@@ -277,8 +277,11 @@ pub mod tests {
     extern crate tempfile;
 
     use super::*;
-    use std::ops::{Add, Mul};
-    use std::path::PathBuf;
+    use std::{
+        io::Read,
+        ops::{Add, Mul},
+        path::PathBuf,
+    };
 
     use self::tempfile::tempdir;
     use ndarray::{Array2, Ix2, IxDyn, ShapeBuilder};
@@ -405,27 +408,54 @@ pub mod tests {
 
     #[test]
     fn test_write_3d_rgb() {
-        let mut data = Array::from_elem((10, 10, 8), [255u8, 255u8, 255u8]);
-        data[(5, 5, 2)] = [55, 55, 0];
-        data[(5, 5, 3)] = [55, 0, 55];
-        data[(5, 5, 4)] = [0, 55, 55];
+        let mut data = Array::from_elem((3, 3, 3), [0u8, 0u8, 0u8]);
+        data[(0, 0, 0)] = [55, 55, 0];
+        data[(0, 0, 1)] = [55, 0, 55];
+        data[(0, 1, 0)] = [0, 55, 55];
 
-        let path = get_temporary_path("rgb.nii.gz");
-        write_rgb_nifti(path, &data, None).unwrap();
-        // TODO Don't just test if the writing compiles and runs, we also need to read it back
+        let path = get_temporary_path("rgb.nii");
+        write_rgb_nifti(&path, &data, None).unwrap();
+
+        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // image to the bytes of the prepared 3D RGB image in ressources/rgb/.
+        let mut rgb_bytes = vec![];
+        let _ = File::open(path)
+            .unwrap()
+            .read_to_end(&mut rgb_bytes)
+            .unwrap();
+        let mut gt_bytes = vec![];
+        let _ = File::open("resources/rgb/3D.nii")
+            .unwrap()
+            .read_to_end(&mut gt_bytes)
+            .unwrap();
+        assert_eq!(rgb_bytes, gt_bytes);
     }
 
     #[test]
     fn test_write_4d_rgb() {
-        let mut data = Array::from_elem((10, 10, 10, 2), [255u8, 255u8, 255u8]);
-        for i in 0..2 {
-            data[(5, 5, 2, i)] = [55, 55, 0];
-            data[(5, 5, 3, i)] = [55, 0, 55];
-            data[(5, 5, 4, i)] = [0, 55, 55];
-        }
+        let mut data = Array::from_elem((3, 3, 3, 2), [0u8, 0u8, 0u8]);
+        data[(0, 0, 0, 0)] = [55, 55, 0];
+        data[(0, 0, 1, 0)] = [55, 0, 55];
+        data[(0, 1, 0, 0)] = [0, 55, 55];
+        data[(0, 0, 0, 1)] = [55, 55, 0];
+        data[(0, 1, 0, 1)] = [55, 0, 55];
+        data[(1, 0, 0, 1)] = [0, 55, 55];
 
-        let path = get_temporary_path("rgb.nii.gz");
-        write_rgb_nifti(path, &data, None).unwrap();
-        // TODO Don't just test if the writing compiles and runs, we also need to read it back
+        let path = get_temporary_path("rgb.nii");
+        write_rgb_nifti(&path, &data, None).unwrap();
+
+        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
+        let mut rgb_bytes = vec![];
+        let _ = File::open(path)
+            .unwrap()
+            .read_to_end(&mut rgb_bytes)
+            .unwrap();
+        let mut gt_bytes = vec![];
+        let _ = File::open("resources/rgb/4D.nii")
+            .unwrap()
+            .read_to_end(&mut gt_bytes)
+            .unwrap();
+        assert_eq!(rgb_bytes, gt_bytes);
     }
 }
