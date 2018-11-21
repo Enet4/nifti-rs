@@ -12,7 +12,10 @@ use ndarray::{Array, ArrayBase, ArrayView, Axis, Data, Dimension, RemoveAxis, Sc
 use num_traits::FromPrimitive;
 use safe_transmute::{guarded_transmute_to_bytes_pod_many, PodTransmutable};
 
-use {util::is_gz_file, volume::element::DataElement, NiftiHeader, NiftiType, Result};
+use {
+    header::MAGIC_CODE_NIP1, util::is_gz_file, volume::element::DataElement, NiftiHeader,
+    NiftiType, Result,
+};
 
 // TODO make this configurable. The Nifti standard does not specify a specific field for endianness,
 // but it is encoded in `dim[0]`. "if dim[0] is outside range 1..7, then swap".
@@ -77,10 +80,8 @@ where
     S: Data<Elem = [u8; 3]>,
     D: Dimension + RemoveAxis,
 {
-    // Copy most of the reference header, but the `bitpix`, `scl_slope` and `scl_inter` fields must
-    // have those exact values.
+    // The `scl_slope` and `scl_inter` fields are ignored on the Rgb24 type.
     let mut header = build_header(data, reference, NiftiType::Rgb24);
-    header.bitpix = 24;
     header.scl_slope = 1.0;
     header.scl_inter = 0.0;
 
@@ -132,8 +133,11 @@ where
 
     NiftiHeader {
         dim,
+        sizeof_hdr: 348,
         datatype: datatype as i16,
         bitpix: (datatype.size_of() * 8) as i16,
+        vox_offset: 352.0,
+        magic: *MAGIC_CODE_NIP1,
         // All other fields are copied from reference header
         ..reference
     }
@@ -277,9 +281,9 @@ pub mod tests {
     use std::path::PathBuf;
 
     use self::tempfile::tempdir;
-    use ndarray::{Array, Array2, Ix2, IxDyn, ShapeBuilder};
+    use ndarray::{Array2, Ix2, IxDyn, ShapeBuilder};
 
-    use {header::MAGIC_CODE_NIP1, object::NiftiObject, InMemNiftiObject, IntoNdArray};
+    use {object::NiftiObject, InMemNiftiObject, IntoNdArray};
 
     fn get_temporary_path(ext: &str) -> PathBuf {
         let dir = tempdir().unwrap();
