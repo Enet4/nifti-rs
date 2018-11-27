@@ -187,17 +187,11 @@ pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
 /// Can panic if the given file path is not a valid path to a header file.
 /// If it doesn't panic in this case, the result might still not be correct.
 pub fn into_img_file_gz(mut path: PathBuf) -> PathBuf {
-    let gz = is_gz_file(&path);
-    let fname = path.file_name().unwrap().to_owned();
-    let fname = fname.to_string_lossy();
-    let mut fname = if gz {
-        fname[..fname.len() - ".hdr.gz".len()].to_owned()
-    } else {
-        fname[..fname.len() - ".hdr".len()].to_owned()
-    };
-    fname += ".img.gz";
-    path.set_file_name(fname);
-    path
+    if is_gz_file(&path) {
+        // Leave only the first extension (.hdr)
+        let _ = path.set_extension("");
+    }
+    path.with_extension("img.gz")
 }
 
 #[cfg(test)]
