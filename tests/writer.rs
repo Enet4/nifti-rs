@@ -14,7 +14,7 @@ mod tests {
         path::{Path, PathBuf},
     };
 
-    use ndarray::{Array, Array2, Axis, Ix2, IxDyn, ShapeBuilder};
+    use ndarray::{Array, Array2, Axis, Dimension, IxDyn, ShapeBuilder};
     use tempfile::tempdir;
 
     use nifti::{
@@ -50,14 +50,15 @@ mod tests {
         }
     }
 
-    fn read_2d_image<P>(path: P) -> Array2<f32>
+    fn read_as_ndarray<P, D>(path: P) -> Array<f32, D>
     where
         P: AsRef<Path>,
+        D: Dimension,
     {
         let nifti_object = InMemNiftiObject::from_file(path).expect("Nifti file is unreadable.");
         let volume = nifti_object.into_volume();
         let dyn_data = volume.into_ndarray().unwrap();
-        dyn_data.into_dimensionality::<Ix2>().unwrap()
+        dyn_data.into_dimensionality::<D>().unwrap()
     }
 
     fn test_write_read(arr: &Array<f32, IxDyn>, path: &str) {
@@ -70,7 +71,7 @@ mod tests {
         let header = generate_nifti_header(dim, 1.0, 0.0, 16);
         write_nifti(&path, &arr, Some(&header)).unwrap();
 
-        let read_nifti = read_2d_image(path);
+        let read_nifti: Array2<f32> = read_as_ndarray(path);
         assert!(read_nifti.all_close(&arr, 1e-10));
     }
 
@@ -87,7 +88,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fortran_writing() {
+    fn fortran_writing() {
         // Test .nii
         let arr = f_order_array();
         test_write_read(&arr, "test.nii");
@@ -104,7 +105,7 @@ mod tests {
     }
 
     #[test]
-    fn test_c_writing() {
+    fn c_writing() {
         // Test .nii
         let arr = c_order_array();
         test_write_read(&arr, "test.nii");
@@ -123,7 +124,7 @@ mod tests {
     }
 
     #[test]
-    fn test_header_slope_inter() {
+    fn header_slope_inter() {
         let arr = f_order_array();
         let slope = 2.2;
         let inter = 101.1;
@@ -138,12 +139,12 @@ mod tests {
         let transformed_data = arr.mul(slope).add(inter);
         write_nifti(&path, &transformed_data, Some(&header)).unwrap();
 
-        let read_nifti = read_2d_image(path);
+        let read_nifti: Array2<f32> = read_as_ndarray(path);
         assert!(read_nifti.all_close(&transformed_data, 1e-10));
     }
 
     #[test]
-    fn test_write_3d_rgb() {
+    fn write_3d_rgb() {
         let mut data = Array::from_elem((3, 3, 3), [0u8, 0u8, 0u8]);
         data[(0, 0, 0)] = [55, 55, 0];
         data[(0, 0, 1)] = [55, 0, 55];
@@ -168,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    fn test_write_4d_rgb() {
+    fn write_4d_rgb() {
         let mut data = Array::from_elem((3, 3, 3, 2), [0u8, 0u8, 0u8]);
         data[(0, 0, 0, 0)] = [55, 55, 0];
         data[(0, 0, 1, 0)] = [55, 0, 55];
