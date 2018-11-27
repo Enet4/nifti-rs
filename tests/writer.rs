@@ -144,6 +144,20 @@ mod tests {
     }
 
     #[test]
+    fn write_hdr_standard() {
+        let mut data = Array::zeros((10, 11, 12));
+        data[(5, 0, 0)] = 1.0;
+        data[(6, 0, 0)] = 2.0;
+
+        for fname in &["3d.hdr", "3d.hdr.gz"] {
+            let path = get_temporary_path(fname);
+            write_nifti(&path, &data, None).unwrap();
+            let data_read = read_as_ndarray(path);
+            assert_eq!(data, data_read);
+        }
+    }
+
+    #[test]
     fn write_3d_rgb() {
         let mut data = Array::from_elem((3, 3, 3), [0u8, 0u8, 0u8]);
         data[(0, 0, 0)] = [55, 55, 0];
