@@ -1,11 +1,11 @@
 //! Utility functions to write nifti images.
 
 use std::fs::File;
-use std::io::BufWriter;
+use std::io::{BufWriter, Write};
 use std::ops::{Div, Sub};
 use std::path::{Path, PathBuf};
 
-use byteorder::{LittleEndian, WriteBytesExt};
+use byteordered::ByteOrdered;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use ndarray::{ArrayBase, ArrayView, Axis, Data, Dimension, RemoveAxis, ScalarOperand};
@@ -18,10 +18,6 @@ use {
     volume::element::DataElement,
     NiftiHeader, NiftiType, Result,
 };
-
-// TODO make this configurable. The Nifti standard does not specify a specific field for endianness,
-// but it is encoded in `dim[0]`. "if dim[0] is outside range 1..7, then swap".
-type B = LittleEndian;
 
 /// Write a nifti file (.nii or .nii.gz) in Little Endian.
 ///
@@ -210,45 +206,49 @@ where
 
 fn write_header<W>(writer: &mut W, header: &NiftiHeader) -> Result<()>
 where
-    W: WriteBytesExt,
+    W: Write,
 {
-    writer.write_i32::<B>(header.sizeof_hdr)?;
+    // TODO make writing support other byte orders. The Nifti standard does not
+    // specify a specific field for endianness, but we should be writing in
+    // accordance to the value of `NiftiHeader::endianness`.
+    let mut writer = ByteOrdered::le(writer);
+    writer.write_i32(header.sizeof_hdr)?;
     writer.write_all(&header.data_type)?;
     writer.write_all(&header.db_name)?;
-    writer.write_i32::<B>(header.extents)?;
-    writer.write_i16::<B>(header.session_error)?;
+    writer.write_i32(header.extents)?;
+    writer.write_i16(header.session_error)?;
     writer.write_u8(header.regular)?;
     writer.write_u8(header.dim_info)?;
     for s in &header.dim {
-        writer.write_u16::<B>(*s)?;
+        writer.write_u16(*s)?;
     }
-    writer.write_f32::<B>(header.intent_p1)?;
-    writer.write_f32::<B>(header.intent_p2)?;
-    writer.write_f32::<B>(header.intent_p3)?;
-    writer.write_i16::<B>(header.intent_code)?;
-    writer.write_i16::<B>(header.datatype)?;
-    writer.write_i16::<B>(header.bitpix)?;
-    writer.write_i16::<B>(header.slice_start)?;
+    writer.write_f32(header.intent_p1)?;
+    writer.write_f32(header.intent_p2)?;
+    writer.write_f32(header.intent_p3)?;
+    writer.write_i16(header.intent_code)?;
+    writer.write_i16(header.datatype)?;
+    writer.write_i16(header.bitpix)?;
+    writer.write_i16(header.slice_start)?;
     for f in &header.pixdim {
-        writer.write_f32::<B>(*f)?;
+        writer.write_f32(*f)?;
     }
-    writer.write_f32::<B>(header.vox_offset)?;
-    writer.write_f32::<B>(header.scl_slope)?;
-    writer.write_f32::<B>(header.scl_inter)?;
-    writer.write_i16::<B>(header.slice_end)?;
+    writer.write_f32(header.vox_offset)?;
+    writer.write_f32(header.scl_slope)?;
+    writer.write_f32(header.scl_inter)?;
+    writer.write_i16(header.slice_end)?;
     writer.write_u8(header.slice_code)?;
     writer.write_u8(header.xyzt_units)?;
-    writer.write_f32::<B>(header.cal_max)?;
-    writer.write_f32::<B>(header.cal_min)?;
-    writer.write_f32::<B>(header.slice_duration)?;
-    writer.write_f32::<B>(header.toffset)?;
-    writer.write_i32::<B>(header.glmax)?;
-    writer.write_i32::<B>(header.glmin)?;
+    writer.write_f32(header.cal_max)?;
+    writer.write_f32(header.cal_min)?;
+    writer.write_f32(header.slice_duration)?;
+    writer.write_f32(header.toffset)?;
+    writer.write_i32(header.glmax)?;
+    writer.write_i32(header.glmin)?;
 
     writer.write_all(&header.descrip)?;
     writer.write_all(&header.aux_file)?;
-    writer.write_i16::<B>(header.qform_code)?;
-    writer.write_i16::<B>(header.sform_code)?;
+    writer.write_i16(header.qform_code)?;
+    writer.write_i16(header.sform_code)?;
     for f in &[
         header.quatern_b,
         header.quatern_c,
@@ -257,7 +257,7 @@ where
         header.quatern_y,
         header.quatern_z,
     ] {
-        writer.write_f32::<B>(*f)?;
+        writer.write_f32(*f)?;
     }
     for f in header
         .srow_x
@@ -265,14 +265,14 @@ where
         .chain(&header.srow_y)
         .chain(&header.srow_z)
     {
-        writer.write_f32::<B>(*f)?;
+        writer.write_f32(*f)?;
     }
     writer.write_all(&header.intent_name)?;
     writer.write_all(&header.magic)?;
 
     // Empty 4 bytes after the header
     // TODO Support writing extension data.
-    writer.write_u32::<B>(0)?;
+    writer.write_u32(0)?;
 
     Ok(())
 }
@@ -289,7 +289,7 @@ where
     T: ScalarOperand,
     T: Sub<Output = T>,
     D: Dimension + RemoveAxis,
-    W: WriteBytesExt,
+    W: Write,
 {
     // `1.0x + 0.0` would give the same results, but we avoid a lot of divisions
     let slope = if header.scl_slope == 0.0 {
@@ -316,7 +316,7 @@ where
     S: Data<Elem = A>,
     A: Clone + PodTransmutable,
     D: Dimension + RemoveAxis,
-    W: WriteBytesExt,
+    W: Write,
 {
     let mut iter = data.axis_iter(Axis(0));
     if let Some(arr_data) = iter.next() {
@@ -336,7 +336,7 @@ where
     S: Data<Elem = A>,
     A: Clone + PodTransmutable,
     D: Dimension,
-    W: WriteBytesExt,
+    W: Write,
 {
     let len = data.len();
     let arr_data = data.into_shape(len).unwrap();

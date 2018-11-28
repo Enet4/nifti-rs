@@ -19,7 +19,7 @@ fn minimal_nii_gz() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"n+1\0",
-        endianness: Endianness::BE,
+        endianness: Endianness::Big,
         ..Default::default()
     };
 
@@ -43,7 +43,7 @@ fn minimal_nii() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"n+1\0",
-        endianness: Endianness::BE,
+        endianness: Endianness::Big,
         ..Default::default()
     };
 
@@ -67,7 +67,7 @@ fn minimal_by_hdr() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"ni1\0",
-        endianness: Endianness::BE,
+        endianness: Endianness::Big,
         ..Default::default()
     };
 
@@ -91,7 +91,7 @@ fn minimal_by_hdr_and_img_gz() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"ni1\0",
-        endianness: Endianness::BE,
+        endianness: Endianness::Big,
         ..Default::default()
     };
 
@@ -116,7 +116,7 @@ fn minimal_by_hdr_gz() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"ni1\0",
-        endianness: Endianness::BE,
+        endianness: Endianness::Big,
         ..Default::default()
     };
 
@@ -140,7 +140,7 @@ fn minimal_by_pair() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"ni1\0",
-        endianness: Endianness::BE,
+        endianness: Endianness::Big,
         ..Default::default()
     };
 
@@ -169,7 +169,7 @@ fn f32_nii_gz() {
         srow_z: [0., 0., 1., 0.],
         sform_code: 2,
         magic: *b"n+1\0",
-        endianness: Endianness::LE,
+        endianness: Endianness::Little,
         ..Default::default()
     };
 

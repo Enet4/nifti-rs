@@ -27,7 +27,7 @@ fn minimal_img_gz() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"ni1\0",
-        endianness: Endianness::BE,
+        endianness: Endianness::Big,
         ..Default::default()
     };
 
@@ -74,7 +74,7 @@ mod ndarray_volumes {
             scl_slope: 0.,
             scl_inter: 0.,
             magic: *b"ni1\0",
-            endianness: Endianness::BE,
+            endianness: Endianness::Big,
             ..Default::default()
         };
 
@@ -112,7 +112,7 @@ mod ndarray_volumes {
             scl_slope: 0.,
             scl_inter: 0.,
             magic: *b"ni1\0",
-            endianness: Endianness::BE,
+            endianness: Endianness::Big,
             ..Default::default()
         };
 

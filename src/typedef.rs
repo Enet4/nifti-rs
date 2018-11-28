@@ -8,7 +8,7 @@ use volume::element::{DataElement, LinearTransform};
 use error::{NiftiError, Result};
 use std::io::Read;
 use std::ops::{Add, Mul};
-use util::Endianness;
+use byteordered::{Endian, Endianness};
 use num_traits::AsPrimitive;
 
 /// Data type for representing a NIFTI value type in a volume.

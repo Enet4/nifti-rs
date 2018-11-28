@@ -53,7 +53,7 @@
 #[macro_use] extern crate derive_builder;
 #[cfg(feature = "ndarray_volumes")] extern crate ndarray;
 
-extern crate byteorder;
+extern crate byteordered;
 extern crate flate2;
 extern crate num_traits;
 extern crate safe_transmute;
@@ -75,4 +75,4 @@ pub use volume::{NiftiVolume, InMemNiftiVolume, Sliceable};
 pub use volume::element::DataElement;
 #[cfg(feature = "ndarray_volumes")] pub use volume::ndarray::IntoNdArray;
 pub use typedef::{NiftiType, Unit, Intent, XForm, SliceOrder};
-pub use util::Endianness;
+pub use byteordered::Endianness;

@@ -1,25 +1,25 @@
 //! Module holding an in-memory implementation of a NIfTI volume.
 
-use super::NiftiVolume;
 use super::util::coords_to_index;
-use std::io::{BufReader, Read};
-use std::fs::File;
-use std::path::Path;
-use std::ops::{Add, Mul};
-use header::NiftiHeader;
-use extension::{Extender, ExtensionSequence};
+use super::NiftiVolume;
+use byteordered::{ByteOrdered, Endianness};
 use error::{NiftiError, Result};
-use volume::element::DataElement;
-use util::{Endianness, nb_bytes_for_data};
-use byteorder::{BigEndian, LittleEndian};
+use extension::{Extender, ExtensionSequence};
 use flate2::bufread::GzDecoder;
-use typedef::NiftiType;
+use header::NiftiHeader;
 use num_traits::{AsPrimitive, Num};
+use std::fs::File;
+use std::io::{BufReader, Read};
+use std::ops::{Add, Mul};
+use std::path::Path;
+use typedef::NiftiType;
+use util::nb_bytes_for_data;
+use volume::element::DataElement;
 
 #[cfg(feature = "ndarray_volumes")]
-use volume::ndarray::IntoNdArray;
-#[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
+#[cfg(feature = "ndarray_volumes")]
+use volume::ndarray::IntoNdArray;
 
 /// A data type for a NIFTI-1 volume contained in memory. Objects of this type
 /// contain raw image data, which is converted automatically when using reading
@@ -56,7 +56,7 @@ impl InMemNiftiVolume {
             scl_slope: header.scl_slope,
             scl_inter: header.scl_inter,
             raw_data,
-            endianness: header.endianness
+            endianness: header.endianness,
         })
     }
 
@@ -64,10 +64,7 @@ impl InMemNiftiVolume {
     /// of the volume's data must be known in advance. It it also expected that the
     /// following bytes represent the first voxels of the volume (and not part of the
     /// extensions).
-    pub fn from_stream<R: Read>(
-        mut source: R,
-        header: &NiftiHeader,
-    ) -> Result<Self> {
+    pub fn from_stream<R: Read>(mut source: R, header: &NiftiHeader) -> Result<Self> {
         let mut raw_data = vec![0u8; nb_bytes_for_data(header)];
         source.read_exact(&mut raw_data)?;
 
@@ -97,14 +94,10 @@ impl InMemNiftiVolume {
         let len = header.vox_offset as usize;
         let len = if len < 352 { 0 } else { len - 352 };
 
-        let ext = match header.endianness {
-            Endianness::LE => {
-                ExtensionSequence::from_stream::<LittleEndian, _>(extender, &mut source, len)
-            }
-            Endianness::BE => {
-                ExtensionSequence::from_stream::<BigEndian, _>(extender, &mut source, len)
-            }
-        }?;
+        let ext = {
+            let source = ByteOrdered::runtime(&mut source, header.endianness);
+            ExtensionSequence::from_stream::<_, _>(extender, source, len)?
+        };
 
         // fetch volume (rest of file)
         Ok((Self::from_stream(source, &header)?, ext))
@@ -113,11 +106,9 @@ impl InMemNiftiVolume {
     /// Read a NIFTI volume from an image file. NIFTI-1 volume files usually have the
     /// extension ".img" or ".img.gz". In the latter case, the file is automatically
     /// decoded as a Gzip stream.
-    pub fn from_file<P: AsRef<Path>>(
-        path: P,
-        header: &NiftiHeader,
-    ) -> Result<Self> {
-        let gz = path.as_ref()
+    pub fn from_file<P: AsRef<Path>>(path: P, header: &NiftiHeader) -> Result<Self> {
+        let gz = path
+            .as_ref()
             .extension()
             .map(|a| a.to_string_lossy() == "gz")
             .unwrap_or(false);
@@ -140,25 +131,25 @@ impl InMemNiftiVolume {
     where
         P: AsRef<Path>,
     {
-        let gz = path.as_ref()
+        let gz = path
+            .as_ref()
             .extension()
             .map(|a| a.to_string_lossy() == "gz")
             .unwrap_or(false);
         let stream = BufReader::new(File::open(path)?);
 
         if gz {
-            InMemNiftiVolume::from_stream_with_extensions(
-                GzDecoder::new(stream),
-                &header,
-                extender,
-            )
+            InMemNiftiVolume::from_stream_with_extensions(GzDecoder::new(stream), &header, extender)
         } else {
             InMemNiftiVolume::from_stream_with_extensions(stream, &header, extender)
         }
     }
 
     /// Retrieve the raw data, consuming the volume.
-    #[deprecated(since = "0.6.0", note = "naming was unconventional, please use `into_raw_data` instead")]
+    #[deprecated(
+        since = "0.6.0",
+        note = "naming was unconventional, please use `into_raw_data` instead"
+    )]
     pub fn to_raw_data(self) -> Vec<u8> {
         self.into_raw_data()
     }
@@ -214,21 +205,17 @@ impl InMemNiftiVolume {
     {
         let index = coords_to_index(coords, self.dim())?;
         let range = &self.raw_data[index * self.datatype.size_of()..];
-        self.datatype.read_primitive_value(
-            range,
-            self.endianness,
-            self.scl_slope,
-            self.scl_inter,
-        )
+        self.datatype
+            .read_primitive_value(range, self.endianness, self.scl_slope, self.scl_inter)
     }
 
     // Shortcut to avoid repeating the call for all types
     #[cfg(feature = "ndarray_volumes")]
     fn convert_bytes_and_cast_to<I, O>(self) -> Result<Array<O, IxDyn>>
-        where
-            I: DataElement,
-            I: AsPrimitive<O>,
-            O: DataElement,
+    where
+        I: DataElement,
+        I: AsPrimitive<O>,
+        O: DataElement,
     {
         use volume::element::LinearTransform;
 
@@ -236,10 +223,13 @@ impl InMemNiftiVolume {
 
         let data: Vec<_> = <I as DataElement>::from_raw_vec(self.raw_data, self.endianness)?;
         let mut data: Vec<O> = data.into_iter().map(AsPrimitive::as_).collect();
-        <O as DataElement>::Transform::linear_transform_many_inline(&mut data, self.scl_slope, self.scl_inter);
+        <O as DataElement>::Transform::linear_transform_many_inline(
+            &mut data,
+            self.scl_slope,
+            self.scl_inter,
+        );
 
-        Ok(Array::from_shape_vec(IxDyn(&dim).f(), data)
-            .expect("Inconsistent raw data size"))
+        Ok(Array::from_shape_vec(IxDyn(&dim).f(), data).expect("Inconsistent raw data size"))
     }
 }
 
@@ -388,9 +378,9 @@ impl NiftiVolume for InMemNiftiVolume {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use volume::Sliceable;
+    use byteordered::Endianness;
     use typedef::NiftiType;
-    use util::Endianness;
+    use volume::Sliceable;
 
     #[test]
     fn test_u8_inmem_volume() {
@@ -401,7 +391,7 @@ mod tests {
             scl_slope: 1.,
             scl_inter: -5.,
             raw_data: data,
-            endianness: Endianness::LE,
+            endianness: Endianness::Little,
         };
 
         let v = vol.get_f32(&[3, 1, 0]).unwrap();
@@ -425,7 +415,7 @@ mod tests {
             scl_slope: 1.,
             scl_inter: -5.,
             raw_data: data,
-            endianness: Endianness::LE,
+            endianness: Endianness::Little,
         };
 
         let slice = (&vol).get_slice(0, 3).unwrap();
@@ -463,7 +453,8 @@ mod tests {
         }
         assert_eq!(volume.dimensionality(), 3);
 
-        #[cfg(feature = "ndarray_volumes")] {
+        #[cfg(feature = "ndarray_volumes")]
+        {
             use ndarray::Ix3;
 
             let dyn_data = volume.into_ndarray::<f32>().unwrap();
