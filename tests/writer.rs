@@ -8,7 +8,7 @@ extern crate tempfile;
 #[cfg(feature = "ndarray_volumes")]
 mod tests {
     use std::{
-        fs::File,
+        fs::{self, File},
         io::Read,
         ops::{Add, Mul},
         path::{Path, PathBuf},
@@ -18,7 +18,7 @@ mod tests {
     use tempfile::tempdir;
 
     use nifti::{
-        header::MAGIC_CODE_NIP1,
+        header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
         object::NiftiObject,
         writer::{write_nifti, write_rgb_nifti},
         InMemNiftiObject, IntoNdArray, NiftiHeader, NiftiType,
@@ -155,6 +155,32 @@ mod tests {
             let data_read = read_as_ndarray(path);
             assert_eq!(data, data_read);
         }
+    }
+
+    #[test]
+    fn write_3d_rgb_hdr() {
+        let mut data = Array::from_elem((3, 3, 3), [0u8, 0u8, 0u8]);
+        data[(0, 0, 0)] = [55, 55, 0];
+        data[(0, 0, 1)] = [55, 0, 55];
+        data[(0, 1, 0)] = [0, 55, 55];
+
+        let header_path = get_temporary_path("3d.hdr");
+        let data_path = header_path.with_extension("img");
+        write_rgb_nifti(&header_path, &data, None).unwrap();
+
+        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // image to the bytes of the prepared 3D RGB image in ressources/rgb/. However, we need to
+        // set the bytes of vox_offset to 0.0 and of magic to MAGIC_CODE_NI1. The data bytes should
+        // be identical though.
+        let mut gt_bytes = fs::read("resources/rgb/3D.nii").unwrap();
+        for i in 110..114 {
+            gt_bytes[i] = 0;
+        }
+        for i in 0..4 {
+            gt_bytes[344 + i] = MAGIC_CODE_NI1[i];
+        }
+        assert_eq!(fs::read(header_path).unwrap(), &gt_bytes[..352]);
+        assert_eq!(fs::read(data_path).unwrap(), &gt_bytes[352..]);
     }
 
     #[test]
