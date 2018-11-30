@@ -8,8 +8,7 @@ extern crate tempfile;
 #[cfg(feature = "ndarray_volumes")]
 mod tests {
     use std::{
-        fs::{self, File},
-        io::Read,
+        fs,
         ops::{Add, Mul},
         path::{Path, PathBuf},
     };
@@ -195,17 +194,10 @@ mod tests {
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
         // image to the bytes of the prepared 3D RGB image in ressources/rgb/.
-        let mut rgb_bytes = vec![];
-        let _ = File::open(path)
-            .unwrap()
-            .read_to_end(&mut rgb_bytes)
-            .unwrap();
-        let mut gt_bytes = vec![];
-        let _ = File::open("resources/rgb/3D.nii")
-            .unwrap()
-            .read_to_end(&mut gt_bytes)
-            .unwrap();
-        assert_eq!(rgb_bytes, gt_bytes);
+        assert_eq!(
+            fs::read(path).unwrap(),
+            fs::read("resources/rgb/3D.nii").unwrap()
+        );
     }
 
     #[test]
@@ -223,16 +215,9 @@ mod tests {
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
         // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
-        let mut rgb_bytes = vec![];
-        let _ = File::open(path)
-            .unwrap()
-            .read_to_end(&mut rgb_bytes)
-            .unwrap();
-        let mut gt_bytes = vec![];
-        let _ = File::open("resources/rgb/4D.nii")
-            .unwrap()
-            .read_to_end(&mut gt_bytes)
-            .unwrap();
-        assert_eq!(rgb_bytes, gt_bytes);
+        assert_eq!(
+            fs::read(path).unwrap(),
+            fs::read("resources/rgb/4D.nii").unwrap()
+        );
     }
 }
