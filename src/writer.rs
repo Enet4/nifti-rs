@@ -13,7 +13,7 @@ use num_traits::FromPrimitive;
 use safe_transmute::{guarded_transmute_to_bytes_pod_many, PodTransmutable};
 
 use {
-    header::{MAGIC_CODE_NIP1, MAGIC_CODE_NI1},
+    header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
     util::{is_gz_file, is_hdr_file},
     volume::element::DataElement,
     NiftiHeader, NiftiType, Result,
@@ -55,7 +55,7 @@ where
     // Need the transpose for fortran ordering used in nifti file format.
     let data = data.t();
 
-    let header_file = File::create(&header_path)?;
+    let header_file = File::create(header_path)?;
     let mut header_writer = BufWriter::new(header_file);
     if header.vox_offset > 0.0 {
         if is_gz {
@@ -102,8 +102,10 @@ where
     S: Data<Elem = [u8; 3]>,
     D: Dimension + RemoveAxis,
 {
+    let compression_level = Compression::fast();
     let is_gz = is_gz_file(&header_path);
-    let (mut header, _) = prepare_header_and_paths(&header_path, data, reference, NiftiType::Rgb24);
+    let (mut header, data_path) =
+        prepare_header_and_paths(&header_path, data, reference, NiftiType::Rgb24);
 
     // The `scl_slope` and `scl_inter` fields are ignored on the Rgb24 type.
     header.scl_slope = 1.0;
@@ -112,17 +114,35 @@ where
     // Need the transpose for fortran used in nifti file format.
     let data = data.t();
 
-    let f = File::create(&header_path)?;
-    let mut writer = BufWriter::new(f);
-    if is_gz {
-        let mut e = GzEncoder::new(writer, Compression::fast());
-        write_header(&mut e, &header)?;
-        write_slices(&mut e, data)?;
-        let _ = e.finish()?; // Must use result
+    let header_file = File::create(header_path)?;
+    let mut header_writer = BufWriter::new(header_file);
+    if header.vox_offset > 0.0 {
+        if is_gz {
+            let mut e = GzEncoder::new(header_writer, compression_level);
+            write_header(&mut e, &header)?;
+            write_slices(&mut e, data)?;
+            let _ = e.finish()?;
+        } else {
+            write_header(&mut header_writer, &header)?;
+            write_slices(&mut header_writer, data)?;
+        }
     } else {
-        write_header(&mut writer, &header)?;
-        write_slices(&mut writer, data)?;
+        let data_file = File::create(&data_path)?;
+        let mut data_writer = BufWriter::new(data_file);
+        if is_gz {
+            let mut e = GzEncoder::new(header_writer, compression_level);
+            write_header(&mut e, &header)?;
+            let _ = e.finish()?;
+
+            let mut e = GzEncoder::new(data_writer, compression_level);
+            write_slices(&mut e, data)?;
+            let _ = e.finish()?;
+        } else {
+            write_header(&mut header_writer, &header)?;
+            write_slices(&mut data_writer, data)?;
+        }
     }
+
     Ok(())
 }
 
