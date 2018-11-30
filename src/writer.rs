@@ -32,7 +32,7 @@ type B = LittleEndian;
 /// In all cases, the `dim`, `datatype` and `bitpix` fields will depend only on `data`, not on the
 /// header. In other words, the `datatype` defined in `reference` will be ignored.
 pub fn write_nifti<P, A, S, D>(
-    path: P,
+    header_path: P,
     data: &ArrayBase<S, D>,
     reference: Option<&NiftiHeader>,
 ) -> Result<()>
@@ -49,9 +49,8 @@ where
     D: Dimension + RemoveAxis,
 {
     let compression_level = Compression::fast();
-    let is_gz = is_gz_file(&path);
-    let (header, header_path, data_path) =
-        prepare_header_and_paths(path, data, reference, A::DATA_TYPE);
+    let is_gz = is_gz_file(&header_path);
+    let (header, data_path) = prepare_header_and_paths(&header_path, data, reference, A::DATA_TYPE);
 
     // Need the transpose for fortran ordering used in nifti file format.
     let data = data.t();
@@ -94,7 +93,7 @@ where
 /// necessary to be recognized as a RGB image. `scl_slope` will be set to 1.0 and `scl_inter` to
 /// 0.0.  If `reference` is not given, a default `NiftiHeader` will be built and written.
 pub fn write_rgb_nifti<P, S, D>(
-    path: P,
+    header_path: P,
     data: &ArrayBase<S, D>,
     reference: Option<&NiftiHeader>,
 ) -> Result<()>
@@ -103,9 +102,8 @@ where
     S: Data<Elem = [u8; 3]>,
     D: Dimension + RemoveAxis,
 {
-    let is_gz = is_gz_file(&path);
-    let (mut header, header_path, _) =
-        prepare_header_and_paths(path, data, reference, NiftiType::Rgb24);
+    let is_gz = is_gz_file(&header_path);
+    let (mut header, _) = prepare_header_and_paths(&header_path, data, reference, NiftiType::Rgb24);
 
     // The `scl_slope` and `scl_inter` fields are ignored on the Rgb24 type.
     header.scl_slope = 1.0;
@@ -129,11 +127,11 @@ where
 }
 
 fn prepare_header_and_paths<P, T, D>(
-    path: P,
+    header_path: P,
     data: &ArrayBase<T, D>,
     reference: Option<&NiftiHeader>,
     datatype: NiftiType,
-) -> (NiftiHeader, P, PathBuf)
+) -> (NiftiHeader, PathBuf)
 where
     P: AsRef<Path>,
     T: Data,
@@ -170,22 +168,22 @@ where
         ..reference
     };
 
-    let mut path_buf = PathBuf::from(path.as_ref());
-    let (header_path, data_path) = if is_hdr_file(&path) {
+    let mut path_buf = PathBuf::from(header_path.as_ref());
+    let data_path = if is_hdr_file(&header_path) {
         header.vox_offset = 0.0;
         header.magic = *MAGIC_CODE_NI1;
-        let data_path = if is_gz_file(&path) {
+        let data_path = if is_gz_file(&header_path) {
             let _ = path_buf.set_extension("");
             path_buf.with_extension("img.gz")
         } else {
             path_buf.with_extension("img")
         };
-        (path, data_path)
+        data_path
     } else {
-        (path, path_buf)
+        path_buf
     };
 
-    (header, header_path, data_path)
+    (header, data_path)
 }
 
 fn write_header<W>(writer: &mut W, header: &NiftiHeader) -> Result<()>
