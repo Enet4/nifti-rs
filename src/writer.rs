@@ -56,29 +56,30 @@ where
     let data = data.t();
 
     let header_file = File::create(header_path)?;
-    let mut header_writer = BufWriter::new(header_file);
     if header.vox_offset > 0.0 {
         if is_gz {
-            let mut e = GzEncoder::new(header_writer, compression_level);
+            let mut e = GzEncoder::new(header_file, compression_level);
             write_header(&mut e, &header)?;
             write_data(&mut e, &header, data)?;
             let _ = e.finish()?;
         } else {
+            let mut header_writer = BufWriter::new(header_file);
             write_header(&mut header_writer, &header)?;
             write_data(&mut header_writer, &header, data)?;
         }
     } else {
         let data_file = File::create(&data_path)?;
-        let mut data_writer = BufWriter::new(data_file);
         if is_gz {
-            let mut e = GzEncoder::new(header_writer, compression_level);
+            let mut e = GzEncoder::new(header_file, compression_level);
             write_header(&mut e, &header)?;
             let _ = e.finish()?;
 
-            let mut e = GzEncoder::new(data_writer, compression_level);
+            let mut e = GzEncoder::new(data_file, compression_level);
             write_data(&mut e, &header, data)?;
             let _ = e.finish()?;
         } else {
+            let mut header_writer = BufWriter::new(header_file);
+            let mut data_writer = BufWriter::new(data_file);
             write_header(&mut header_writer, &header)?;
             write_data(&mut data_writer, &header, data)?;
         }
@@ -115,29 +116,30 @@ where
     let data = data.t();
 
     let header_file = File::create(header_path)?;
-    let mut header_writer = BufWriter::new(header_file);
     if header.vox_offset > 0.0 {
         if is_gz {
-            let mut e = GzEncoder::new(header_writer, compression_level);
+            let mut e = GzEncoder::new(header_file, compression_level);
             write_header(&mut e, &header)?;
             write_slices(&mut e, data)?;
             let _ = e.finish()?;
         } else {
+            let mut header_writer = BufWriter::new(header_file);
             write_header(&mut header_writer, &header)?;
             write_slices(&mut header_writer, data)?;
         }
     } else {
         let data_file = File::create(&data_path)?;
-        let mut data_writer = BufWriter::new(data_file);
         if is_gz {
-            let mut e = GzEncoder::new(header_writer, compression_level);
+            let mut e = GzEncoder::new(header_file, compression_level);
             write_header(&mut e, &header)?;
             let _ = e.finish()?;
 
-            let mut e = GzEncoder::new(data_writer, compression_level);
+            let mut e = GzEncoder::new(data_file, compression_level);
             write_slices(&mut e, data)?;
             let _ = e.finish()?;
         } else {
+            let mut header_writer = BufWriter::new(header_file);
+            let mut data_writer = BufWriter::new(data_file);
             write_header(&mut header_writer, &header)?;
             write_slices(&mut data_writer, data)?;
         }
