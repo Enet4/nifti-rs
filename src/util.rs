@@ -173,7 +173,24 @@ pub fn nb_bytes_for_data(header: &NiftiHeader) -> usize {
     resolution * header.bitpix as usize / 8
 }
 
-pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
+#[cfg(feature = "ndarray_volumes")]
+pub fn is_hdr_file<P>(path: P) -> bool
+where
+    P: AsRef<Path>,
+{
+    path.as_ref()
+        .file_name()
+        .map(|a| {
+            let s = a.to_string_lossy();
+            s.ends_with(".hdr") || s.ends_with(".hdr.gz")
+        })
+        .unwrap_or(false)
+}
+
+pub fn is_gz_file<P>(path: P) -> bool
+where
+    P: AsRef<Path>,
+{
     path.as_ref()
         .file_name()
         .map(|a| a.to_string_lossy().ends_with(".gz"))
@@ -187,17 +204,11 @@ pub fn is_gz_file<P: AsRef<Path>>(path: P) -> bool {
 /// Can panic if the given file path is not a valid path to a header file.
 /// If it doesn't panic in this case, the result might still not be correct.
 pub fn into_img_file_gz(mut path: PathBuf) -> PathBuf {
-    let gz = is_gz_file(&path);
-    let fname = path.file_name().unwrap().to_owned();
-    let fname = fname.to_string_lossy();
-    let mut fname = if gz {
-        fname[..fname.len() - ".hdr.gz".len()].to_owned()
-    } else {
-        fname[..fname.len() - ".hdr".len()].to_owned()
-    };
-    fname += ".img.gz";
-    path.set_file_name(fname);
-    path
+    if is_gz_file(&path) {
+        // Leave only the first extension (.hdr)
+        let _ = path.set_extension("");
+    }
+    path.with_extension("img.gz")
 }
 
 #[cfg(test)]
@@ -205,6 +216,8 @@ mod tests {
     use super::Endianness;
     use super::into_img_file_gz;
     use super::is_gz_file;
+    #[cfg(feature = "ndarray_volumes")]
+    use super::is_hdr_file;
     use std::path::PathBuf;
 
     #[test]
@@ -238,20 +251,30 @@ mod tests {
         assert!(is_gz_file("1.2.3.nii.gz"));
         assert!(!is_gz_file("não_é_gz.hdr"));
 
-        assert!(!is_gz_file("/path/to/image.hdr"));
+        let path = "/path/to/image.hdr";
+        #[cfg(feature = "ndarray_volumes")]
+        assert!(is_hdr_file(path));
+        assert!(!is_gz_file(path));
         assert_eq!(
-            into_img_file_gz(PathBuf::from("/path/to/image.hdr")),
+            into_img_file_gz(PathBuf::from(path)),
             PathBuf::from("/path/to/image.img.gz")
         );
 
-        assert!(is_gz_file("/path/to/image.hdr.gz"));
+        let path = "/path/to/image.hdr.gz";
+        #[cfg(feature = "ndarray_volumes")]
+        assert!(is_hdr_file(path));
+        assert!(is_gz_file(path));
         assert_eq!(
-            into_img_file_gz(PathBuf::from("/path/to/image.hdr.gz")),
+            into_img_file_gz(PathBuf::from(path)),
             PathBuf::from("/path/to/image.img.gz")
         );
 
+        let path = "my_ct_scan.1.hdr.gz";
+        #[cfg(feature = "ndarray_volumes")]
+        assert!(is_hdr_file(path));
+        assert!(is_gz_file(path));
         assert_eq!(
-            into_img_file_gz(PathBuf::from("my_ct_scan.1.hdr.gz")),
+            into_img_file_gz(PathBuf::from(path)),
             PathBuf::from("my_ct_scan.1.img.gz")
         );
 
