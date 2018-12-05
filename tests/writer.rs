@@ -13,7 +13,7 @@ mod tests {
         path::{Path, PathBuf},
     };
 
-    use ndarray::{Array, Array2, Axis, Dimension, IxDyn, ShapeBuilder};
+    use ndarray::{Array, Array2, Axis, Dimension, IxDyn, ShapeBuilder, s};
     use tempfile::tempdir;
 
     use nifti::{
@@ -154,6 +154,20 @@ mod tests {
             let data_read = read_as_ndarray(path);
             assert_eq!(data, data_read);
         }
+    }
+
+    #[test]
+    fn write_non_contiguous() {
+        let mut data = Array::from_elem((3, 4, 11), 1.5);
+        data.slice_mut(s![.., .., ..;2]).fill(42.0);
+
+        let path = get_temporary_path("non_contiguous_0.nii.gz");
+        write_nifti(&path, &data.slice(s![.., .., ..;2]), None).unwrap();
+        assert_eq!(read_as_ndarray(path), Array::from_elem((3, 4, 6), 42.0));
+
+        let path = get_temporary_path("non_contiguous_1.nii.gz");
+        write_nifti(&path, &data.slice(s![.., .., 1..;2]), None).unwrap();
+        assert_eq!(read_as_ndarray(path), Array::from_elem((3, 4, 5), 1.5));
     }
 
     #[test]
