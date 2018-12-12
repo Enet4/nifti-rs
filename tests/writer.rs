@@ -172,6 +172,45 @@ mod tests {
     }
 
     #[test]
+    fn write_wrong_description() {
+        let dim = [3, 3, 4, 5, 1, 1, 1, 1];
+        let mut header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
+        let path = get_temporary_path("error_description.nii");
+        let data = Array::from_elem((3, 4, 5), 1.5);
+
+        // set_description
+        header.set_description(&"ひらがな".as_bytes().to_vec()).unwrap();
+        write_nifti(&path, &data, Some(&header)).unwrap();
+        let (new_header, new_data) = read_as_ndarray(&path);
+        assert_eq!(new_header, header);
+        assert_eq!(new_data, data);
+
+        // set_description_str
+        header.set_description_str(&"русский").unwrap();
+        write_nifti(&path, &data, Some(&header)).unwrap();
+        let (new_header, new_data) = read_as_ndarray(&path);
+        assert_eq!(new_header, header);
+        assert_eq!(new_data, data);
+    }
+
+    #[should_panic]
+    #[test]
+    fn write_set_description_panic() {
+        let dim = [3, 3, 4, 5, 1, 1, 1, 1];
+        let mut header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
+        header.set_description(&(0..81).into_iter().collect()).unwrap();
+    }
+
+    #[should_panic]
+    #[test]
+    fn write_set_description_str_panic() {
+        let dim = [3, 3, 4, 5, 1, 1, 1, 1];
+        let mut header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
+        let description: String = (0..81).into_iter().map(|_| 'a').collect();
+        header.set_description_str(&description).unwrap();
+    }
+
+    #[test]
     fn write_3d_rgb_hdr() {
         let mut data = Array::from_elem((3, 3, 3), [0u8, 0u8, 0u8]);
         data[(0, 0, 0)] = [55, 55, 0];

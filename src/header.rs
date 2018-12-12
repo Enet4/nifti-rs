@@ -278,6 +278,27 @@ impl NiftiHeader {
         FromPrimitive::from_i16(self.sform_code)
             .ok_or_else(|| NiftiError::InvalidCode("sform", self.sform_code as i16))
     }
+
+    /// Safely set the `descrip` field using a buffer.
+    pub fn set_description(&mut self, description: &Vec<u8>) -> Result<()> {
+        let len = description.len();
+        if len < 80 {
+            let mut descrip = vec![0; 80];
+            descrip[..len].copy_from_slice(&description);
+            self.descrip = descrip;
+            Ok(())
+        } else if len == 80 {
+            self.descrip = description.clone();
+            Ok(())
+        } else {
+            Err(NiftiError::IncorrectDescriptionLength)
+        }
+    }
+
+    /// Safely set the `descrip` field using a  &str.
+    pub fn set_description_str(&mut self, description: &str) -> Result<()> {
+        self.set_description(&description.as_bytes().to_vec())
+    }
 }
 
 fn parse_header_1<S: Read>(mut input: S) -> Result<NiftiHeader> {
