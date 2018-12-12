@@ -36,12 +36,12 @@ mod tests {
         dim: [u16; 8],
         scl_slope: f32,
         scl_inter: f32,
-        datatype: i16,
+        datatype: NiftiType,
     ) -> NiftiHeader {
         NiftiHeader {
             dim,
-            datatype,
-            bitpix: (NiftiType::Float32.size_of() * 8) as i16,
+            datatype: datatype as i16,
+            bitpix: (datatype.size_of() * 8) as i16,
             magic: *MAGIC_CODE_NIP1,
             scl_slope,
             scl_inter,
@@ -49,15 +49,16 @@ mod tests {
         }
     }
 
-    fn read_as_ndarray<P, D>(path: P) -> Array<f32, D>
+    fn read_as_ndarray<P, D>(path: P) -> (NiftiHeader, Array<f32, D>)
     where
         P: AsRef<Path>,
         D: Dimension,
     {
         let nifti_object = InMemNiftiObject::from_file(path).expect("Nifti file is unreadable.");
+        let header = nifti_object.header().clone();
         let volume = nifti_object.into_volume();
         let dyn_data = volume.into_ndarray().unwrap();
-        dyn_data.into_dimensionality::<D>().unwrap()
+        (header, dyn_data.into_dimensionality::<D>().unwrap())
     }
 
     fn test_write_read(arr: &Array<f32, IxDyn>, path: &str) {
@@ -67,10 +68,10 @@ mod tests {
         for (i, s) in arr.shape().iter().enumerate() {
             dim[i + 1] = *s as u16;
         }
-        let header = generate_nifti_header(dim, 1.0, 0.0, 16);
+        let header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
         write_nifti(&path, &arr, Some(&header)).unwrap();
 
-        let read_nifti: Array2<f32> = read_as_ndarray(path);
+        let read_nifti: Array2<f32> = read_as_ndarray(path).1;
         assert!(read_nifti.all_close(&arr, 1e-10));
     }
 
@@ -134,11 +135,11 @@ mod tests {
         for (i, s) in arr.shape().iter().enumerate() {
             dim[i + 1] = *s as u16;
         }
-        let header = generate_nifti_header(dim, slope, inter, 16);
+        let header = generate_nifti_header(dim, slope, inter, NiftiType::Float32);
         let transformed_data = arr.mul(slope).add(inter);
         write_nifti(&path, &transformed_data, Some(&header)).unwrap();
 
-        let read_nifti: Array2<f32> = read_as_ndarray(path);
+        let read_nifti: Array2<f32> = read_as_ndarray(path).1;
         assert!(read_nifti.all_close(&transformed_data, 1e-10));
     }
 
@@ -151,7 +152,7 @@ mod tests {
         for fname in &["3d.hdr", "3d.hdr.gz"] {
             let path = get_temporary_path(fname);
             write_nifti(&path, &data, None).unwrap();
-            let data_read = read_as_ndarray(path);
+            let data_read = read_as_ndarray(path).1;
             assert_eq!(data, data_read);
         }
     }
@@ -163,11 +164,11 @@ mod tests {
 
         let path = get_temporary_path("non_contiguous_0.nii.gz");
         write_nifti(&path, &data.slice(s![.., .., ..;2]), None).unwrap();
-        assert_eq!(read_as_ndarray(path), Array::from_elem((3, 4, 6), 42.0));
+        assert_eq!(read_as_ndarray(path).1, Array::from_elem((3, 4, 6), 42.0));
 
         let path = get_temporary_path("non_contiguous_1.nii.gz");
         write_nifti(&path, &data.slice(s![.., .., 1..;2]), None).unwrap();
-        assert_eq!(read_as_ndarray(path), Array::from_elem((3, 4, 5), 1.5));
+        assert_eq!(read_as_ndarray(path).1, Array::from_elem((3, 4, 5), 1.5));
     }
 
     #[test]
