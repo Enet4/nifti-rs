@@ -50,7 +50,8 @@ where
 {
     let compression_level = Compression::fast();
     let is_gz = is_gz_file(&header_path);
-    let (header, data_path) = prepare_header_and_paths(&header_path, data, reference, A::DATA_TYPE);
+    let (header, data_path) =
+        prepare_header_and_paths(&header_path, data, reference, A::DATA_TYPE)?;
 
     // Need the transpose for fortran ordering used in nifti file format.
     let data = data.t();
@@ -106,7 +107,7 @@ where
     let compression_level = Compression::fast();
     let is_gz = is_gz_file(&header_path);
     let (mut header, data_path) =
-        prepare_header_and_paths(&header_path, data, reference, NiftiType::Rgb24);
+        prepare_header_and_paths(&header_path, data, reference, NiftiType::Rgb24)?;
 
     // The `scl_slope` and `scl_inter` fields are ignored on the Rgb24 type.
     header.scl_slope = 1.0;
@@ -153,7 +154,7 @@ fn prepare_header_and_paths<P, T, D>(
     data: &ArrayBase<T, D>,
     reference: Option<&NiftiHeader>,
     datatype: NiftiType,
-) -> (NiftiHeader, PathBuf)
+) -> Result<(NiftiHeader, PathBuf)>
 where
     P: AsRef<Path>,
     T: Data,
@@ -190,6 +191,12 @@ where
         ..reference
     };
 
+    // The only acceptable length is 80. If different, try to set it.
+    if header.descrip.len() != 80 {
+        let descrip = header.descrip.clone();
+        header.set_description(&descrip)?;
+    }
+
     let mut path_buf = PathBuf::from(header_path.as_ref());
     let data_path = if is_hdr_file(&header_path) {
         header.vox_offset = 0.0;
@@ -205,7 +212,7 @@ where
         path_buf
     };
 
-    (header, data_path)
+    Ok((header, data_path))
 }
 
 fn write_header<W>(writer: &mut W, header: &NiftiHeader) -> Result<()>
