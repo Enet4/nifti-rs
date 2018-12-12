@@ -13,7 +13,7 @@ mod tests {
         path::{Path, PathBuf},
     };
 
-    use ndarray::{Array, Array2, Axis, Dimension, IxDyn, ShapeBuilder, s};
+    use ndarray::{s, Array, Array2, Axis, Dimension, IxDyn, ShapeBuilder};
     use tempfile::tempdir;
 
     use nifti::{
@@ -189,7 +189,9 @@ mod tests {
         assert_eq!(new_data, data);
 
         // set_description
-        header.set_description(&"ひらがな".as_bytes().to_vec()).unwrap();
+        header
+            .set_description(&"ひらがな".as_bytes().to_vec())
+            .unwrap();
         write_nifti(&path, &data, Some(&header)).unwrap();
         let (new_header, new_data) = read_as_ndarray(&path);
         assert_eq!(new_header, header);
@@ -219,7 +221,9 @@ mod tests {
     fn write_set_description_panic() {
         let dim = [3, 3, 4, 5, 1, 1, 1, 1];
         let mut header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
-        header.set_description(&(0..81).into_iter().collect()).unwrap();
+        header
+            .set_description(&(0..81).into_iter().collect())
+            .unwrap();
     }
 
     #[should_panic]
