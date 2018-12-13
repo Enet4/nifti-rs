@@ -41,3 +41,6 @@ path = "examples/niftidump/main.rs"
 
 [features]
 ndarray_volumes = ["ndarray"]
+
+[package.metadata.docs.rs]
+features = ["ndarray_volumes"]
