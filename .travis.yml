@@ -1,16 +1,43 @@
-os:
-  - windows
-  - linux
-  - osx
 language: rust
+
+os: linux
+
 rust:
-  - stable
-  - beta
-  - nightly
-script: cargo test --all $FEATURES_FLAG
-env:
-  - FEATURES_FLAG=""
-  - FEATURES_FLAG="--features ndarray_volumes""
+ - stable
+ - beta
+ - nightly
+
 matrix:
+  include:
+    - rust: stable
+      env: CARGO_FEATURES="--features ndarray_volumes""
+    - rust: beta
+      env: CARGO_FEATURES="--features ndarray_volumes""
+    - rust: nightly
+      env: CARGO_FEATURES="--features ndarray_volumes""
+    - rust: stable
+      env: CARGO_FEATURES="--features ndarray_volumes"
+      os: windows
+    - rust: stable
+      env: CARGO_FEATURES="--features ndarray_volumes"
+      os: osx
+    - env: CROSS_TARGET=mips64-unknown-linux-gnuabi64 CARGO_FEATURES="--features ndarray_volumes"
+      rust: stable
+      services: docker
+      sudo: required
   allow_failures:
     - rust: nightly
+
+before_script:
+  - if [ ! -z "$CROSS_TARGET" ]; then
+      rustup target add $CROSS_TARGET;
+      cargo install cross --force;
+      export CARGO_CMD="cross";
+      export TARGET_PARAM="--target $CROSS_TARGET";
+    else
+      export CARGO_CMD=cargo;
+      export TARGET_PARAM="";
+    fi
+
+script:
+  - $CARGO_CMD test $TARGET_PARAM $CARGO_FEATURES
