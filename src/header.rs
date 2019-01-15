@@ -7,6 +7,7 @@ use flate2::bufread::GzDecoder;
 use num_traits::FromPrimitive;
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::ops::Deref;
 use std::path::Path;
 use typedef::*;
 use util::{is_gz_file, Endianness, OppositeNativeEndian};
@@ -277,6 +278,49 @@ impl NiftiHeader {
     pub fn sform(&self) -> Result<XForm> {
         FromPrimitive::from_i16(self.sform_code)
             .ok_or_else(|| NiftiError::InvalidCode("sform", self.sform_code as i16))
+    }
+
+    /// Ensure that the current `descrip` field is valid and is exactly equal to 80 bytes.
+    ///
+    /// Descriptions shorter than 80 bytes will be extended with trailing zeros.
+    pub fn validate_description(&mut self) -> Result<()> {
+        let len = self.descrip.len();
+        if len > 80 {
+            Err(NiftiError::IncorrectDescriptionLength(len))
+        } else {
+            if len < 80 {
+                self.descrip.extend((len..80).map(|_| 0));
+            }
+            Ok(())
+        }
+    }
+
+    /// Safely set the `descrip` field using a buffer.
+    pub fn set_description<D>(&mut self, description: D) -> Result<()>
+    where
+        D: Into<Vec<u8>>,
+        D: Deref<Target = [u8]>,
+    {
+        let len = description.len();
+        if len < 80 {
+            let mut descrip = vec![0; 80];
+            descrip[..len].copy_from_slice(&description);
+            self.descrip = descrip;
+            Ok(())
+        } else if len == 80 {
+            self.descrip = description.into();
+            Ok(())
+        } else {
+            Err(NiftiError::IncorrectDescriptionLength(len))
+        }
+    }
+
+    /// Safely set the `descrip` field using a  &str.
+    pub fn set_description_str<T>(&mut self, description: T) -> Result<()>
+    where
+        T: Into<String>,
+    {
+        self.set_description(description.into().as_bytes())
     }
 }
 

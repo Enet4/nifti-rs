@@ -51,6 +51,11 @@ quick_error! {
         IncompatibleLength {
             description("The buffer length and the header dimensions are incompatible.")
         }
+        /// Description length must be lower than or equal to 80 bytes
+        IncorrectDescriptionLength(len: usize) {
+            description("Description length is greater than 80 bytes.")
+            display("Description length ({} bytes) is greater than 80 bytes.", len)
+        }
         /// Header contains a code which is not valid for the given attribute
         InvalidCode(typename: &'static str, code: i16) {
             description("invalid code")
