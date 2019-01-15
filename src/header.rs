@@ -1,7 +1,7 @@
 //! This module defines the `NiftiHeader` struct, which is used
 //! to provide important information about NIFTI-1 volumes.
 
-use byteorder::{ByteOrder, NativeEndian, ReadBytesExt};
+use byteordered::{ByteOrdered, Endian, Endianness};
 use error::{NiftiError, Result};
 use flate2::bufread::GzDecoder;
 use num_traits::FromPrimitive;
@@ -10,7 +10,7 @@ use std::io::{BufReader, Read};
 use std::ops::Deref;
 use std::path::Path;
 use typedef::*;
-use util::{is_gz_file, Endianness, OppositeNativeEndian};
+use util::is_gz_file;
 
 /// Magic code for NIFTI-1 header files (extention ".hdr[.gz]").
 pub const MAGIC_CODE_NI1: &'static [u8; 4] = b"ni1\0";
@@ -151,7 +151,7 @@ pub struct NiftiHeader {
     pub magic: [u8; 4],
 
     /// Original data Endianness
-    #[builder(default = "Endianness::system()")]
+    #[builder(default = "Endianness::native()")]
     pub endianness: Endianness,
 }
 
@@ -206,7 +206,7 @@ impl Default for NiftiHeader {
 
             magic: *MAGIC_CODE_NI1,
 
-            endianness: Endianness::LE,
+            endianness: Endianness::Little,
         }
     }
 }
@@ -324,84 +324,88 @@ impl NiftiHeader {
     }
 }
 
-fn parse_header_1<S: Read>(mut input: S) -> Result<NiftiHeader> {
+fn parse_header_1<S>(input: S) -> Result<NiftiHeader> where S: Read {
     let mut h = NiftiHeader::default();
 
     // try the system's native endianness first
-    type B = NativeEndian;
+    let mut input = ByteOrdered::native(input);
 
-    h.sizeof_hdr = input.read_i32::<B>()?;
+    h.sizeof_hdr = input.read_i32()?;
     input.read_exact(&mut h.data_type)?;
     input.read_exact(&mut h.db_name)?;
-    h.extents = input.read_i32::<B>()?;
-    h.session_error = input.read_i16::<B>()?;
+    h.extents = input.read_i32()?;
+    h.session_error = input.read_i16()?;
     h.regular = input.read_u8()?;
     h.dim_info = input.read_u8()?;
-    h.dim[0] = input.read_u16::<B>()?;
+    h.dim[0] = input.read_u16()?;
 
     if h.dim[0] > 7 {
-        h.endianness = Endianness::system().opposite();
+        h.endianness = Endianness::native().to_opposite();
 
         // swap bytes read so far, continue with the opposite endianness
         h.sizeof_hdr = h.sizeof_hdr.swap_bytes();
         h.extents = h.extents.swap_bytes();
         h.session_error = h.session_error.swap_bytes();
         h.dim[0] = h.dim[0].swap_bytes();
-        parse_header_2::<OppositeNativeEndian, _>(h, input)
+        parse_header_2(h, input.into_opposite())
     } else {
         // all is well
-        h.endianness = Endianness::system();
-        parse_header_2::<B, _>(h, input)
+        h.endianness = Endianness::native();
+        parse_header_2(h, input)
     }
 }
 
 /// second part of header parsing
-fn parse_header_2<B: ByteOrder, S: Read>(mut h: NiftiHeader, mut input: S) -> Result<NiftiHeader> {
+fn parse_header_2<S, E>(mut h: NiftiHeader, mut input: ByteOrdered<S, E>) -> Result<NiftiHeader>
+where
+    S: Read,
+    E: Endian,
+{
     for v in &mut h.dim[1..] {
-        *v = input.read_u16::<B>()?;
+        *v = input.read_u16()?;
     }
-    h.intent_p1 = input.read_f32::<B>()?;
-    h.intent_p2 = input.read_f32::<B>()?;
-    h.intent_p3 = input.read_f32::<B>()?;
-    h.intent_code = input.read_i16::<B>()?;
-    h.datatype = input.read_i16::<B>()?;
-    h.bitpix = input.read_i16::<B>()?;
-    h.slice_start = input.read_i16::<B>()?;
+    h.intent_p1 = input.read_f32()?;
+    h.intent_p2 = input.read_f32()?;
+    h.intent_p3 = input.read_f32()?;
+    h.intent_code = input.read_i16()?;
+    h.datatype = input.read_i16()?;
+    h.bitpix = input.read_i16()?;
+    h.slice_start = input.read_i16()?;
     for v in &mut h.pixdim {
-        *v = input.read_f32::<B>()?;
+        *v = input.read_f32()?;
     }
-    h.vox_offset = input.read_f32::<B>()?;
-    h.scl_slope = input.read_f32::<B>()?;
-    h.scl_inter = input.read_f32::<B>()?;
-    h.slice_end = input.read_i16::<B>()?;
+    h.vox_offset = input.read_f32()?;
+    h.scl_slope = input.read_f32()?;
+    h.scl_inter = input.read_f32()?;
+    h.slice_end = input.read_i16()?;
     h.slice_code = input.read_u8()?;
     h.xyzt_units = input.read_u8()?;
-    h.cal_max = input.read_f32::<B>()?;
-    h.cal_min = input.read_f32::<B>()?;
-    h.slice_duration = input.read_f32::<B>()?;
-    h.toffset = input.read_f32::<B>()?;
-    h.glmax = input.read_i32::<B>()?;
-    h.glmin = input.read_i32::<B>()?;
+    h.cal_max = input.read_f32()?;
+    h.cal_min = input.read_f32()?;
+    h.slice_duration = input.read_f32()?;
+    h.toffset = input.read_f32()?;
+    h.glmax = input.read_i32()?;
+    h.glmin = input.read_i32()?;
 
     // descrip is 80-elem vec already
     input.read_exact(h.descrip.as_mut_slice())?;
     input.read_exact(&mut h.aux_file)?;
-    h.qform_code = input.read_i16::<B>()?;
-    h.sform_code = input.read_i16::<B>()?;
-    h.quatern_b = input.read_f32::<B>()?;
-    h.quatern_c = input.read_f32::<B>()?;
-    h.quatern_d = input.read_f32::<B>()?;
-    h.quatern_x = input.read_f32::<B>()?;
-    h.quatern_y = input.read_f32::<B>()?;
-    h.quatern_z = input.read_f32::<B>()?;
+    h.qform_code = input.read_i16()?;
+    h.sform_code = input.read_i16()?;
+    h.quatern_b = input.read_f32()?;
+    h.quatern_c = input.read_f32()?;
+    h.quatern_d = input.read_f32()?;
+    h.quatern_x = input.read_f32()?;
+    h.quatern_y = input.read_f32()?;
+    h.quatern_z = input.read_f32()?;
     for v in &mut h.srow_x {
-        *v = input.read_f32::<B>()?;
+        *v = input.read_f32()?;
     }
     for v in &mut h.srow_y {
-        *v = input.read_f32::<B>()?;
+        *v = input.read_f32()?;
     }
     for v in &mut h.srow_z {
-        *v = input.read_f32::<B>()?;
+        *v = input.read_f32()?;
     }
     input.read_exact(&mut h.intent_name)?;
     input.read_exact(&mut h.magic)?;

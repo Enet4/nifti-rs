@@ -4,9 +4,9 @@
 //! end of the NIFTI-1 header, with the first byte set to something
 //! other than 0.
 
-use std::io::{ErrorKind as IoErrorKind, Read};
+use byteordered::{ByteOrdered, Endian};
 use error::{NiftiError, Result};
-use byteorder::{ByteOrder, ReadBytesExt};
+use std::io::{ErrorKind as IoErrorKind, Read};
 
 /// Data type for the extender code.
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
@@ -28,9 +28,7 @@ impl Extender {
         let mut extension = [0u8; 4];
         match source.read_exact(&mut extension) {
             Ok(()) => Ok(Some(extension.into())),
-            Err(ref e) if e.kind() == IoErrorKind::UnexpectedEof => {
-                Ok(None)
-            }
+            Err(ref e) if e.kind() == IoErrorKind::UnexpectedEof => Ok(None),
             Err(e) => Err(NiftiError::from(e)),
         }
     }
@@ -133,17 +131,21 @@ impl<'a> IntoIterator for &'a ExtensionSequence {
 
 impl ExtensionSequence {
     /// Read a sequence of extensions from a source, up until `len` bytes.
-    pub fn from_stream<B: ByteOrder, S: Read>(
+    pub fn from_stream<S, E>(
         extender: Extender,
-        mut source: S,
+        mut source: ByteOrdered<S, E>,
         len: usize,
-    ) -> Result<Self> {
+    ) -> Result<Self>
+    where
+        S: Read,
+        E: Endian,
+    {
         let mut extensions = Vec::new();
         if extender.has_extensions() {
             let mut offset = 0;
             while offset < len {
-                let esize = source.read_i32::<B>()?;
-                let ecode = source.read_i32::<B>()?;
+                let esize = source.read_i32()?;
+                let ecode = source.read_i32()?;
                 let data_size = esize as usize - 8;
                 let mut edata = vec![0u8; data_size];
                 source.read_exact(&mut edata)?;

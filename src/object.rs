@@ -1,19 +1,18 @@
 //! Module for handling and retrieving complete NIFTI-1 objects.
 
-use std::fs::File;
-use std::path::Path;
-use std::io::{self, BufReader, Read};
-
+use byteordered::ByteOrdered;
 use error::NiftiError;
+use error::Result;
 use extension::{Extender, ExtensionSequence};
+use flate2::bufread::GzDecoder;
 use header::NiftiHeader;
 use header::MAGIC_CODE_NI1;
-use volume::NiftiVolume;
+use std::fs::File;
+use std::io::{self, BufReader, Read};
+use std::path::Path;
+use util::{into_img_file_gz, is_gz_file};
 use volume::inmem::InMemNiftiVolume;
-use util::{is_gz_file, into_img_file_gz, Endianness};
-use error::Result;
-use byteorder::{BigEndian, LittleEndian};
-use flate2::bufread::GzDecoder;
+use volume::NiftiVolume;
 
 /// Trait type for all possible implementations of
 /// owning NIFTI-1 objects. Objects contain a NIFTI header,
@@ -106,11 +105,12 @@ impl InMemNiftiObject {
                         }
                         e => Err(e),
                     }
-                })
-                .map_err(|e| if let NiftiError::Io(io_e) = e {
-                    NiftiError::MissingVolumeFile(io_e)
-                } else {
-                    e
+                }).map_err(|e| {
+                    if let NiftiError::Io(io_e) = e {
+                        NiftiError::MissingVolumeFile(io_e)
+                    } else {
+                        e
+                    }
                 })?
         } else {
             // extensions and volume are in the same source
@@ -119,14 +119,10 @@ impl InMemNiftiObject {
             let len = header.vox_offset as usize;
             let len = if len < 352 { 0 } else { len - 352 };
 
-            let ext = match header.endianness {
-                Endianness::LE => {
-                    ExtensionSequence::from_stream::<LittleEndian, _>(extender, &mut stream, len)
-                }
-                Endianness::BE => {
-                    ExtensionSequence::from_stream::<BigEndian, _>(extender, &mut stream, len)
-                }
-            }?;
+            let ext = {
+                let mut stream = ByteOrdered::runtime(&mut stream, header.endianness);
+                ExtensionSequence::from_stream(extender, stream, len)?
+            };
 
             let volume = InMemNiftiVolume::from_stream(stream, &header)?;
 
@@ -175,7 +171,6 @@ impl InMemNiftiObject {
         })
     }
 
-
     /// Retrieve a NIFTI object from a stream of data.
     ///
     /// # Errors
@@ -190,14 +185,11 @@ impl InMemNiftiObject {
         let len = header.vox_offset as usize;
         let len = if len < 352 { 0 } else { len - 352 };
         let extender = Extender::from_stream(&mut source)?;
-        let ext = match header.endianness {
-            Endianness::LE => {
-                ExtensionSequence::from_stream::<LittleEndian, _>(extender, &mut source, len)
-            }
-            Endianness::BE => {
-                ExtensionSequence::from_stream::<BigEndian, _>(extender, &mut source, len)
-            }
-        }?;
+        
+        let ext = {
+            let source = ByteOrdered::runtime(&mut source, header.endianness);
+            ExtensionSequence::from_stream(extender, source, len)?
+        };
 
         let volume = InMemNiftiVolume::from_stream(source, &header)?;
 

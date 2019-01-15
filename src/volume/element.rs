@@ -1,14 +1,14 @@
 //! This module defines the data element API, which enables NIfTI
 //! volume API implementations to read, write and convert data
 //! elements.
-use std::io::Read;
-use std::ops::{Mul, Add};
-use std::mem::align_of;
-use byteorder::ReadBytesExt;
-use safe_transmute::guarded_transmute_pod_vec_permissive;
+use byteordered::{ByteOrdered, Endian};
 use error::Result;
 use num_traits::cast::AsPrimitive;
-use util::{Endianness, convert_bytes_to};
+use safe_transmute::guarded_transmute_pod_vec_permissive;
+use std::io::Read;
+use std::mem::align_of;
+use std::ops::{Add, Mul};
+use util::convert_bytes_to;
 use NiftiType;
 
 /// Interface for linear (affine) transformations to values. Multiple
@@ -24,7 +24,8 @@ pub trait LinearTransform<T: 'static + Copy> {
     /// Linearly transform a sequence of values with the given slope and intercept into
     /// a vector.
     fn linear_transform_many(value: &[T], slope: f32, intercept: f32) -> Vec<T> {
-        value.iter()
+        value
+            .iter()
             .map(|x| Self::linear_transform(*x, slope, intercept))
             .collect()
     }
@@ -49,7 +50,9 @@ where
     f32: AsPrimitive<T>,
 {
     fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
-        if slope == 0. { return value }
+        if slope == 0. {
+            return value;
+        }
         (value.as_() * slope + intercept).as_()
     }
 }
@@ -66,7 +69,9 @@ where
     f64: AsPrimitive<T>,
 {
     fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
-        if slope == 0. { return value }
+        if slope == 0. {
+            return value;
+        }
         let slope: f64 = slope.as_();
         let intercept: f64 = intercept.as_();
         (value.as_() * slope + intercept).as_()
@@ -85,7 +90,9 @@ where
     f32: AsPrimitive<T>,
 {
     fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
-        if slope == 0. { return value }
+        if slope == 0. {
+            return value;
+        }
         let slope: T = slope.as_();
         let intercept: T = intercept.as_();
         value * slope + intercept
@@ -95,7 +102,8 @@ where
 /// Trait type for characterizing a NIfTI data element, implemented for
 /// primitive numeric types which are used by the crate to represent voxel
 /// values.
-pub trait DataElement: 'static + Sized + Copy + AsPrimitive<u8> + AsPrimitive<f32> + AsPrimitive<f64>
+pub trait DataElement:
+    'static + Sized + Copy + AsPrimitive<u8> + AsPrimitive<f32> + AsPrimitive<f64>
 {
     /// The `datatype` mapped to the type T
     const DATA_TYPE: NiftiType;
@@ -104,113 +112,192 @@ pub trait DataElement: 'static + Sized + Copy + AsPrimitive<u8> + AsPrimitive<f3
     type Transform: LinearTransform<Self>;
 
     /// Read a single element from the given byte source.
-    fn from_raw<R: Read>(src: R, endianness: Endianness) -> Result<Self>;
+    fn from_raw<R: Read, E>(src: R, endianness: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian;
 
     /// Transform the given data vector into a vector of data elements.
-    fn from_raw_vec(vec: Vec<u8>, endianness: Endianness) -> Result<Vec<Self>> {
+    fn from_raw_vec<E>(vec: Vec<u8>, endianness: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+        E: Clone,
+    {
         let mut cursor: &[u8] = &vec;
         let n = align_of::<Self>();
-        (0..n).map(|_| Self::from_raw(&mut cursor, endianness)).collect()
+        (0..n)
+            .map(|_| Self::from_raw(&mut cursor, endianness.clone()))
+            .collect()
     }
 }
 
 impl DataElement for u8 {
     const DATA_TYPE: NiftiType = NiftiType::Uint8;
     type Transform = LinearTransformViaF32;
-    fn from_raw_vec(vec: Vec<u8>, _: Endianness) -> Result<Vec<Self>> {
+    fn from_raw_vec<E>(vec: Vec<u8>, _: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
         Ok(vec)
     }
-    fn from_raw<R: Read>(mut src: R, _: Endianness) -> Result<Self> {
-        src.read_u8().map_err(From::from)
+    fn from_raw<R, E>(src: R, _: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
+        ByteOrdered::native(src).read_u8().map_err(From::from)
     }
 }
 impl DataElement for i8 {
     const DATA_TYPE: NiftiType = NiftiType::Int8;
     type Transform = LinearTransformViaF32;
-    fn from_raw_vec(vec: Vec<u8>, _: Endianness) -> Result<Vec<Self>> {
+    fn from_raw_vec<E>(vec: Vec<u8>, _: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
         Ok(guarded_transmute_pod_vec_permissive(vec))
     }
-    fn from_raw<R: Read>(mut src: R, _: Endianness) -> Result<Self> {
-        src.read_i8().map_err(From::from)
+    fn from_raw<R, E>(src: R, _: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
+        ByteOrdered::native(src).read_i8().map_err(From::from)
     }
 }
 impl DataElement for u16 {
     const DATA_TYPE: NiftiType = NiftiType::Uint16;
     type Transform = LinearTransformViaF32;
-    fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
         Ok(convert_bytes_to(vec, e))
     }
-    fn from_raw<R: Read>(src: R, e: Endianness) -> Result<Self> {
+    fn from_raw<R, E>(src: R, e: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
         e.read_u16(src).map_err(From::from)
     }
 }
 impl DataElement for i16 {
     const DATA_TYPE: NiftiType = NiftiType::Int16;
     type Transform = LinearTransformViaF32;
-    fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
         Ok(convert_bytes_to(vec, e))
     }
-    fn from_raw<R: Read>(src: R, e: Endianness) -> Result<Self> {
+    fn from_raw<R, E>(src: R, e: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
         e.read_i16(src).map_err(From::from)
     }
 }
 impl DataElement for u32 {
     const DATA_TYPE: NiftiType = NiftiType::Uint32;
     type Transform = LinearTransformViaF32;
-    fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
         Ok(convert_bytes_to(vec, e))
     }
-    fn from_raw<R: Read>(src: R, e: Endianness) -> Result<Self> {
+    fn from_raw<R, E>(src: R, e: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
         e.read_u32(src).map_err(From::from)
     }
 }
 impl DataElement for i32 {
     const DATA_TYPE: NiftiType = NiftiType::Int32;
     type Transform = LinearTransformViaF32;
-    fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
         Ok(convert_bytes_to(vec, e))
     }
-    fn from_raw<R: Read>(src: R, e: Endianness) -> Result<Self> {
+    fn from_raw<R, E>(src: R, e: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
         e.read_i32(src).map_err(From::from)
     }
 }
 impl DataElement for u64 {
     const DATA_TYPE: NiftiType = NiftiType::Uint64;
     type Transform = LinearTransformViaF64;
-    fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
         Ok(convert_bytes_to(vec, e))
     }
-    fn from_raw<R: Read>(src: R, e: Endianness) -> Result<Self> {
+    fn from_raw<R, E>(src: R, e: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
         e.read_u64(src).map_err(From::from)
     }
 }
 impl DataElement for i64 {
     const DATA_TYPE: NiftiType = NiftiType::Int64;
     type Transform = LinearTransformViaF64;
-    fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
         Ok(convert_bytes_to(vec, e))
     }
-    fn from_raw<R: Read>(src: R, e: Endianness) -> Result<Self> {
+    fn from_raw<R, E>(src: R, e: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
         e.read_i64(src).map_err(From::from)
     }
 }
 impl DataElement for f32 {
     const DATA_TYPE: NiftiType = NiftiType::Float32;
     type Transform = LinearTransformViaOriginal;
-    fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
         Ok(convert_bytes_to(vec, e))
     }
-    fn from_raw<R: Read>(src: R, e: Endianness) -> Result<Self> {
+    fn from_raw<R, E>(src: R, e: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
         e.read_f32(src).map_err(From::from)
     }
 }
 impl DataElement for f64 {
     const DATA_TYPE: NiftiType = NiftiType::Float64;
     type Transform = LinearTransformViaOriginal;
-    fn from_raw_vec(vec: Vec<u8>, e: Endianness) -> Result<Vec<Self>> {
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
         Ok(convert_bytes_to(vec, e))
     }
-    fn from_raw<R: Read>(src: R, e: Endianness) -> Result<Self> {
+    fn from_raw<R, E>(src: R, e: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
         e.read_f64(src).map_err(From::from)
     }
 }
