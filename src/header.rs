@@ -281,6 +281,8 @@ impl NiftiHeader {
     }
 
     /// Ensure that the current `descrip` field is valid and is exactly equal to 80 bytes.
+    ///
+    /// Descriptions shorter than 80 bytes will be extended with trailing zeros.
     pub fn validate_description(&mut self) -> Result<()> {
         let len = self.descrip.len();
         if len > 80 {
