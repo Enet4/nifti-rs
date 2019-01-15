@@ -180,32 +180,29 @@ mod tests {
 
         // Manual descrip. The original header won't be "repaired", but the written description
         // should be right. To compare the header, we must fix it ourselves.
-        let v = "äbcdé".as_bytes().to_vec();
-        header.descrip = v.clone();
+        let v = "äbcdé".as_bytes();
+        header.descrip = v.to_vec();
         write_nifti(&path, &data, Some(&header)).unwrap();
         let (new_header, new_data) = read_as_ndarray(&path);
-        header.set_description(&v).unwrap(); // Manual fix
+        header.set_description(v).unwrap(); // Manual fix
         assert_eq!(new_header, header);
         assert_eq!(new_data, data);
 
         // set_description
-        header
-            .set_description(&"ひらがな".as_bytes().to_vec())
-            .unwrap();
+        header.set_description("ひらがな".as_bytes()).unwrap();
         write_nifti(&path, &data, Some(&header)).unwrap();
         let (new_header, new_data) = read_as_ndarray(&path);
         assert_eq!(new_header, header);
         assert_eq!(new_data, data);
 
         // set_description_str
-        header.set_description_str(&"русский").unwrap();
+        header.set_description_str("русский").unwrap();
         write_nifti(&path, &data, Some(&header)).unwrap();
         let (new_header, new_data) = read_as_ndarray(&path);
         assert_eq!(new_header, header);
         assert_eq!(new_data, data);
     }
 
-    #[should_panic]
     #[test]
     fn write_descrip_panic() {
         let dim = [3, 3, 4, 5, 1, 1, 1, 1];
@@ -213,26 +210,24 @@ mod tests {
         header.descrip = (0..84).into_iter().collect();
         let path = get_temporary_path("error_description.nii");
         let data = Array::from_elem((3, 4, 5), 1.5);
-        write_nifti(&path, &data, Some(&header)).unwrap();
+        assert!(write_nifti(&path, &data, Some(&header)).is_err());
     }
 
-    #[should_panic]
     #[test]
     fn write_set_description_panic() {
         let dim = [3, 3, 4, 5, 1, 1, 1, 1];
         let mut header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
-        header
-            .set_description(&(0..81).into_iter().collect())
-            .unwrap();
+        assert!(header
+            .set_description((0..81).into_iter().collect::<Vec<_>>())
+            .is_err());
     }
 
-    #[should_panic]
     #[test]
     fn write_set_description_str_panic() {
         let dim = [3, 3, 4, 5, 1, 1, 1, 1];
         let mut header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
-        let description: String = (0..41).into_iter().map(|_| 'é').collect();
-        header.set_description_str(&description).unwrap();
+        let description: String = std::iter::repeat('é').take(41).collect();
+        assert!(header.set_description_str(description).is_err());
     }
 
     #[test]

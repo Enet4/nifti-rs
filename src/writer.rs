@@ -192,10 +192,7 @@ where
     };
 
     // The only acceptable length is 80. If different, try to set it.
-    if header.descrip.len() != 80 {
-        let descrip = header.descrip.clone();
-        header.set_description(&descrip)?;
-    }
+    header.validate_description()?;
 
     let mut path_buf = PathBuf::from(header_path.as_ref());
     let data_path = if is_hdr_file(&header_path) {
