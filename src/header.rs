@@ -324,7 +324,10 @@ impl NiftiHeader {
     }
 }
 
-fn parse_header_1<S>(input: S) -> Result<NiftiHeader> where S: Read {
+fn parse_header_1<S>(input: S) -> Result<NiftiHeader>
+where
+    S: Read,
+{
     let mut h = NiftiHeader::default();
 
     // try the system's native endianness first

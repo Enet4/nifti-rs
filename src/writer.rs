@@ -5,12 +5,13 @@ use std::io::{BufWriter, Write};
 use std::ops::{Div, Sub};
 use std::path::{Path, PathBuf};
 
-use byteordered::ByteOrdered;
+use byteordered::{ByteOrdered, Endian};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use ndarray::{ArrayBase, ArrayView, Axis, Data, Dimension, RemoveAxis, ScalarOperand};
 use num_traits::FromPrimitive;
 use safe_transmute::{guarded_transmute_to_bytes_pod_many, PodTransmutable};
+use util::adapt_bytes;
 
 use {
     header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
@@ -55,30 +56,41 @@ where
     let header_file = File::create(header_path)?;
     if header.vox_offset > 0.0 {
         if is_gz {
-            let mut e = GzEncoder::new(header_file, compression_level);
-            write_header(&mut e, &header)?;
-            write_data(&mut e, &header, data)?;
-            let _ = e.finish()?;
+            let mut writer = ByteOrdered::runtime(
+                GzEncoder::new(header_file, compression_level),
+                header.endianness,
+            );
+            write_header(writer.as_mut(), &header)?;
+            write_data(writer.as_mut(), &header, data)?;
+            let _ = writer.into_inner().finish()?;
         } else {
-            let mut header_writer = BufWriter::new(header_file);
-            write_header(&mut header_writer, &header)?;
-            write_data(&mut header_writer, &header, data)?;
+            let mut writer = ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
+            write_header(writer.as_mut(), &header)?;
+            write_data(writer, &header, data)?;
         }
     } else {
         let data_file = File::create(&data_path)?;
         if is_gz {
-            let mut e = GzEncoder::new(header_file, compression_level);
-            write_header(&mut e, &header)?;
-            let _ = e.finish()?;
+            let mut writer = ByteOrdered::runtime(
+                GzEncoder::new(header_file, compression_level),
+                header.endianness,
+            );
+            write_header(writer.as_mut(), &header)?;
+            let _ = writer.into_inner().finish()?;
 
-            let mut e = GzEncoder::new(data_file, compression_level);
-            write_data(&mut e, &header, data)?;
-            let _ = e.finish()?;
+            let mut writer = ByteOrdered::runtime(
+                GzEncoder::new(data_file, compression_level),
+                header.endianness,
+            );
+            write_data(writer.as_mut(), &header, data)?;
+            let _ = writer.into_inner().finish()?;
         } else {
-            let mut header_writer = BufWriter::new(header_file);
-            let mut data_writer = BufWriter::new(data_file);
-            write_header(&mut header_writer, &header)?;
-            write_data(&mut data_writer, &header, data)?;
+            let header_writer =
+                ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
+            write_header(header_writer, &header)?;
+            let data_writer =
+                ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
+            write_data(data_writer, &header, data)?;
         }
     }
 
@@ -115,30 +127,42 @@ where
     let header_file = File::create(header_path)?;
     if header.vox_offset > 0.0 {
         if is_gz {
-            let mut e = GzEncoder::new(header_file, compression_level);
-            write_header(&mut e, &header)?;
-            write_slices(&mut e, data)?;
-            let _ = e.finish()?;
+            let mut writer = ByteOrdered::runtime(
+                GzEncoder::new(header_file, compression_level),
+                header.endianness,
+            );
+            write_header(writer.as_mut(), &header)?;
+            write_slices::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
+            let _ = writer.into_inner().finish()?;
         } else {
-            let mut header_writer = BufWriter::new(header_file);
-            write_header(&mut header_writer, &header)?;
-            write_slices(&mut header_writer, data)?;
+            let mut writer = ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
+            write_header(writer.as_mut(), &header)?;
+            write_slices::<_, u8, _, _, _, _>(writer, data)?;
         }
     } else {
         let data_file = File::create(&data_path)?;
         if is_gz {
-            let mut e = GzEncoder::new(header_file, compression_level);
-            write_header(&mut e, &header)?;
-            let _ = e.finish()?;
+            let mut writer = ByteOrdered::runtime(
+                GzEncoder::new(header_file, compression_level),
+                header.endianness,
+            );
+            write_header(writer.as_mut(), &header)?;
+            let _ = writer.into_inner().finish()?;
 
-            let mut e = GzEncoder::new(data_file, compression_level);
-            write_slices(&mut e, data)?;
-            let _ = e.finish()?;
+            let mut writer = ByteOrdered::runtime(
+                GzEncoder::new(data_file, compression_level),
+                header.endianness,
+            );
+            write_slices::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
+            let _ = writer.into_inner().finish()?;
         } else {
-            let mut header_writer = BufWriter::new(header_file);
-            let mut data_writer = BufWriter::new(data_file);
-            write_header(&mut header_writer, &header)?;
-            write_slices(&mut data_writer, data)?;
+            let header_writer =
+                ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
+            write_header(header_writer, &header)?;
+
+            let data_writer =
+                ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
+            write_slices::<_, u8, _, _, _, _>(data_writer, data)?;
         }
     }
 
@@ -208,14 +232,11 @@ where
     Ok((header, data_path))
 }
 
-fn write_header<W>(writer: &mut W, header: &NiftiHeader) -> Result<()>
+fn write_header<W, E>(mut writer: ByteOrdered<W, E>, header: &NiftiHeader) -> Result<()>
 where
     W: Write,
+    E: Endian,
 {
-    // TODO make writing support other byte orders. The Nifti standard does not
-    // specify a specific field for endianness, but we should be writing in
-    // accordance to the value of `NiftiHeader::endianness`.
-    let mut writer = ByteOrdered::le(writer);
     writer.write_i32(header.sizeof_hdr)?;
     writer.write_all(&header.data_type)?;
     writer.write_all(&header.db_name)?;
@@ -284,7 +305,7 @@ where
 /// Write the data in 'f' order.
 ///
 /// Like NiBabel, we iterate by "slice" to improve speed and use less memory.
-fn write_data<T, D, W>(writer: &mut W, header: &NiftiHeader, data: ArrayView<T, D>) -> Result<()>
+fn write_data<T, D, W, E>(mut writer: ByteOrdered<W, E>, header: &NiftiHeader, data: ArrayView<T, D>) -> Result<()>
 where
     T: Clone + PodTransmutable,
     T: Div<Output = T>,
@@ -294,6 +315,7 @@ where
     T: Sub<Output = T>,
     D: Dimension + RemoveAxis,
     W: Write,
+    E: Endian + Copy,
 {
     // `1.0x + 0.0` would give the same results, but we avoid a lot of divisions
     let slope = if header.scl_slope == 0.0 {
@@ -307,44 +329,49 @@ where
         let slope = T::from_f32(slope).unwrap();
         let inter = T::from_f32(header.scl_inter).unwrap();
         for arr_data in data.axis_iter(Axis(0)) {
-            write_slice(writer, arr_data.sub(inter).div(slope))?;
+            write_slice::<T, T, _, _, _, _>(writer.as_mut(), arr_data.sub(inter).div(slope))?;
         }
     } else {
-        write_slices(writer, data)?;
+        write_slices::<T, T, _, _, _, _>(writer, data)?;
     }
     Ok(())
 }
 
-fn write_slices<A, S, D, W>(writer: &mut W, data: ArrayBase<S, D>) -> Result<()>
+fn write_slices<A, B, S, D, W, E>(mut writer: ByteOrdered<W, E>, data: ArrayBase<S, D>) -> Result<()>
 where
     S: Data<Elem = A>,
     A: Clone + PodTransmutable,
     D: Dimension + RemoveAxis,
     W: Write,
+    E: Endian + Copy,
 {
     let mut iter = data.axis_iter(Axis(0));
     if let Some(arr_data) = iter.next() {
         // Keep slice voxels in a separate array to ensure `C` ordering even after `into_shape`.
         let mut slice = arr_data.to_owned();
-        write_slice(writer, slice.view())?;
+        write_slice::<_, B, _, _, _, _>(writer.as_mut(), slice.view())?;
         for arr_data in iter {
             slice.assign(&arr_data);
-            write_slice(writer, slice.view())?;
+            write_slice::<_, B, _, _, _, _>(writer.as_mut(), slice.view())?;
         }
     }
     Ok(())
 }
 
-fn write_slice<A, S, D, W>(writer: &mut W, data: ArrayBase<S, D>) -> Result<()>
+fn write_slice<A, B, S, D, W, E>(writer: ByteOrdered<&mut W, E>, data: ArrayBase<S, D>) -> Result<()>
 where
     S: Data<Elem = A>,
     A: Clone + PodTransmutable,
     D: Dimension,
     W: Write,
+    E: Endian,
 {
     let len = data.len();
     let arr_data = data.into_shape(len).unwrap();
     let slice = arr_data.as_slice().unwrap();
-    writer.write_all(guarded_transmute_to_bytes_pod_many(slice))?;
+    let mut bytes = guarded_transmute_to_bytes_pod_many(slice).to_vec();
+    let (writer, endianness) = writer.into_parts();
+    adapt_bytes::<B, _>(&mut bytes, endianness);
+    writer.write_all(&*bytes)?;
     Ok(())
 }
