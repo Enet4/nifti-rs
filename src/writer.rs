@@ -11,11 +11,10 @@ use flate2::Compression;
 use ndarray::{ArrayBase, ArrayView, Axis, Data, Dimension, RemoveAxis, ScalarOperand};
 use num_traits::FromPrimitive;
 use safe_transmute::{guarded_transmute_to_bytes_pod_many, PodTransmutable};
-use util::adapt_bytes;
 
 use {
     header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
-    util::{is_gz_file, is_hdr_file},
+    util::{is_gz_file, is_hdr_file, adapt_bytes},
     volume::element::DataElement,
     NiftiHeader, NiftiType, Result,
 };
@@ -369,9 +368,9 @@ where
     let len = data.len();
     let arr_data = data.into_shape(len).unwrap();
     let slice = arr_data.as_slice().unwrap();
-    let mut bytes = guarded_transmute_to_bytes_pod_many(slice).to_vec();
+    let bytes = guarded_transmute_to_bytes_pod_many(slice);
     let (writer, endianness) = writer.into_parts();
-    adapt_bytes::<B, _>(&mut bytes, endianness);
+    let bytes = adapt_bytes::<B, _>(&bytes, endianness);
     writer.write_all(&*bytes)?;
     Ok(())
 }

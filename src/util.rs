@@ -1,4 +1,5 @@
 //! Private utility module
+use std::borrow::Cow;
 use std::io::{Read, Seek};
 use std::mem;
 use std::path::{Path, PathBuf};
@@ -17,13 +18,13 @@ where
     T: PodTransmutable,
     E: Endian,
 {
-    adapt_bytes::<T, _>(&mut a, e);
+    adapt_bytes_inline::<T, _>(&mut a, e);
     guarded_transmute_pod_vec_permissive(a)
 }
 
 /// Adapt a sequence of bytes for reading contiguous values of type `T`,
 /// by swapping bytes if the given endianness is not native.
-pub fn adapt_bytes<T, E>(a: &mut [u8], e: E)
+pub fn adapt_bytes_inline<T, E>(a: &mut [u8], e: E)
 where
     E: Endian,
 {
@@ -37,6 +38,24 @@ where
                 mem::swap(l, r);
             }
         }
+    }
+}
+
+/// Adapt a sequence of bytes for reading contiguous values of type `T`,
+/// by swapping bytes if the given endianness is not native. If no
+/// swapping is needed, the same byte slice is returned.
+pub fn adapt_bytes<T, E>(bytes: &[u8], e: E) -> Cow<[u8]>
+where
+    E: Endian,
+{
+    let nb_bytes = mem::size_of::<T>();
+    if !e.is_native() && nb_bytes > 1 {
+        // Swap endianness by block of nb_bytes
+        let mut a = bytes.to_vec();
+        adapt_bytes_inline::<T, E>(&mut a, e);
+        a.into()
+    } else {
+        bytes.into()
     }
 }
 
