@@ -206,7 +206,7 @@ impl Default for NiftiHeader {
 
             magic: *MAGIC_CODE_NI1,
 
-            endianness: Endianness::Little,
+            endianness: Endianness::native(),
         }
     }
 }
