@@ -20,7 +20,7 @@ mod tests {
         header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
         object::NiftiObject,
         writer::{write_nifti, write_rgb_nifti},
-        InMemNiftiObject, IntoNdArray, NiftiHeader, NiftiType,
+        Endianness, InMemNiftiObject, IntoNdArray, NiftiHeader, NiftiType,
     };
 
     fn get_temporary_path(ext: &str) -> PathBuf {
@@ -239,7 +239,17 @@ mod tests {
 
         let header_path = get_temporary_path("3d.hdr");
         let data_path = header_path.with_extension("img");
-        write_rgb_nifti(&header_path, &data, None).unwrap();
+        let header = NiftiHeader {
+            datatype: NiftiType::Rgb24 as i16,
+            pixdim: [1.0; 8],
+            sform_code: 2,
+            srow_x: [1.0, 0.0, 0.0, 0.0],
+            srow_y: [0.0, 1.0, 0.0, 0.0],
+            srow_z: [0.0, 0.0, 1.0, 0.0],
+            endianness: Endianness::Little,
+            .. NiftiHeader::default()
+        };
+        write_rgb_nifti(&header_path, &data, Some(&header)).unwrap();
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
         // image to the bytes of the prepared 3D RGB image in ressources/rgb/. However, we need to
@@ -264,7 +274,17 @@ mod tests {
         data[(0, 1, 0)] = [0, 55, 55];
 
         let path = get_temporary_path("rgb.nii");
-        write_rgb_nifti(&path, &data, None).unwrap();
+        let header = NiftiHeader {
+            datatype: NiftiType::Rgb24 as i16,
+            pixdim: [1.0; 8],
+            sform_code: 2,
+            srow_x: [1.0, 0.0, 0.0, 0.0],
+            srow_y: [0.0, 1.0, 0.0, 0.0],
+            srow_z: [0.0, 0.0, 1.0, 0.0],
+            endianness: Endianness::Little,
+            .. NiftiHeader::default()
+        };
+        write_rgb_nifti(&path, &data, Some(&header)).unwrap();
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
         // image to the bytes of the prepared 3D RGB image in ressources/rgb/.
@@ -285,7 +305,17 @@ mod tests {
         data[(1, 0, 0, 1)] = [0, 55, 55];
 
         let path = get_temporary_path("rgb.nii");
-        write_rgb_nifti(&path, &data, None).unwrap();
+        let header = NiftiHeader {
+            datatype: NiftiType::Rgb24 as i16,
+            pixdim: [1.0; 8],
+            sform_code: 2,
+            srow_x: [1.0, 0.0, 0.0, 0.0],
+            srow_y: [0.0, 1.0, 0.0, 0.0],
+            srow_z: [0.0, 0.0, 1.0, 0.0],
+            endianness: Endianness::Little,
+            .. NiftiHeader::default()
+        };
+        write_rgb_nifti(&path, &data, Some(&header)).unwrap();
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
         // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
