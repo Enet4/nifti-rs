@@ -17,7 +17,7 @@ branch = "master"
 repository = "Enet4/nifti-rs"
 
 [dependencies]
-byteordered = "0.3.1"
+byteordered = "0.4.0"
 derive_builder = "0.7.0"
 flate2 = "1.0.1"
 num = "0.2.0"
