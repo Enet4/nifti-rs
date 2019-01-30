@@ -407,14 +407,14 @@ impl NiftiHeader {
     /// nifti readers because the `qform_code` will be set to 'Unknown'.
     pub fn set_affine(&mut self, affine: &Affine4) {
         // Set affine into sform with default code.
-        self.set_sform(affine, 2);
+        self.set_sform(affine, XForm::AlignedAnat);
 
         // Make qform 'unknown'.
-        self.set_qform(affine, 0);
+        self.set_qform(affine, XForm::Unknown);
     }
 
     /// Set affine transformation in 'sform' fields.
-    fn set_sform(&mut self, affine: &Affine4, code: usize) {
+    fn set_sform(&mut self, affine: &Affine4, code: XForm) {
         self.sform_code = code as i16;
         self.srow_x[0] = affine[0];
         self.srow_x[1] = affine[4];
@@ -436,7 +436,7 @@ impl NiftiHeader {
     /// components to the `affine` transform, the written qform gives the closest approximation
     /// where the rotation matrix is orthogonal. This is to allow quaternion representation. The
     /// orthogonal representation enforces orthogonal axes.
-    fn set_qform(&mut self, affine4: &Affine4, code: usize) {
+    fn set_qform(&mut self, affine4: &Affine4, code: XForm) {
         let (affine, translation) = get_affine_and_translation(&affine4);
         let aff2 = affine.component_mul(&affine);
         let spacing = (
