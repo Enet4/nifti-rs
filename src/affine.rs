@@ -139,3 +139,63 @@ pub(crate) fn quaternion_to_affine(q: Quaternion<f32>) -> Affine3 {
         xz - wy, yz + wx, 1.0 - (xx + yy),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_shape_zoom_affine() {
+        let affine = shape_zoom_affine(&[3, 5, 7], &[3.0, 2.0, 1.0]);
+        assert_eq!(affine, Affine4::new(
+            -3.0, 0.0, 0.0, 3.0,
+            0.0, 2.0, 0.0, -4.0,
+            0.0, 0.0, 1.0, -3.0,
+            0.0, 0.0, 0.0, 1.0,
+        ));
+
+        let affine = shape_zoom_affine(&[256, 256, 54], &[0.9375, 0.9375, 3.0]);
+        assert_eq!(affine, Affine4::new(
+            -0.9375, 0.0, 0.0, 119.53125,
+            0.0, 0.9375, 0.0, -119.53125,
+            0.0, 0.0, 3.0, -79.5,
+            0.0, 0.0, 0.0, 1.0,
+        ));
+    }
+
+    #[test]
+    fn test_fill_positive() {
+        let q = fill_positive(Vector3::new(0.0, 0.0, 0.0));
+        assert_eq!(q, Quaternion::new(1.0, 0.0, 0.0, 0.0));
+
+        let q = fill_positive(Vector3::new(1.0, 0.0, 0.0));
+        assert_eq!(q, Quaternion::new(0.0, 1.0, 0.0, 0.0));
+        assert_eq!(q.dot(&q), 1.0);
+    }
+
+    #[test]
+    fn test_affine_to_quaternion() {
+        let affine = Matrix3::<f32>::identity();
+        assert_eq!(affine_to_quaternion(&affine), RowVector4::new(1.0, 0.0, 0.0, 0.0));
+
+        let affine = Matrix3::from_diagonal(&Vector3::new(1.0, -1.0, -1.0));
+        assert_eq!(affine_to_quaternion(&affine), RowVector4::new(0.0, 1.0, 0.0, 0.0));
+
+        let affine = Matrix3::new(1.1, 0.1, 0.1, 0.2, 1.1, 0.5, 0.0, 0.0, 1.0);
+        assert_eq!(
+            affine_to_quaternion(&affine),
+            RowVector4::new(0.99299955, -0.1147423, 0.017765911, 0.021675035)
+        );
+    }
+
+    #[test]
+    fn test_quaternion_to_affine() {
+        // Identity quaternion
+        let affine = quaternion_to_affine(Quaternion::new(1.0, 0.0, 0.0, 0.0));
+        assert_eq!(affine, Matrix3::identity());
+
+        // 180 degree rotation around axis 0
+        let affine = quaternion_to_affine(Quaternion::new(0.0, 1.0, 0.0, 0.0));
+        assert_eq!(affine, Matrix3::new(1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0));
+    }
+}
