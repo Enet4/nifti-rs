@@ -80,7 +80,7 @@ pub(crate) fn affine_to_quaternion(affine: &Affine3) -> RowVector4<f32> {
     let qyz = affine[5];
     let qzz = affine[8];
 
-    // Fill only lower half of symmetric matrix
+    // Fill only lower half of symmetric matrix.
     let k = Affine4::new(
         qxx - qyy - qzz, 0.0,             0.0,             0.0,
         qyx + qxy,       qyy - qxx - qzz, 0.0,             0.0,
@@ -88,10 +88,13 @@ pub(crate) fn affine_to_quaternion(affine: &Affine3) -> RowVector4<f32> {
         qyz - qzy,       qzx - qxz,       qxy - qyx,       qxx + qyy + qzz,
     );
 
-    // Use Hermitian eigenvectors, values for speed
-    let SymmetricEigen { eigenvalues: values, eigenvectors: vectors } = k.symmetric_eigen();
+    // Use Hermitian eigenvectors, values for speed.
+    let SymmetricEigen {
+        eigenvalues: values,
+        eigenvectors: vectors,
+    } = k.symmetric_eigen();
 
-    // Select largest eigenvector, reorder to w,x,y,z quaternion
+    // Select largest eigenvector, reorder to w,x,y,z quaternion.
     let (max_idx, _) = values
         .as_slice()
         .iter()
@@ -175,11 +178,16 @@ mod tests {
 
     #[test]
     fn test_affine_to_quaternion() {
-        let affine = Matrix3::<f32>::identity();
-        assert_eq!(affine_to_quaternion(&affine), RowVector4::new(1.0, 0.0, 0.0, 0.0));
+        assert_eq!(
+            affine_to_quaternion(&Affine3::identity()),
+            RowVector4::new(1.0, 0.0, 0.0, 0.0)
+        );
 
         let affine = Matrix3::from_diagonal(&Vector3::new(1.0, -1.0, -1.0));
-        assert_eq!(affine_to_quaternion(&affine), RowVector4::new(0.0, 1.0, 0.0, 0.0));
+        assert_eq!(
+            affine_to_quaternion(&affine),
+            RowVector4::new(0.0, 1.0, 0.0, 0.0)
+        );
 
         let affine = Matrix3::new(1.1, 0.1, 0.1, 0.2, 1.1, 0.5, 0.0, 0.0, 1.0);
         assert_eq!(
@@ -196,6 +204,9 @@ mod tests {
 
         // 180 degree rotation around axis 0
         let affine = quaternion_to_affine(Quaternion::new(0.0, 1.0, 0.0, 0.0));
-        assert_eq!(affine, Matrix3::new(1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0));
+        assert_eq!(
+            affine,
+            Matrix3::from_diagonal(&Vector3::new(1.0, -1.0, -1.0))
+        );
     }
 }

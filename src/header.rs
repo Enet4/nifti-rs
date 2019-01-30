@@ -1,11 +1,13 @@
 //! This module defines the `NiftiHeader` struct, which is used
 //! to provide important information about NIFTI-1 volumes.
 
-#[cfg(feature = "nalgebra_affine")] use affine::*;
+#[cfg(feature = "nalgebra_affine")]
+use affine::*;
 use byteordered::{ByteOrdered, Endian, Endianness};
 use error::{NiftiError, Result};
 use flate2::bufread::GzDecoder;
-#[cfg(feature = "nalgebra_affine")] use nalgebra::{Quaternion, Vector3};
+#[cfg(feature = "nalgebra_affine")]
+use nalgebra::{Quaternion, Vector3};
 use num_traits::FromPrimitive;
 use std::fs::File;
 use std::io::{BufReader, Read};
