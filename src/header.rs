@@ -338,18 +338,18 @@ impl NiftiHeader {
     ///
     /// If `sform_code` and `qform_code` both have valid values, the 'sform' affine transformation
     /// is prioritized.
-    pub fn get_affine(&self) -> Affine4 {
+    pub fn affine(&self) -> Affine4 {
         if self.sform_code != 0 {
-            self.get_sform_affine()
+            self.sform_affine()
         } else if self.qform_code != 0 {
-            self.get_qform_affine()
+            self.qform_affine()
         } else {
-            self.get_base_affine()
+            self.base_affine()
         }
     }
 
     /// Retrieve affine transformation from 'sform' fields.
-    fn get_sform_affine(&self) -> Affine4 {
+    fn sform_affine(&self) -> Affine4 {
         Affine4::new(
             self.srow_x[0], self.srow_x[1], self.srow_x[2], self.srow_x[3],
             self.srow_y[0], self.srow_y[1], self.srow_y[2], self.srow_y[3],
@@ -359,7 +359,7 @@ impl NiftiHeader {
     }
 
     /// Retrieve affine transformation from qform-related fields.
-    fn get_qform_affine(&self) -> Affine4 {
+    fn qform_affine(&self) -> Affine4 {
         if self.pixdim[1] < 0.0 || self.pixdim[2] < 0.0 || self.pixdim[3] < 0.0 {
             panic!("All spacings (pixdim) should be positive");
         }
@@ -367,7 +367,7 @@ impl NiftiHeader {
             panic!("qfac (pixdim[0]) should be 1 or -1");
         }
 
-        let quaternion = self.get_qform_quaternion();
+        let quaternion = self.qform_quaternion();
         let r = quaternion_to_affine(quaternion);
         let s = Affine3::from_diagonal(&Vector3::new(
             self.pixdim[1],
@@ -386,7 +386,7 @@ impl NiftiHeader {
     /// Retrieve affine transformation implied by shape and zooms.
     ///
     /// Note that we get the translations from the center of the image.
-    fn get_base_affine(&self) -> Affine4 {
+    fn base_affine(&self) -> Affine4 {
         let d = self.dim[0] as usize;
         shape_zoom_affine(&self.dim[1..d + 1], &self.pixdim[1..d + 1])
     }
@@ -394,7 +394,7 @@ impl NiftiHeader {
     /// Compute quaternion from b, c, d of quaternion.
     ///
     /// Fills a value by assuming this is a unit quaternion.
-    fn get_qform_quaternion(&self) -> Quaternion<f32> {
+    fn qform_quaternion(&self) -> Quaternion<f32> {
         fill_positive(Vector3::new(self.quatern_b, self.quatern_c, self.quatern_d))
     }
 
@@ -404,7 +404,7 @@ impl NiftiHeader {
     ///
     /// * 'sform' from unmodified `affine`, with `sform_code` set to `AlignedAnat`.
     /// * 'qform' from a quaternion built from `affine`. However, the 'qform' won't be used by most
-    /// nifti readers because the `qform_code` will be set to 'Unknown'.
+    /// nifti readers because the `qform_code` will be set to `Unknown`.
     pub fn set_affine(&mut self, affine: &Affine4) {
         // Set affine into sform with default code.
         self.set_sform(affine, XForm::AlignedAnat);
@@ -437,7 +437,7 @@ impl NiftiHeader {
     /// where the rotation matrix is orthogonal. This is to allow quaternion representation. The
     /// orthogonal representation enforces orthogonal axes.
     fn set_qform(&mut self, affine4: &Affine4, code: XForm) {
-        let (affine, translation) = get_affine_and_translation(&affine4);
+        let (affine, translation) = affine_and_translation(&affine4);
         let aff2 = affine.component_mul(&affine);
         let spacing = (
             (aff2[0] + aff2[1] + aff2[2]).sqrt(),

@@ -1,12 +1,16 @@
+//! This module defines some affine-related utilities.
+
 use nalgebra::{Matrix3, Matrix4, Quaternion, RowVector4, Scalar, SymmetricEigen, Vector3, U1, U3};
 
+/// 3x3 affine transformation matrix.
 pub type Affine3 = Matrix3<f32>;
+/// 4x4 affine transformation matrix.
 pub type Affine4 = Matrix4<f32>;
 
 const QUARTERNION_THRESHOLD: f32 = -::std::f32::EPSILON * 3.0;
 
 /// Separate a 4x4 affine into its 3x3 affine and translation components.
-pub fn get_affine_and_translation<T: Scalar>(affine: &Matrix4<T>) -> (Matrix3<T>, Vector3<T>) {
+pub fn affine_and_translation<T: Scalar>(affine: &Matrix4<T>) -> (Matrix3<T>, Vector3<T>) {
     let translation = Vector3::<T>::new(affine[12], affine[13], affine[14]);
     let affine = affine.fixed_slice::<U3, U3>(0, 0).into_owned();
     (affine, translation)

@@ -59,7 +59,7 @@ extern crate flate2;
 extern crate num_traits;
 extern crate safe_transmute;
 
-#[cfg(feature = "nalgebra_affine")] mod affine;
+#[cfg(feature = "nalgebra_affine")] pub mod affine;
 pub mod extension;
 pub mod header;
 pub mod object;
