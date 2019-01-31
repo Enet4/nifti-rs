@@ -51,6 +51,7 @@
 #[macro_use] extern crate quick_error;
 #[macro_use] extern crate num_derive;
 #[macro_use] extern crate derive_builder;
+#[cfg(feature = "nalgebra_affine")] extern crate alga;
 #[cfg(feature = "nalgebra_affine")] extern crate nalgebra;
 #[cfg(feature = "ndarray_volumes")] extern crate ndarray;
 

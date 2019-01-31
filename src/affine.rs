@@ -7,11 +7,11 @@ pub type Affine3 = Matrix3<f32>;
 /// 4x4 affine transformation matrix.
 pub type Affine4 = Matrix4<f32>;
 
-const QUARTERNION_THRESHOLD: f32 = -::std::f32::EPSILON * 3.0;
+const QUARTERNION_THRESHOLD: f64 = -::std::f32::EPSILON as f64 * 3.0;
 
 /// Separate a 4x4 affine into its 3x3 affine and translation components.
 pub fn affine_and_translation<T: Scalar>(affine: &Matrix4<T>) -> (Matrix3<T>, Vector3<T>) {
-    let translation = Vector3::<T>::new(affine[12], affine[13], affine[14]);
+    let translation = Vector3::new(affine[12], affine[13], affine[14]);
     let affine = affine.fixed_slice::<U3, U3>(0, 0).into_owned();
     (affine, translation)
 }
@@ -19,15 +19,15 @@ pub fn affine_and_translation<T: Scalar>(affine: &Matrix4<T>) -> (Matrix3<T>, Ve
 /// Get affine implied by given shape and zooms.
 ///
 /// We get the translations from the center of the image (implied by `shape`).
-pub(crate) fn shape_zoom_affine(shape: &[u16], spacing: &[f32]) -> Affine4 {
+pub(crate) fn shape_zoom_affine(shape: &[u16], spacing: &[f32]) -> Matrix4<f64> {
     // Get translations from center of image
     let origin = Vector3::new(
-        (shape[0] as f32 - 1.0) / 2.0,
-        (shape[1] as f32 - 1.0) / 2.0,
-        (shape[2] as f32 - 1.0) / 2.0,
+        (shape[0] as f64 - 1.0) / 2.0,
+        (shape[1] as f64 - 1.0) / 2.0,
+        (shape[2] as f64 - 1.0) / 2.0,
     );
-    let spacing = [-spacing[0] as f32, spacing[1] as f32, spacing[2] as f32];
-    Affine4::new(
+    let spacing = [-spacing[0] as f64, spacing[1] as f64, spacing[2] as f64];
+    Matrix4::new(
         spacing[0], 0.0, 0.0, -origin[0] * spacing[0],
         0.0, spacing[1], 0.0, -origin[1] * spacing[1],
         0.0, 0.0, spacing[2], -origin[2] * spacing[2],
@@ -46,8 +46,7 @@ pub(crate) fn shape_zoom_affine(shape: &[u16], spacing: &[f32]) -> Affine4 {
 ///     w = (1.0 - (x*x + y*y + z*z)).sqrt()
 /// `1.0 - (x*x + y*y + z*z)` can be near zero, which will lead to numerical instability in sqrt.
 /// Here we use f64 to reduce numerical instability.
-pub(crate) fn fill_positive(xyz: Vector3<f32>) -> Quaternion<f32> {
-    let xyz: Vector3<f32> = nalgebra::convert(xyz);
+pub(crate) fn fill_positive(xyz: Vector3<f64>) -> Quaternion<f64> {
     let w2 = 1.0 - xyz.dot(&xyz);
     let w = if w2 < 0.0 {
         if w2 < QUARTERNION_THRESHOLD {
@@ -57,7 +56,7 @@ pub(crate) fn fill_positive(xyz: Vector3<f32>) -> Quaternion<f32> {
     } else {
         w2.sqrt()
     };
-    Quaternion::new(w as f32, xyz.x as f32, xyz.y as f32, xyz.z as f32)
+    Quaternion::new(w, xyz.x, xyz.y, xyz.z)
 }
 
 /// Calculate quaternion corresponding to given rotation matrix.
@@ -71,7 +70,7 @@ pub(crate) fn fill_positive(xyz: Vector3<f32>) -> Quaternion<f32> {
 ///
 /// Bar-Itzhack, Itzhack Y. "New method for extracting the quaternion from a rotation
 /// matrix", AIAA Journal of Guidance, Control and Dynamics 23(6):1085-1087, 2000
-pub(crate) fn affine_to_quaternion(affine: &Affine3) -> RowVector4<f32> {
+pub(crate) fn affine_to_quaternion(affine: &Matrix3<f64>) -> RowVector4<f64> {
     // qyx refers to the contribution of the y input vector component to the x output vector
     // component. qyx is therefore the same as M[0, 1]. The notation is from the Wikipedia article.
     let qxx = affine[0];
@@ -85,7 +84,7 @@ pub(crate) fn affine_to_quaternion(affine: &Affine3) -> RowVector4<f32> {
     let qzz = affine[8];
 
     // Fill only lower half of symmetric matrix.
-    let k = Affine4::new(
+    let k = Matrix4::new(
         qxx - qyy - qzz, 0.0,             0.0,             0.0,
         qyx + qxy,       qyy - qxx - qzz, 0.0,             0.0,
         qzx + qxz,       qzy + qyz,       qzz - qxx - qyy, 0.0,
@@ -122,10 +121,10 @@ pub(crate) fn affine_to_quaternion(affine: &Affine3) -> RowVector4<f32> {
 /// The algorithm here allows non-unit quaternions.
 ///
 /// Algorithm from https://en.wikipedia.org/wiki/Rotation_matrix#Quaternion
-pub(crate) fn quaternion_to_affine(q: Quaternion<f32>) -> Affine3 {
+pub(crate) fn quaternion_to_affine(q: Quaternion<f64>) -> Matrix3<f64> {
     let nq = q.w * q.w + q.i * q.i + q.j * q.j + q.k * q.k;
-    if nq < ::std::f32::EPSILON {
-        return Affine3::identity();
+    if nq < ::std::f64::EPSILON {
+        return Matrix3::identity();
     }
     let s = 2.0 / nq;
     let x = q.i * s;
@@ -140,7 +139,7 @@ pub(crate) fn quaternion_to_affine(q: Quaternion<f32>) -> Affine3 {
     let yy = q.j * y;
     let yz = q.j * z;
     let zz = q.k * z;
-    Affine3::new(
+    Matrix3::new(
         1.0 - (yy + zz), xy - wz, xz + wy,
         xy + wz, 1.0 - (xx + zz), yz - wx,
         xz - wy, yz + wx, 1.0 - (xx + yy),
@@ -154,20 +153,22 @@ mod tests {
     #[test]
     fn test_shape_zoom_affine() {
         let affine = shape_zoom_affine(&[3, 5, 7], &[3.0, 2.0, 1.0]);
-        assert_eq!(affine, Affine4::new(
+        let real_affine = Matrix4::new(
             -3.0, 0.0, 0.0, 3.0,
             0.0, 2.0, 0.0, -4.0,
             0.0, 0.0, 1.0, -3.0,
             0.0, 0.0, 0.0, 1.0,
-        ));
+        );
+        assert_eq!(affine, real_affine);
 
         let affine = shape_zoom_affine(&[256, 256, 54], &[0.9375, 0.9375, 3.0]);
-        assert_eq!(affine, Affine4::new(
+        let real_affine = Matrix4::new(
             -0.9375, 0.0, 0.0, 119.53125,
             0.0, 0.9375, 0.0, -119.53125,
             0.0, 0.0, 3.0, -79.5,
             0.0, 0.0, 0.0, 1.0,
-        ));
+        );
+        assert_eq!(affine, real_affine);
     }
 
     #[test]
@@ -183,7 +184,7 @@ mod tests {
     #[test]
     fn test_affine_to_quaternion() {
         assert_eq!(
-            affine_to_quaternion(&Affine3::identity()),
+            affine_to_quaternion(&Matrix3::identity()),
             RowVector4::new(1.0, 0.0, 0.0, 0.0)
         );
 
@@ -196,7 +197,12 @@ mod tests {
         let affine = Matrix3::new(1.1, 0.1, 0.1, 0.2, 1.1, 0.5, 0.0, 0.0, 1.0);
         assert_eq!(
             affine_to_quaternion(&affine),
-            RowVector4::new(0.99299955, -0.1147423, 0.017765911, 0.021675035)
+            RowVector4::new(
+                0.9929998817020886,
+                -0.1147422705153119,
+                0.017766153114299042,
+                0.02167510323267157
+            )
         );
     }
 
