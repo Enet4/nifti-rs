@@ -173,7 +173,7 @@ impl Default for NiftiHeader {
             datatype: 0,
             bitpix: 0,
             slice_start: 0,
-            pixdim: [0.; 8],
+            pixdim: [1.; 8],
             vox_offset: 352.,
             scl_slope: 0.,
             scl_inter: 0.,
