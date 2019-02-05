@@ -18,6 +18,10 @@ fn minimal_hdr() {
         scl_inter: 0.,
         magic: *b"ni1\0",
         endianness: Endianness::Big,
+        sform_code: 0,
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
         ..Default::default()
     };
 
@@ -47,6 +51,10 @@ fn minimal_hdr_gz() {
         scl_inter: 0.,
         magic: *b"ni1\0",
         endianness: Endianness::Big,
+        sform_code: 0,
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
         ..Default::default()
     };
 
@@ -75,6 +83,10 @@ fn minimal_nii() {
         scl_slope: 0.,
         scl_inter: 0.,
         magic: *b"n+1\0",
+        sform_code: 0,
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
         endianness: Endianness::Big,
         ..Default::default()
     };
@@ -211,6 +223,9 @@ fn zstat1_nii_gz() {
         descrip,
         qform_code: 1,
         sform_code: 0,
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
         quatern_b: 0.,
         quatern_c: 1.,
         magic: *b"n+1\0",

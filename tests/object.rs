@@ -20,6 +20,10 @@ fn minimal_nii_gz() {
         scl_inter: 0.,
         magic: *b"n+1\0",
         endianness: Endianness::Big,
+        sform_code: 0,
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
         ..Default::default()
     };
 
@@ -44,6 +48,10 @@ fn minimal_nii() {
         scl_inter: 0.,
         magic: *b"n+1\0",
         endianness: Endianness::Big,
+        sform_code: 0,
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
         ..Default::default()
     };
 
@@ -68,6 +76,10 @@ fn minimal_by_hdr() {
         scl_inter: 0.,
         magic: *b"ni1\0",
         endianness: Endianness::Big,
+        sform_code: 0,
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
         ..Default::default()
     };
 
@@ -92,6 +104,10 @@ fn minimal_by_hdr_and_img_gz() {
         scl_inter: 0.,
         magic: *b"ni1\0",
         endianness: Endianness::Big,
+        sform_code: 0,
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
         ..Default::default()
     };
 
@@ -117,6 +133,10 @@ fn minimal_by_hdr_gz() {
         scl_inter: 0.,
         magic: *b"ni1\0",
         endianness: Endianness::Big,
+        sform_code: 0,
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
         ..Default::default()
     };
 
@@ -141,6 +161,10 @@ fn minimal_by_pair() {
         scl_inter: 0.,
         magic: *b"ni1\0",
         endianness: Endianness::Big,
+        sform_code: 0,
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
         ..Default::default()
     };
 
