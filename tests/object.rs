@@ -190,3 +190,9 @@ fn f32_nii_gz() {
     assert_eq!(volume.get_f32(&[5, 0, 4]).unwrap(), 0.4);
     assert_eq!(volume.get_f32(&[0, 8, 5]).unwrap(), 0.8);
 }
+
+#[test]
+fn bad_file_1() {
+    let _ = InMemNiftiObject::from_file("resources/fuzz_artifacts/crash-1.nii");
+    // must not panic
+}
