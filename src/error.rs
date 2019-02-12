@@ -1,5 +1,4 @@
 //! Types for error handling go here.
-
 use std::io::Error as IOError;
 use typedef::NiftiType;
 
@@ -12,6 +11,11 @@ quick_error! {
         /// which should be either `b"ni1\0"` or `b"n+1\0`.
         InvalidFormat {
             description("Invalid NIfTI-1 file")
+        }
+        /// The header contains a field in an invalid state.
+        InconsistentHeader(name: &'static str) {
+            description("Inconsistent file header")
+            display("Inconsistent value of header field {}", name)
         }
         /// Attempted to read volume outside boundaries.
         OutOfBounds(coords: Vec<u16>) {
@@ -59,7 +63,7 @@ quick_error! {
         /// Header contains a code which is not valid for the given attribute
         InvalidCode(typename: &'static str, code: i16) {
             description("invalid code")
-            display("invalid code `{}` for {}", code, typename)
+            display("invalid code `{}` for header field {}", code, typename)
         }
     }
 }

@@ -45,7 +45,7 @@ impl InMemNiftiVolume {
     /// Build an InMemNiftiVolume from a header and a buffer. The buffer length and the dimensions
     /// declared in the header are expected to fit.
     pub fn from_raw_data(header: &NiftiHeader, raw_data: Vec<u8>) -> Result<Self> {
-        if nb_bytes_for_data(header) != raw_data.len() {
+        if nb_bytes_for_data(header)? != raw_data.len() {
             return Err(NiftiError::IncompatibleLength);
         }
 
@@ -65,7 +65,7 @@ impl InMemNiftiVolume {
     /// following bytes represent the first voxels of the volume (and not part of the
     /// extensions).
     pub fn from_stream<R: Read>(mut source: R, header: &NiftiHeader) -> Result<Self> {
-        let mut raw_data = vec![0u8; nb_bytes_for_data(header)];
+        let mut raw_data = vec![0u8; nb_bytes_for_data(header)?];
         source.read_exact(&mut raw_data)?;
 
         let datatype = header.data_type()?;
@@ -323,7 +323,7 @@ impl<'a> NiftiVolume for &'a InMemNiftiVolume {
 
 impl NiftiVolume for InMemNiftiVolume {
     fn dim(&self) -> &[u16] {
-        &self.dim[1..(self.dim[0] + 1) as usize]
+        &self.dim[1..self.dimensionality() + 1]
     }
 
     fn dimensionality(&self) -> usize {

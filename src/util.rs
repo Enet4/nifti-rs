@@ -4,9 +4,9 @@ use std::io::{Read, Seek};
 use std::mem;
 use std::path::{Path, PathBuf};
 use byteordered::Endian;
-
 use safe_transmute::{guarded_transmute_pod_vec_permissive, PodTransmutable};
 
+use error::Result;
 use NiftiHeader;
 
 /// A trait that is both Read and Seek.
@@ -60,13 +60,12 @@ where
     }
 }
 
-pub fn nb_bytes_for_data(header: &NiftiHeader) -> usize {
-    let ndims = header.dim[0];
-    let resolution: usize = header.dim[1..(ndims + 1) as usize]
+pub fn nb_bytes_for_data(header: &NiftiHeader) -> Result<usize> {
+    let resolution: usize = header.dim()?
         .iter()
         .map(|d| *d as usize)
         .product();
-    resolution * header.bitpix as usize / 8
+    Ok(resolution * header.bitpix as usize / 8)
 }
 
 #[cfg(feature = "ndarray_volumes")]
