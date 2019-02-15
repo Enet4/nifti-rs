@@ -237,10 +237,15 @@ impl NiftiHeader {
     /// 
     /// # Error
     /// 
-    /// `NiftiError::` if `dim[0]` does not represent a valid dimensionality.
+    /// `NiftiError::InconsistentDim` if `dim[0]` does not represent a valid
+    /// dimensionality, or any of the real dimensions are zero.
     pub fn dim(&self) -> Result<&[u16]> {
         let ndim = self.dimensionality()?;
-        Ok(&self.dim[1..ndim + 1])
+        let o = &self.dim[1..ndim + 1];
+        if let Some(i) = o.into_iter().position(|&x| x == 0) {
+            return Err(NiftiError::InconsistentDim(i as u8, self.dim[i]));
+        }
+        Ok(o)
     }
 
     /// Retrieve and validate the number of dimensions of the volume. This is
@@ -248,10 +253,11 @@ impl NiftiHeader {
     /// 
     /// # Error
     /// 
-    /// `NiftiError::` if `dim[0]` does not represent a valid dimensionality.
+    /// `NiftiError::` if `dim[0]` does not represent a valid dimensionality
+    /// (it must be positive and not higher than 7).
     pub fn dimensionality(&self) -> Result <usize> {
-        if self.dim[0] > 7 {
-            return Err(NiftiError::InconsistentHeader("dim"));
+        if self.dim[0] == 0 || self.dim[0] > 7 {
+            return Err(NiftiError::InconsistentDim(0, self.dim[0]));
         }
         Ok(usize::from(self.dim[0]))
     }

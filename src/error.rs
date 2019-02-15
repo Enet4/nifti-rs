@@ -12,11 +12,17 @@ quick_error! {
         InvalidFormat {
             description("Invalid NIfTI-1 file")
         }
-        /// The header contains a field in an invalid state.
-        InconsistentHeader(name: &'static str) {
-            description("Inconsistent file header")
-            display("Inconsistent value of header field {}", name)
+        /// The field `dim` is in an invalid state, as a consequence of
+        /// `dim[0]` or one of the elements in `1..dim[0] + 1` not being
+        /// positive.
+        InconsistentDim(index: u8, value: u16) {
+            description("Inconsistent dim in file header")
+            display("Inconsistent value `{}` in header field dim[{}] ({})", value, index, match index {
+                0 if *value > 7 => "must not be higher than 7",
+                _ => "must be positive"
+            })
         }
+        
         /// Attempted to read volume outside boundaries.
         OutOfBounds(coords: Vec<u16>) {
             description("Out of bounds access to volume")
