@@ -47,6 +47,7 @@
 //!
 #![deny(missing_debug_implementations)]
 #![warn(missing_docs, unused_extern_crates, trivial_casts, unused_results)]
+#![recursion_limit = "128"]
 
 #[macro_use] extern crate quick_error;
 #[macro_use] extern crate num_derive;

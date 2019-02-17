@@ -1,5 +1,4 @@
 //! Types for error handling go here.
-
 use std::io::Error as IOError;
 use typedef::NiftiType;
 
@@ -13,6 +12,17 @@ quick_error! {
         InvalidFormat {
             description("Invalid NIfTI-1 file")
         }
+        /// The field `dim` is in an invalid state, as a consequence of
+        /// `dim[0]` or one of the elements in `1..dim[0] + 1` not being
+        /// positive.
+        InconsistentDim(index: u8, value: u16) {
+            description("Inconsistent dim in file header")
+            display("Inconsistent value `{}` in header field dim[{}] ({})", value, index, match index {
+                0 if *value > 7 => "must not be higher than 7",
+                _ => "must be positive"
+            })
+        }
+        
         /// Attempted to read volume outside boundaries.
         OutOfBounds(coords: Vec<u16>) {
             description("Out of bounds access to volume")
@@ -59,7 +69,7 @@ quick_error! {
         /// Header contains a code which is not valid for the given attribute
         InvalidCode(typename: &'static str, code: i16) {
             description("invalid code")
-            display("invalid code `{}` for {}", code, typename)
+            display("invalid code `{}` for header field {}", code, typename)
         }
     }
 }

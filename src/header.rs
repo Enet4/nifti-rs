@@ -231,6 +231,37 @@ impl NiftiHeader {
         parse_header_1(input)
     }
 
+    /// Retrieve and validate the dimensions of the volume. Unlike how NIfTI-1
+    /// stores dimensions, the returned slice does not include `dim[0]` and is
+    /// clipped to the effective number of dimensions.
+    /// 
+    /// # Error
+    /// 
+    /// `NiftiError::InconsistentDim` if `dim[0]` does not represent a valid
+    /// dimensionality, or any of the real dimensions are zero.
+    pub fn dim(&self) -> Result<&[u16]> {
+        let ndim = self.dimensionality()?;
+        let o = &self.dim[1..ndim + 1];
+        if let Some(i) = o.into_iter().position(|&x| x == 0) {
+            return Err(NiftiError::InconsistentDim(i as u8, self.dim[i]));
+        }
+        Ok(o)
+    }
+
+    /// Retrieve and validate the number of dimensions of the volume. This is
+    /// `dim[0]` after the necessary byte order conversions.
+    /// 
+    /// # Error
+    /// 
+    /// `NiftiError::` if `dim[0]` does not represent a valid dimensionality
+    /// (it must be positive and not higher than 7).
+    pub fn dimensionality(&self) -> Result <usize> {
+        if self.dim[0] == 0 || self.dim[0] > 7 {
+            return Err(NiftiError::InconsistentDim(0, self.dim[0]));
+        }
+        Ok(usize::from(self.dim[0]))
+    }
+
     /// Get the data type as a validated enum.
     pub fn data_type(&self) -> Result<NiftiType> {
         FromPrimitive::from_i16(self.datatype)
