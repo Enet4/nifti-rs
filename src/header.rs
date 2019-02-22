@@ -1,10 +1,18 @@
 //! This module defines the `NiftiHeader` struct, which is used
 //! to provide important information about NIFTI-1 volumes.
 
+#[cfg(feature = "nalgebra_affine")]
+use affine::*;
+#[cfg(feature = "nalgebra_affine")]
+use alga::general::SubsetOf;
 use byteordered::{ByteOrdered, Endian, Endianness};
 use error::{NiftiError, Result};
 use flate2::bufread::GzDecoder;
+#[cfg(feature = "nalgebra_affine")]
+use nalgebra::{Matrix3, Matrix4, Quaternion, Real, Vector3};
 use num_traits::FromPrimitive;
+#[cfg(feature = "nalgebra_affine")]
+use num_traits::ToPrimitive;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ops::Deref;
@@ -352,6 +360,197 @@ impl NiftiHeader {
         T: Into<String>,
     {
         self.set_description(description.into().as_bytes())
+    }
+}
+
+#[cfg(feature = "nalgebra_affine")]
+impl NiftiHeader {
+    /// Retrieve best of available transformations.
+    ///
+    /// Return the 'sform' transformation if `sform_code` has a valid value, 'qform' transformation
+    /// if `qform_code` has a valid value, otherwise return a "base" transformation, constructed
+    /// from the declared shape and zooms.
+    ///
+    /// If `sform_code` and `qform_code` both have valid values, the 'sform' affine transformation
+    /// is prioritized.
+    pub fn affine<T>(&self) -> Matrix4<T>
+    where
+        T: Real,
+        f32: SubsetOf<T>,
+    {
+        if self.sform_code != 0 {
+            self.sform_affine::<T>()
+        } else if self.qform_code != 0 {
+            self.qform_affine::<T>()
+        } else {
+            self.base_affine::<T>()
+        }
+    }
+
+    /// Retrieve affine transformation from 'sform' fields.
+    fn sform_affine<T>(&self) -> Matrix4<T>
+    where
+        T: Real,
+        f32: SubsetOf<T>,
+    {
+        let affine = Matrix4::new(
+            self.srow_x[0], self.srow_x[1], self.srow_x[2], self.srow_x[3],
+            self.srow_y[0], self.srow_y[1], self.srow_y[2], self.srow_y[3],
+            self.srow_z[0], self.srow_z[1], self.srow_z[2], self.srow_z[3],
+            0.0, 0.0, 0.0, 1.0,
+        );
+        nalgebra::convert(affine)
+    }
+
+    /// Retrieve affine transformation from qform-related fields.
+    fn qform_affine<T>(&self) -> Matrix4<T>
+    where
+        T: Real,
+    {
+        if self.pixdim[1] < 0.0 || self.pixdim[2] < 0.0 || self.pixdim[3] < 0.0 {
+            panic!("All spacings (pixdim) should be positive");
+        }
+        if self.pixdim[0].abs() != 1.0 {
+            panic!("qfac (pixdim[0]) should be 1 or -1");
+        }
+
+        let quaternion = self.qform_quaternion();
+        let r = quaternion_to_affine(quaternion);
+        let s = Matrix3::from_diagonal(&Vector3::new(
+            self.pixdim[1] as f64,
+            self.pixdim[2] as f64,
+            self.pixdim[3] as f64 * self.pixdim[0] as f64,
+        ));
+        let m = r * s;
+        let affine = Matrix4::new(
+            m[0], m[3], m[6], self.quatern_x as f64,
+            m[1], m[4], m[7], self.quatern_y as f64,
+            m[2], m[5], m[8], self.quatern_z as f64,
+            0.0, 0.0, 0.0, 1.0,
+        );
+        nalgebra::convert(affine)
+    }
+
+    /// Retrieve affine transformation implied by shape and zooms.
+    ///
+    /// Note that we get the translations from the center of the image.
+    fn base_affine<T>(&self) -> Matrix4<T>
+    where
+        T: Real,
+    {
+        let d = self.dim[0] as usize;
+        let affine = shape_zoom_affine(&self.dim[1..d + 1], &self.pixdim[1..d + 1]);
+        nalgebra::convert(affine)
+    }
+
+    /// Compute quaternion from b, c, d of quaternion.
+    ///
+    /// Fills a value by assuming this is a unit quaternion.
+    fn qform_quaternion(&self) -> Quaternion<f64> {
+        let xyz = Vector3::new(
+            self.quatern_b as f64,
+            self.quatern_c as f64,
+            self.quatern_d as f64,
+        );
+        fill_positive(xyz)
+    }
+
+    /// Set affine transformation.
+    ///
+    /// Will set both affine transformations to avoid interoperability problems:
+    ///
+    /// * 'sform' from unmodified `affine`, with `sform_code` set to `AlignedAnat`.
+    /// * 'qform' from a quaternion built from `affine`. However, the 'qform' won't be used by most
+    /// nifti readers because the `qform_code` will be set to `Unknown`.
+    pub fn set_affine<T>(&mut self, affine: &Matrix4<T>)
+    where
+        T: Real,
+        T: SubsetOf<f64>,
+        T: ToPrimitive,
+    {
+        // Set affine into sform with default code.
+        self.set_sform(affine, XForm::AlignedAnat);
+
+        // Make qform 'unknown'.
+        self.set_qform(affine, XForm::Unknown);
+    }
+
+    /// Set affine transformation in 'sform' fields.
+    fn set_sform<T>(&mut self, affine: &Matrix4<T>, code: XForm)
+    where
+        T: Real,
+        T: ToPrimitive,
+    {
+        self.sform_code = code as i16;
+        self.srow_x[0] = affine[0].to_f32().unwrap();
+        self.srow_x[1] = affine[4].to_f32().unwrap();
+        self.srow_x[2] = affine[8].to_f32().unwrap();
+        self.srow_x[3] = affine[12].to_f32().unwrap();
+        self.srow_y[0] = affine[1].to_f32().unwrap();
+        self.srow_y[1] = affine[5].to_f32().unwrap();
+        self.srow_y[2] = affine[9].to_f32().unwrap();
+        self.srow_y[3] = affine[13].to_f32().unwrap();
+        self.srow_z[0] = affine[2].to_f32().unwrap();
+        self.srow_z[1] = affine[6].to_f32().unwrap();
+        self.srow_z[2] = affine[10].to_f32().unwrap();
+        self.srow_z[3] = affine[14].to_f32().unwrap();
+    }
+
+    /// Set affine transformation in qform-related fields.
+    ///
+    /// The qform transform only encodes translations, rotations and zooms. If there are shear
+    /// components to the `affine` transform, the written qform gives the closest approximation
+    /// where the rotation matrix is orthogonal. This is to allow quaternion representation. The
+    /// orthogonal representation enforces orthogonal axes.
+    fn set_qform<T>(&mut self, affine4: &Matrix4<T>, code: XForm)
+    where
+        T: Real,
+        T: SubsetOf<f64>,
+        T: ToPrimitive,
+    {
+        let affine4: Matrix4<f64> = nalgebra::convert(*affine4);
+        let (affine, translation) = affine_and_translation(&affine4);
+        let aff2 = affine.component_mul(&affine);
+        let spacing = (
+            (aff2[0] + aff2[1] + aff2[2]).sqrt(),
+            (aff2[3] + aff2[4] + aff2[5]).sqrt(),
+            (aff2[6] + aff2[7] + aff2[8]).sqrt(),
+        );
+        let mut r = Matrix3::new(
+            affine[0] / spacing.0, affine[3] / spacing.1, affine[6] / spacing.2,
+            affine[1] / spacing.0, affine[4] / spacing.1, affine[7] / spacing.2,
+            affine[2] / spacing.0, affine[5] / spacing.1, affine[8] / spacing.2,
+        );
+
+        // Set qfac to make R determinant positive
+        let qfac = if r.determinant() > 0.0 {
+            1.0
+        } else {
+            r[6] *= -1.0;
+            r[7] *= -1.0;
+            r[8] *= -1.0;
+            -1.0
+        };
+
+        // Make R orthogonal (to allow quaternion representation). The orthogonal representation
+        // enforces orthogonal axes (a subtle requirement of the NIFTI format qform transform).
+        // Transform below is polar decomposition, returning the closest orthogonal matrix PR, to
+        // input R.
+        let svd = r.svd(true, true);
+        let pr = svd.u.unwrap() * svd.v_t.unwrap();
+        let quaternion = affine_to_quaternion(&pr);
+
+        self.qform_code = code as i16;
+        self.pixdim[0] = qfac;
+        self.pixdim[1] = spacing.0 as f32;
+        self.pixdim[2] = spacing.1 as f32;
+        self.pixdim[3] = spacing.2 as f32;
+        self.quatern_b = quaternion[1] as f32;
+        self.quatern_c = quaternion[2] as f32;
+        self.quatern_d = quaternion[3] as f32;
+        self.quatern_x = translation[0] as f32;
+        self.quatern_y = translation[1] as f32;
+        self.quatern_z = translation[2] as f32;
     }
 }
 
