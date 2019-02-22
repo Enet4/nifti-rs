@@ -2,31 +2,28 @@
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::ops::{Div, Sub};
 use std::path::{Path, PathBuf};
 
 use byteordered::{ByteOrdered, Endian};
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use ndarray::{ArrayBase, ArrayView, Axis, Data, Dimension, RemoveAxis, ScalarOperand};
-use num_traits::FromPrimitive;
+use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis};
 use safe_transmute::{guarded_transmute_to_bytes_pod_many, PodTransmutable};
 
 use {
     header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
-    util::{is_gz_file, is_hdr_file, adapt_bytes},
+    util::{adapt_bytes, is_gz_file, is_hdr_file},
     volume::element::DataElement,
     NiftiHeader, NiftiType, Result,
 };
 
-/// Write a nifti file (.nii or .nii.gz) in Little Endian.
+/// Write a nifti file (.nii or .nii.gz).
 ///
-/// If a `reference` is given, it will be used to fill most of the header's fields. The voxels
-/// intensity will be subtracted by `scl_slope` and divided by `scl_inter`. If `reference` is not
-/// given, a default `NiftiHeader` will be built and written.
-///
-/// In all cases, the `dim`, `datatype` and `bitpix` fields will depend only on `data`, not on the
-/// header. In other words, the `datatype` defined in `reference` will be ignored.
+/// If a `reference` is given, it will be used to fill most of the header's fields. Otherwise, a
+/// default `NiftiHeader` will be built and written. In all cases, the `dim`, `datatype` and
+/// `bitpix` fields will depend only on `data`, not on the header. This means that the `datatype`
+/// defined in `reference` will be ignored. Because of this, `scl_slope` will be set to 1.0 and
+/// `scl_inter` to 0.0.
 pub fn write_nifti<P, A, S, D>(
     header_path: P,
     data: &ArrayBase<S, D>,
@@ -35,13 +32,8 @@ pub fn write_nifti<P, A, S, D>(
 where
     P: AsRef<Path>,
     S: Data<Elem = A>,
-    A: Copy,
     A: DataElement,
-    A: Div<Output = A>,
-    A: FromPrimitive,
     A: PodTransmutable,
-    A: ScalarOperand,
-    A: Sub<Output = A>,
     D: Dimension + RemoveAxis,
 {
     let compression_level = Compression::fast();
@@ -60,12 +52,12 @@ where
                 header.endianness,
             );
             write_header(writer.as_mut(), &header)?;
-            write_data(writer.as_mut(), &header, data)?;
+            write_data::<_, A, _, _, _, _>(writer.as_mut(), data)?;
             let _ = writer.into_inner().finish()?;
         } else {
             let mut writer = ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
             write_header(writer.as_mut(), &header)?;
-            write_data(writer, &header, data)?;
+            write_data::<_, A, _, _, _, _>(writer, data)?;
         }
     } else {
         let data_file = File::create(&data_path)?;
@@ -81,26 +73,25 @@ where
                 GzEncoder::new(data_file, compression_level),
                 header.endianness,
             );
-            write_data(writer.as_mut(), &header, data)?;
+            write_data::<_, A, _, _, _, _>(writer.as_mut(), data)?;
             let _ = writer.into_inner().finish()?;
         } else {
             let header_writer =
                 ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
             write_header(header_writer, &header)?;
-            let data_writer =
-                ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
-            write_data(data_writer, &header, data)?;
+            let data_writer = ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
+            write_data::<_, A, _, _, _, _>(data_writer, data)?;
         }
     }
 
     Ok(())
 }
 
-/// Write a RGB nifti file (.nii or .nii.gz) in Little Endian.
+/// Write a RGB nifti file (.nii or .nii.gz).
 ///
 /// If a `reference` is given, it will be used to fill most of the header's fields, except those
 /// necessary to be recognized as a RGB image. `scl_slope` will be set to 1.0 and `scl_inter` to
-/// 0.0.  If `reference` is not given, a default `NiftiHeader` will be built and written.
+/// 0.0. If `reference` is not given, a default `NiftiHeader` will be built and written.
 pub fn write_rgb_nifti<P, S, D>(
     header_path: P,
     data: &ArrayBase<S, D>,
@@ -113,12 +104,8 @@ where
 {
     let compression_level = Compression::fast();
     let is_gz = is_gz_file(&header_path);
-    let (mut header, data_path) =
+    let (header, data_path) =
         prepare_header_and_paths(&header_path, data, reference, NiftiType::Rgb24)?;
-
-    // The `scl_slope` and `scl_inter` fields are ignored on the Rgb24 type.
-    header.scl_slope = 1.0;
-    header.scl_inter = 0.0;
 
     // Need the transpose for fortran used in nifti file format.
     let data = data.t();
@@ -131,12 +118,12 @@ where
                 header.endianness,
             );
             write_header(writer.as_mut(), &header)?;
-            write_slices::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
+            write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
             let _ = writer.into_inner().finish()?;
         } else {
             let mut writer = ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
             write_header(writer.as_mut(), &header)?;
-            write_slices::<_, u8, _, _, _, _>(writer, data)?;
+            write_data::<_, u8, _, _, _, _>(writer, data)?;
         }
     } else {
         let data_file = File::create(&data_path)?;
@@ -152,16 +139,15 @@ where
                 GzEncoder::new(data_file, compression_level),
                 header.endianness,
             );
-            write_slices::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
+            write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
             let _ = writer.into_inner().finish()?;
         } else {
             let header_writer =
                 ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
             write_header(header_writer, &header)?;
 
-            let data_writer =
-                ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
-            write_slices::<_, u8, _, _, _, _>(data_writer, data)?;
+            let data_writer = ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
+            write_data::<_, u8, _, _, _, _>(data_writer, data)?;
         }
     }
 
@@ -205,6 +191,8 @@ where
         datatype: datatype as i16,
         bitpix: (datatype.size_of() * 8) as i16,
         vox_offset: 352.0,
+        scl_inter: 0.0,
+        scl_slope: 1.0,
         magic: *MAGIC_CODE_NIP1,
         // All other fields are copied from reference header
         ..reference
@@ -304,39 +292,7 @@ where
 /// Write the data in 'f' order.
 ///
 /// Like NiBabel, we iterate by "slice" to improve speed and use less memory.
-fn write_data<T, D, W, E>(mut writer: ByteOrdered<W, E>, header: &NiftiHeader, data: ArrayView<T, D>) -> Result<()>
-where
-    T: Clone + PodTransmutable,
-    T: Div<Output = T>,
-    T: FromPrimitive,
-    T: PodTransmutable,
-    T: ScalarOperand,
-    T: Sub<Output = T>,
-    D: Dimension + RemoveAxis,
-    W: Write,
-    E: Endian + Copy,
-{
-    // `1.0x + 0.0` would give the same results, but we avoid a lot of divisions
-    let slope = if header.scl_slope == 0.0 {
-        1.0
-    } else {
-        header.scl_slope
-    };
-    if slope != 1.0 || header.scl_inter != 0.0 {
-        // TODO Use linear transformation like when reading. An scl_slope of 0.5 would turn all
-        // voxel values to 0 if we pass an ndarray of integers.
-        let slope = T::from_f32(slope).unwrap();
-        let inter = T::from_f32(header.scl_inter).unwrap();
-        for arr_data in data.axis_iter(Axis(0)) {
-            write_slice::<T, T, _, _, _, _>(writer.as_mut(), arr_data.sub(inter).div(slope))?;
-        }
-    } else {
-        write_slices::<T, T, _, _, _, _>(writer, data)?;
-    }
-    Ok(())
-}
-
-fn write_slices<A, B, S, D, W, E>(mut writer: ByteOrdered<W, E>, data: ArrayBase<S, D>) -> Result<()>
+fn write_data<A, B, S, D, W, E>(mut writer: ByteOrdered<W, E>, data: ArrayBase<S, D>) -> Result<()>
 where
     S: Data<Elem = A>,
     A: Clone + PodTransmutable,
@@ -357,7 +313,10 @@ where
     Ok(())
 }
 
-fn write_slice<A, B, S, D, W, E>(writer: ByteOrdered<&mut W, E>, data: ArrayBase<S, D>) -> Result<()>
+fn write_slice<A, B, S, D, W, E>(
+    writer: ByteOrdered<&mut W, E>,
+    data: ArrayBase<S, D>,
+) -> Result<()>
 where
     S: Data<Elem = A>,
     A: Clone + PodTransmutable,
