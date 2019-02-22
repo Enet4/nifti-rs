@@ -19,14 +19,13 @@ use {
     NiftiHeader, NiftiType, Result,
 };
 
-/// Write a nifti file (.nii or .nii.gz) in Little Endian.
+/// Write a nifti file (.nii or .nii.gz).
 ///
-/// If a `reference` is given, it will be used to fill most of the header's fields. The voxels
-/// intensity will be subtracted by `scl_slope` and divided by `scl_inter`. If `reference` is not
-/// given, a default `NiftiHeader` will be built and written.
-///
-/// In all cases, the `dim`, `datatype` and `bitpix` fields will depend only on `data`, not on the
-/// header. In other words, the `datatype` defined in `reference` will be ignored.
+/// If a `reference` is given, it will be used to fill most of the header's fields. Otherwise, a
+/// default `NiftiHeader` will be built and written. In all cases, the `dim`, `datatype` and
+/// `bitpix` fields will depend only on `data`, not on the header. This means that the `datatype`
+/// defined in `reference` will be ignored. Because of this, `scl_slope` will be set to 1.0 and
+/// `scl_inter` to 0.0.
 pub fn write_nifti<P, A, S, D>(
     header_path: P,
     data: &ArrayBase<S, D>,
@@ -96,11 +95,11 @@ where
     Ok(())
 }
 
-/// Write a RGB nifti file (.nii or .nii.gz) in Little Endian.
+/// Write a RGB nifti file (.nii or .nii.gz).
 ///
 /// If a `reference` is given, it will be used to fill most of the header's fields, except those
 /// necessary to be recognized as a RGB image. `scl_slope` will be set to 1.0 and `scl_inter` to
-/// 0.0.  If `reference` is not given, a default `NiftiHeader` will be built and written.
+/// 0.0. If `reference` is not given, a default `NiftiHeader` will be built and written.
 pub fn write_rgb_nifti<P, S, D>(
     header_path: P,
     data: &ArrayBase<S, D>,
@@ -113,12 +112,8 @@ where
 {
     let compression_level = Compression::fast();
     let is_gz = is_gz_file(&header_path);
-    let (mut header, data_path) =
+    let (header, data_path) =
         prepare_header_and_paths(&header_path, data, reference, NiftiType::Rgb24)?;
-
-    // The `scl_slope` and `scl_inter` fields are ignored on the Rgb24 type.
-    header.scl_slope = 1.0;
-    header.scl_inter = 0.0;
 
     // Need the transpose for fortran used in nifti file format.
     let data = data.t();
@@ -205,6 +200,8 @@ where
         datatype: datatype as i16,
         bitpix: (datatype.size_of() * 8) as i16,
         vox_offset: 352.0,
+        scl_inter: 0.0,
+        scl_slope: 1.0,
         magic: *MAGIC_CODE_NIP1,
         // All other fields are copied from reference header
         ..reference
