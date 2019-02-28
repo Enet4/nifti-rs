@@ -3,6 +3,8 @@ extern crate ndarray;
 #[cfg(feature = "ndarray_volumes")]
 extern crate nifti;
 #[cfg(feature = "ndarray_volumes")]
+extern crate num_traits;
+#[cfg(feature = "ndarray_volumes")]
 extern crate tempfile;
 
 #[cfg(feature = "ndarray_volumes")]
@@ -14,13 +16,14 @@ mod tests {
     };
 
     use ndarray::{s, Array, Array2, Axis, Dimension, IxDyn, ShapeBuilder};
+    use num_traits::AsPrimitive;
     use tempfile::tempdir;
 
     use nifti::{
         header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
         object::NiftiObject,
         writer::{write_nifti, write_rgb_nifti},
-        Endianness, InMemNiftiObject, IntoNdArray, NiftiHeader, NiftiType,
+        DataElement, Endianness, InMemNiftiObject, IntoNdArray, NiftiHeader, NiftiType,
     };
 
     fn get_temporary_path(ext: &str) -> PathBuf {
@@ -49,15 +52,28 @@ mod tests {
         }
     }
 
-    fn read_as_ndarray<P, D>(path: P) -> (NiftiHeader, Array<f32, D>)
+    fn read_as_ndarray<P, T, D>(path: P) -> (NiftiHeader, Array<T, D>)
     where
         P: AsRef<Path>,
+        T: Mul<Output = T>,
+        T: Add<Output = T>,
+        T: DataElement,
         D: Dimension,
+        u8: AsPrimitive<T>,
+        i8: AsPrimitive<T>,
+        u16: AsPrimitive<T>,
+        i16: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i32: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        f32: AsPrimitive<T>,
+        f64: AsPrimitive<T>,
     {
         let nifti_object = InMemNiftiObject::from_file(path).expect("Nifti file is unreadable.");
         let header = nifti_object.header().clone();
         let volume = nifti_object.into_volume();
-        let dyn_data = volume.into_ndarray().unwrap();
+        let dyn_data = volume.into_ndarray::<T>().unwrap();
         (header, dyn_data.into_dimensionality::<D>().unwrap())
     }
 
@@ -144,6 +160,22 @@ mod tests {
     }
 
     #[test]
+    fn half_slope() {
+        let data = Array::from_iter(0..216).into_shape((6, 6, 6)).unwrap();
+        let dim = [3, 6, 6, 6, 1, 1, 1, 1];
+        let slope = 0.4;
+        let inter = 100.1;
+        let header = generate_nifti_header(dim, slope, inter, NiftiType::Uint8);
+
+        let path = get_temporary_path("test_slope_inter.nii");
+        write_nifti(&path, &data, Some(&header)).unwrap();
+        let (read_header, read_data) = read_as_ndarray(path);
+        assert_eq!(read_header.scl_inter, 0.0);
+        assert_eq!(read_header.scl_slope, 1.0);
+        assert_eq!(data, read_data);
+    }
+
+    #[test]
     fn write_hdr_standard() {
         let mut data = Array::zeros((10, 11, 12));
         data[(5, 0, 0)] = 1.0;
@@ -183,7 +215,7 @@ mod tests {
         let v = "äbcdé".as_bytes();
         header.descrip = v.to_vec();
         write_nifti(&path, &data, Some(&header)).unwrap();
-        let (new_header, new_data) = read_as_ndarray(&path);
+        let (new_header, new_data) = read_as_ndarray::<_, f32, _>(&path);
         header.set_description(v).unwrap(); // Manual fix
         assert_eq!(new_header, header);
         assert_eq!(new_data, data);
@@ -247,7 +279,7 @@ mod tests {
             srow_y: [0.0, 1.0, 0.0, 0.0],
             srow_z: [0.0, 0.0, 1.0, 0.0],
             endianness: Endianness::Little,
-            .. NiftiHeader::default()
+            ..NiftiHeader::default()
         };
         write_rgb_nifti(&header_path, &data, Some(&header)).unwrap();
 
@@ -282,7 +314,7 @@ mod tests {
             srow_y: [0.0, 1.0, 0.0, 0.0],
             srow_z: [0.0, 0.0, 1.0, 0.0],
             endianness: Endianness::Little,
-            .. NiftiHeader::default()
+            ..NiftiHeader::default()
         };
         write_rgb_nifti(&path, &data, Some(&header)).unwrap();
 
@@ -313,7 +345,7 @@ mod tests {
             srow_y: [0.0, 1.0, 0.0, 0.0],
             srow_z: [0.0, 0.0, 1.0, 0.0],
             endianness: Endianness::Little,
-            .. NiftiHeader::default()
+            ..NiftiHeader::default()
         };
         write_rgb_nifti(&path, &data, Some(&header)).unwrap();
 
