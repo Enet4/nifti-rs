@@ -28,11 +28,11 @@ safe-transmute = "0.10.1"
 
 [dependencies.alga]
 optional = true
-version = "0.8"
+version = "0.9"
 
 [dependencies.nalgebra]
 optional = true
-version = "0.17"
+version = "0.18"
 
 [dependencies.ndarray]
 optional = true
