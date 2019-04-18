@@ -103,6 +103,6 @@ where
     {
         // TODO optimize this implementation (we don't need the whole volume)
         let volume = self.volume.into_ndarray()?;
-        Ok(volume.index_axis_move(Axis(self.axis as Ix), self.index as usize))
+        Ok(volume.into_subview(Axis(self.axis as Ix), self.index as usize))
     }
 }

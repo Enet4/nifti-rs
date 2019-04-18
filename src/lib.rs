@@ -55,6 +55,7 @@
 #[cfg(feature = "nalgebra_affine")] extern crate alga;
 #[cfg(feature = "nalgebra_affine")] extern crate nalgebra;
 #[cfg(feature = "ndarray_volumes")] extern crate ndarray;
+#[cfg(all(test, feature = "nalgebra_affine"))] #[macro_use] extern crate approx;
 
 extern crate byteordered;
 extern crate flate2;

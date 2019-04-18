@@ -195,14 +195,16 @@ mod tests {
         );
 
         let affine = Matrix3::new(1.1, 0.1, 0.1, 0.2, 1.1, 0.5, 0.0, 0.0, 1.0);
-        assert_eq!(
-            affine_to_quaternion(&affine),
-            RowVector4::new(
+        let quaternion = affine_to_quaternion(&affine);
+        assert_abs_diff_eq!(
+            quaternion.as_slice(),
+            &[
                 0.9929998817020889,
                 -0.11474227051531193,
                 0.017766153114299018,
                 0.02167510323267152
-            )
+            ][..],
+            epsilon = 1e-11,
         );
     }
 
