@@ -9,7 +9,7 @@ use byteordered::{ByteOrdered, Endian, Endianness};
 use error::{NiftiError, Result};
 use flate2::bufread::GzDecoder;
 #[cfg(feature = "nalgebra_affine")]
-use nalgebra::{Matrix3, Matrix4, Quaternion, Real, Vector3};
+use nalgebra::{Matrix3, Matrix4, Quaternion, RealField, Vector3};
 use num_traits::FromPrimitive;
 #[cfg(feature = "nalgebra_affine")]
 use num_traits::ToPrimitive;
@@ -375,7 +375,7 @@ impl NiftiHeader {
     /// is prioritized.
     pub fn affine<T>(&self) -> Matrix4<T>
     where
-        T: Real,
+        T: RealField,
         f32: SubsetOf<T>,
     {
         if self.sform_code != 0 {
@@ -390,7 +390,7 @@ impl NiftiHeader {
     /// Retrieve affine transformation from 'sform' fields.
     fn sform_affine<T>(&self) -> Matrix4<T>
     where
-        T: Real,
+        T: RealField,
         f32: SubsetOf<T>,
     {
         let affine = Matrix4::new(
@@ -405,7 +405,7 @@ impl NiftiHeader {
     /// Retrieve affine transformation from qform-related fields.
     fn qform_affine<T>(&self) -> Matrix4<T>
     where
-        T: Real,
+        T: RealField,
     {
         if self.pixdim[1] < 0.0 || self.pixdim[2] < 0.0 || self.pixdim[3] < 0.0 {
             panic!("All spacings (pixdim) should be positive");
@@ -436,7 +436,7 @@ impl NiftiHeader {
     /// Note that we get the translations from the center of the image.
     fn base_affine<T>(&self) -> Matrix4<T>
     where
-        T: Real,
+        T: RealField,
     {
         let d = self.dim[0] as usize;
         let affine = shape_zoom_affine(&self.dim[1..d + 1], &self.pixdim[1..d + 1]);
@@ -464,7 +464,7 @@ impl NiftiHeader {
     /// nifti readers because the `qform_code` will be set to `Unknown`.
     pub fn set_affine<T>(&mut self, affine: &Matrix4<T>)
     where
-        T: Real,
+        T: RealField,
         T: SubsetOf<f64>,
         T: ToPrimitive,
     {
@@ -478,7 +478,7 @@ impl NiftiHeader {
     /// Set affine transformation in 'sform' fields.
     fn set_sform<T>(&mut self, affine: &Matrix4<T>, code: XForm)
     where
-        T: Real,
+        T: RealField,
         T: ToPrimitive,
     {
         self.sform_code = code as i16;
@@ -504,7 +504,7 @@ impl NiftiHeader {
     /// orthogonal representation enforces orthogonal axes.
     fn set_qform<T>(&mut self, affine4: &Matrix4<T>, code: XForm)
     where
-        T: Real,
+        T: RealField,
         T: SubsetOf<f64>,
         T: ToPrimitive,
     {
