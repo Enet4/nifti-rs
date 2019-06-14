@@ -7,6 +7,7 @@
 
 pub mod inmem;
 pub mod element;
+pub mod streamed;
 pub use self::inmem::*;
 
 mod util;

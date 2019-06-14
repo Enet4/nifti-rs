@@ -65,11 +65,16 @@ where
 }
 
 pub fn nb_bytes_for_data(header: &NiftiHeader) -> Result<usize> {
-    let resolution: usize = header.dim()?
-        .iter()
-        .map(|d| *d as usize)
-        .product();
+    let resolution = nb_values_for_dims(header.dim()?);
     Ok(resolution * header.bitpix as usize / 8)
+}
+
+pub fn nb_values_for_dims(dim: &[u16]) -> usize {
+    dim
+        .iter()
+        .cloned()
+        .map(usize::from)
+        .product::<usize>()
 }
 
 #[cfg(feature = "ndarray_volumes")]

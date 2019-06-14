@@ -33,6 +33,7 @@ use volume::ndarray::IntoNdArray;
 ///
 #[derive(Debug, PartialEq, Clone)]
 pub struct InMemNiftiVolume {
+    /// dimensions starting at 1, dim[0] is the dimensionality
     dim: [u16; 8],
     datatype: NiftiType,
     scl_slope: f32,
