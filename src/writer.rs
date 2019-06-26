@@ -8,7 +8,7 @@ use byteordered::{ByteOrdered, Endian};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis};
-use safe_transmute::{guarded_transmute_to_bytes_pod_many, PodTransmutable};
+use safe_transmute::{transmute_to_bytes, TriviallyTransmutable};
 
 use {
     header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
@@ -33,7 +33,7 @@ where
     P: AsRef<Path>,
     S: Data<Elem = A>,
     A: DataElement,
-    A: PodTransmutable,
+    A: TriviallyTransmutable,
     D: Dimension + RemoveAxis,
 {
     let compression_level = Compression::fast();
@@ -295,7 +295,7 @@ where
 fn write_data<A, B, S, D, W, E>(mut writer: ByteOrdered<W, E>, data: ArrayBase<S, D>) -> Result<()>
 where
     S: Data<Elem = A>,
-    A: Clone + PodTransmutable,
+    A: Clone + TriviallyTransmutable,
     D: Dimension + RemoveAxis,
     W: Write,
     E: Endian + Copy,
@@ -319,7 +319,7 @@ fn write_slice<A, B, S, D, W, E>(
 ) -> Result<()>
 where
     S: Data<Elem = A>,
-    A: Clone + PodTransmutable,
+    A: Clone + TriviallyTransmutable,
     D: Dimension,
     W: Write,
     E: Endian,
@@ -327,7 +327,7 @@ where
     let len = data.len();
     let arr_data = data.into_shape(len).unwrap();
     let slice = arr_data.as_slice().unwrap();
-    let bytes = guarded_transmute_to_bytes_pod_many(slice);
+    let bytes = transmute_to_bytes(slice);
     let (writer, endianness) = writer.into_parts();
     let bytes = adapt_bytes::<B, _>(&bytes, endianness);
     writer.write_all(&*bytes)?;
