@@ -5,6 +5,9 @@ use std::mem;
 use std::path::{Path, PathBuf};
 use byteordered::Endian;
 use safe_transmute::{transmute_vec, TriviallyTransmutable};
+use super::typedef::NiftiType;
+use super::error::NiftiError;
+
 use error::Result;
 use NiftiHeader;
 
@@ -64,6 +67,22 @@ where
     }
 }
 
+pub fn validate_dim(raw_dim: &[u16; 8]) -> Result<&[u16]> {
+    let ndim = validate_dimensionality(raw_dim)?;
+    let o = &raw_dim[1..ndim + 1];
+    if let Some(i) = o.into_iter().position(|&x| x == 0) {
+        return Err(NiftiError::InconsistentDim(i as u8, raw_dim[i]));
+    }
+    Ok(o)
+}
+
+pub fn validate_dimensionality(raw_dim: &[u16; 8]) -> Result<usize> {
+    if raw_dim[0] == 0 || raw_dim[0] > 7 {
+        return Err(NiftiError::InconsistentDim(0, raw_dim[0]));
+    }
+    Ok(usize::from(raw_dim[0]))
+}
+
 pub fn nb_bytes_for_data(header: &NiftiHeader) -> Result<usize> {
     let resolution = nb_values_for_dims(header.dim()?);
     Ok(resolution * header.bitpix as usize / 8)
@@ -75,6 +94,11 @@ pub fn nb_values_for_dims(dim: &[u16]) -> usize {
         .cloned()
         .map(usize::from)
         .product::<usize>()
+}
+
+pub fn nb_bytes_for_dim_datatype(dim: &[u16], datatype: NiftiType) -> usize {
+    let resolution = nb_values_for_dims(dim);
+    resolution * datatype.size_of()
 }
 
 #[cfg(feature = "ndarray_volumes")]
@@ -117,11 +141,27 @@ pub fn into_img_file_gz(mut path: PathBuf) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::into_img_file_gz;
-    use super::is_gz_file;
+    use super::{into_img_file_gz, is_gz_file, nb_bytes_for_dim_datatype};
     #[cfg(feature = "ndarray_volumes")]
     use super::is_hdr_file;
     use std::path::PathBuf;
+    use typedef::NiftiType;
+
+    #[test]
+    fn test_nbytes() {
+        assert_eq!(
+            nb_bytes_for_dim_datatype(&[2, 3, 2], NiftiType::Uint8),
+            12
+        );
+        assert_eq!(
+            nb_bytes_for_dim_datatype(&[2, 3], NiftiType::Uint8),
+            6
+        );
+        assert_eq!(
+            nb_bytes_for_dim_datatype(&[2, 3], NiftiType::Uint16),
+            12
+        );
+    }
 
     #[test]
     fn filenames() {
