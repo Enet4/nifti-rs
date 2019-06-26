@@ -7,9 +7,59 @@
 use volume::element::{DataElement, LinearTransform};
 use error::{NiftiError, Result};
 use std::io::Read;
-use std::ops::{Add, Mul};
+use std::ops::{Add, Mul, Deref};
 use byteordered::{Endian, Endianness};
 use num_traits::AsPrimitive;
+use util::validate_dim;
+
+/// A validated NIfTI volume shape.
+#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
+#[repr(transparent)]
+pub struct Dim(
+    /// dimensions starting at 1, dim[0] is the dimensionality
+    [u16; 8]
+);
+
+impl Dim {
+    /// Validate and create a new volume shape
+    pub fn new(dim: [u16; 8]) -> Result<Self> {
+        let _ = validate_dim(&dim)?;
+        Ok(Dim(dim))
+    }
+
+    /// Retrieve a reference to the raw dim field
+    pub fn raw(&self) -> &[u16; 8] {
+        &self.0
+    }
+
+    /// Retrieve the rank of this shape (dimensionality)
+    pub fn len(&self) -> usize {
+        usize::from(self.0[0])
+    }
+
+    /// Calculate the number of elements in this shape
+    pub fn element_count(&self) -> usize {
+        self.as_ref()
+            .iter()
+            .cloned()
+            .map(usize::from)
+            .product()
+    }
+}
+
+impl AsRef<[u16]> for Dim {
+    fn as_ref(&self) -> &[u16] {
+        &self.0[1 .. self.len() + 1]
+    }
+}
+
+impl Deref for Dim {
+    type Target = [u16];
+
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
+    }
+}
 
 /// Data type for representing a NIFTI value type in a volume.
 /// Methods for reading values of that type from a source are also included.
@@ -418,4 +468,17 @@ pub enum SliceOrder {
     AltInc2 = 5,
     /// NIFTI_SLICE_ALT_DEC2
     AltDec2 = 6,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Dim;
+
+    #[test]
+    fn test_dim() {
+        let raw_dim = [3, 256, 256, 100, 0, 0, 0, 0];
+        let dim = Dim::new(raw_dim).unwrap();
+        assert_eq!(dim.as_ref(), &[256, 256, 100]);
+        assert_eq!(dim.element_count(), 6553600);
+    }
 }
