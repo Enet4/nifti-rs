@@ -1,26 +1,26 @@
 //! Module holding an in-memory implementation of a NIfTI volume.
 
+use byteordered::{ByteOrdered, Endianness};
+use crate::error::{NiftiError, Result};
+use crate::extension::{Extender, ExtensionSequence};
+use crate::header::NiftiHeader;
+use crate::typedef::NiftiType;
+use crate::util::{nb_bytes_for_data, nb_bytes_for_dim_datatype};
+use crate::volume::element::DataElement;
+use crate::volume::{FromSource, FromSourceOptions, NiftiVolume, RandomAccessNiftiVolume};
 use super::shape::Dim;
 use super::util::coords_to_index;
-use super::{NiftiVolume, RandomAccessNiftiVolume};
-use byteordered::Endianness;
-use error::{NiftiError, Result};
 use flate2::bufread::GzDecoder;
-use header::NiftiHeader;
 use num_traits::{AsPrimitive, Num};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ops::{Add, Mul};
 use std::path::Path;
-use typedef::NiftiType;
-use util::{nb_bytes_for_data, nb_bytes_for_dim_datatype};
-use volume::element::DataElement;
-use volume::{FromSource, FromSourceOptions};
 
 #[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
 #[cfg(feature = "ndarray_volumes")]
-use volume::ndarray::IntoNdArray;
+use super::ndarray::IntoNdArray;
 
 /// A data type for a NIFTI-1 volume contained in memory. Objects of this type
 /// contain raw image data, which is converted automatically when using reading
@@ -208,7 +208,7 @@ impl InMemNiftiVolume {
         I: AsPrimitive<O>,
         O: DataElement,
     {
-        use volume::element::LinearTransform;
+        use crate::volume::element::LinearTransform;
 
         let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
 
@@ -415,9 +415,9 @@ impl<'a> RandomAccessNiftiVolume for &'a InMemNiftiVolume {
 mod tests {
     use super::*;
     use byteordered::Endianness;
-    use typedef::NiftiType;
-    use volume::shape::Dim;
-    use volume::Sliceable;
+    use crate::typedef::NiftiType;
+    use crate::volume::shape::Dim;
+    use crate::volume::Sliceable;
 
     #[test]
     fn test_u8_inmem_volume() {

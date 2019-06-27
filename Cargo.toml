@@ -3,6 +3,7 @@ authors = ["Eduardo Pinho <enet4mikeenet@gmail.com>"]
 categories = ["parser-implementations"]
 description = "Rust implementation of the NIfTI file format"
 documentation = "https://docs.rs/crate/nifti"
+edition = "2018"
 keywords = ["nifti", "neuroimaging", "standard", "parser"]
 license = "MIT/Apache-2.0"
 name = "nifti"
@@ -10,6 +11,9 @@ readme = "README.md"
 repository = "https://github.com/Enet4/nifti-rs"
 version = "0.7.1-alpha.0"
 exclude = ["resources/*"]
+
+[package.metadata.docs.rs]
+features = ["ndarray_volumes"]
 
 [badges]
 
@@ -51,6 +55,3 @@ path = "examples/niftidump/main.rs"
 [features]
 nalgebra_affine = ["alga", "nalgebra"]
 ndarray_volumes = ["ndarray"]
-
-[package.metadata.docs.rs]
-features = ["ndarray_volumes"]

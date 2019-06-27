@@ -1,19 +1,19 @@
 //! Module for handling and retrieving complete NIFTI-1 objects.
 
 use byteordered::ByteOrdered;
-use error::NiftiError;
-use error::Result;
-use extension::{Extender, ExtensionSequence};
+use crate::error::NiftiError;
+use crate::error::Result;
+use crate::extension::{Extender, ExtensionSequence};
+use crate::header::NiftiHeader;
+use crate::header::MAGIC_CODE_NI1;
+use crate::util::{into_img_file_gz, is_gz_file, open_file_maybe_gz};
+use crate::volume::inmem::InMemNiftiVolume;
+use crate::volume::streamed::StreamedNiftiVolume;
+use crate::volume::{FromSource, FromSourceOptions, NiftiVolume};
 use flate2::bufread::GzDecoder;
-use header::NiftiHeader;
-use header::MAGIC_CODE_NI1;
 use std::fs::File;
 use std::io::{self, BufReader, Read};
 use std::path::Path;
-use util::{into_img_file_gz, is_gz_file, open_file_maybe_gz};
-use volume::inmem::InMemNiftiVolume;
-use volume::streamed::StreamedNiftiVolume;
-use volume::{FromSource, FromSourceOptions, NiftiVolume};
 
 /// Trait type for all possible implementations of
 /// owning NIFTI-1 objects. Objects contain a NIFTI header,
@@ -344,8 +344,8 @@ impl<V> GenericNiftiObject<V> {
             let len = if len < 352 { 0 } else { len - 352 };
 
             let ext = {
-                let mut stream = ByteOrdered::runtime(&mut stream, header.endianness);
-                ExtensionSequence::from_reader(extender, stream, len)?
+                let stream = ByteOrdered::runtime(&mut stream, header.endianness);
+                ExtensionSequence::from_stream(extender, stream, len)?
             };
 
             let volume = FromSource::from_reader(stream, &header, options)?;

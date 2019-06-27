@@ -65,18 +65,7 @@
 #![warn(missing_docs, unused_extern_crates, trivial_casts, unused_results)]
 #![recursion_limit = "128"]
 
-#[macro_use] extern crate quick_error;
-#[macro_use] extern crate num_derive;
-#[macro_use] extern crate derive_builder;
-#[cfg(feature = "nalgebra_affine")] extern crate alga;
-#[cfg(feature = "nalgebra_affine")] extern crate nalgebra;
-#[cfg(feature = "ndarray_volumes")] extern crate ndarray;
 #[cfg(all(test, feature = "nalgebra_affine"))] #[macro_use] extern crate approx;
-
-extern crate byteordered;
-extern crate flate2;
-extern crate num_traits;
-extern crate safe_transmute;
 
 #[cfg(feature = "nalgebra_affine")] pub mod affine;
 pub mod extension;

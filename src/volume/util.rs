@@ -1,5 +1,5 @@
 //! Miscellaneous volume-related functions
-use error::{NiftiError, Result};
+use crate::error::{NiftiError, Result};
 use num_traits::Zero;
 
 pub fn hot_vector<T>(dim: usize, axis: usize, value: T) -> Vec<T>
