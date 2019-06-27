@@ -212,8 +212,8 @@ impl InMemNiftiObject {
     ///
     /// # Errors
     ///
-    /// - `NiftiError::NoVolumeData` if the source only contains (or claims to contain)
-    /// a header.
+    /// - `NiftiError::NoVolumeData` if the source only contains (or claims to
+    /// contain) a header.
     pub fn from_reader<R: Read>(mut source: R) -> Result<Self> {
         let header = NiftiHeader::from_stream(&mut source)?;
         if &header.magic == MAGIC_CODE_NI1 {
@@ -237,10 +237,10 @@ impl InMemNiftiObject {
         })
     }
 
-    /// Read a NIFTI volume, and extensions, from a stream of data. The header,
+    /// Read a NIFTI volume, and extensions, from a data reader. The header,
     /// extender code and expected byte order of the volume's data must be
     /// known in advance.
-    fn from_stream_with_extensions<R>(
+    fn from_reader_with_extensions<R>(
         mut source: R,
         header: &NiftiHeader,
         extender: Extender,
@@ -280,9 +280,9 @@ impl InMemNiftiObject {
         let stream = BufReader::new(File::open(path)?);
 
         if gz {
-            Self::from_stream_with_extensions(GzDecoder::new(stream), &header, extender)
+            Self::from_reader_with_extensions(GzDecoder::new(stream), &header, extender)
         } else {
-            Self::from_stream_with_extensions(stream, &header, extender)
+            Self::from_reader_with_extensions(stream, &header, extender)
         }
     }
 }
@@ -294,13 +294,13 @@ impl<R> StreamedNiftiObject<R>
 where
     R: Read,
 {
-    /// Retrieve an in-memory NIfTI object from a stream of data.
+    /// Retrieve a streamed NIfTI object from a reader of data.
     ///
     /// # Errors
     ///
     /// - `NiftiError::NoVolumeData` if the source only contains (or claims to contain)
     /// a header.
-    pub fn new_from_stream(&self, mut source: R) -> Result<Self> {
+    pub fn from_reader(&self, mut source: R) -> Result<Self> {
         let header = NiftiHeader::from_stream(&mut source)?;
         if &header.magic == MAGIC_CODE_NI1 {
             return Err(NiftiError::NoVolumeData);
@@ -326,7 +326,7 @@ where
     /// Read a NIFTI volume, and extensions, from a stream of data. The header,
     /// extender code and expected byte order of the volume's data must be
     /// known in advance.
-    fn from_stream_with_extensions(
+    fn from_reader_with_extensions(
         mut source: R,
         header: &NiftiHeader,
         extender: Extender,
@@ -459,6 +459,7 @@ impl StreamedNiftiObject<Box<dyn Read>> {
     /// 
     /// let volume = obj.into_volume();
     /// for slice in volume {
+    ///     let slice = slice?;
     ///     // manipulate slice here
     /// }
     /// # Ok(())
@@ -515,9 +516,9 @@ impl StreamedNiftiObject<Box<dyn Read>> {
         let stream = BufReader::new(File::open(path)?);
 
         if gz {
-            Self::from_stream_with_extensions(Box::from(GzDecoder::new(stream)), &header, extender)
+            Self::from_reader_with_extensions(Box::from(GzDecoder::new(stream)), &header, extender)
         } else {
-            Self::from_stream_with_extensions(Box::from(stream), &header, extender)
+            Self::from_reader_with_extensions(Box::from(stream), &header, extender)
         }
     }
 }

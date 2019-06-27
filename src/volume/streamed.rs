@@ -3,6 +3,57 @@
 //! This API provides slice-by-slice reading of volumes, thus lowering
 //! memory requirements and better supporting the manipulation of
 //! large volumes.
+//! 
+//! Since volumes are physically persisted in column major order, each slice
+//! will cover the full range of the first axes of the volume and traverse
+//! the rightmost axes in each iteration. As an example, a 3D volume of
+//! dimensions `[256, 256, 128]`, assuming 2D slices, will produce slices of
+//! dimensions `[256, 256]`, starting at the slice `[.., .., 0]` and ending
+//! at the slice `[.., .., 127]`.
+//!
+//! Slices may also have an arbitrary rank (dimensionality), as long as it
+//! is smaller than the original volume's rank. A good default is the
+//! original volume shape minus 1 (`R - 1`).
+//! 
+//! # Examples
+//! 
+//! Obtain a [`StreamedNiftiVolume`], usually from loading a
+//! [`StreamedNiftiObject`]. When holding a streamed volume, one can use the
+//! [`Iterator` API] to iteratively fetch data from the byte source, making
+//! in-memory sub-volumes each time.
+//! 
+//! ```no_run
+//! # use nifti::{StreamedNiftiVolume, InMemNiftiVolume};
+//! # fn get_volume() -> StreamedNiftiVolume<Box<dyn std::io::Read>> { unimplemented!() }
+//! let volume: StreamedNiftiVolume<_> = get_volume();
+//! for slice in volume {
+//!     let slice: InMemNiftiVolume = slice?;
+//!     // use slice
+//! }
+//! # Ok::<(), nifti::NiftiError>(())
+//! ```
+//! 
+//! For additional efficiency, a streamed iterator method is provided, which
+//! enables the reuse of the same raw data vector for the slices.
+//! 
+//! ```no_run
+//! # use nifti::{StreamedNiftiVolume, InMemNiftiVolume};
+//! # fn get_volume() -> StreamedNiftiVolume<Box<dyn std::io::Read>> { unimplemented!() }
+//! let mut volume: StreamedNiftiVolume<_> = get_volume();
+//! 
+//! let mut buffer = Vec::new(); // or with the expected capacity
+//! while let Some(slice) = volume.next_inline(buffer) {
+//!     let slice: InMemNiftiVolume = slice?;
+//!     // use slice, then recover raw data vector
+//!     buffer = slice.into_raw_data();
+//! }
+//! # Ok::<(), nifti::NiftiError>(())
+//! ```
+//! 
+//! [`StreamedNiftiVolume`]: ./struct.StreamedNiftiVolume.html
+//! [`StreamedNiftiObject`]: ../../object/type.StreamedNiftiObject.html
+//! [`Iterator` API]: https://doc.rust-lang.org/std/iter/trait.Iterator.html
+//! 
 
 use super::inmem::InMemNiftiVolume;
 use super::NiftiVolume;
@@ -17,15 +68,9 @@ use byteordered::Endianness;
 
 /// A NIfTI-1 volume instance that is read slice by slice from a byte stream.
 ///
-/// Since volumes are physically persisted in column major order, each slice
-/// will cover the full range of the first axes of the volume, thus traversing
-/// the rightmost axes in each iteration. As an example, a volume of dimensions
-/// `[256, 256, 128]` may produce slices of dimensions `[256, 256]`.
-///
-/// Slices may also have an arbitrary rank (dimensionality), as long as it
-/// is smaller than the original volume's rank. A good default is `R - 1`.
-///
-
+/// See the [module-level documentation] for more details.
+/// 
+/// [module-level documentation]: ./index.html
 #[derive(Debug)]
 pub struct StreamedNiftiVolume<R> {
     source: R,
