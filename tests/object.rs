@@ -5,7 +5,10 @@ extern crate nifti;
 #[macro_use]
 extern crate pretty_assertions;
 
-use nifti::{Endianness, InMemNiftiObject, NiftiHeader, NiftiObject, NiftiType, NiftiVolume, XForm};
+use nifti::{
+    Endianness, InMemNiftiObject, NiftiHeader, NiftiObject, NiftiType, NiftiVolume,
+    RandomAccessNiftiVolume, XForm,
+};
 
 #[test]
 fn minimal_nii_gz() {

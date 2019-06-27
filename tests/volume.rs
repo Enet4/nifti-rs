@@ -13,7 +13,7 @@ extern crate num_traits;
 #[cfg(feature = "ndarray_volumes")]
 extern crate safe_transmute;
 
-use nifti::{Endianness, InMemNiftiVolume, NiftiHeader, NiftiVolume};
+use nifti::{Endianness, InMemNiftiVolume, NiftiHeader, NiftiVolume, RandomAccessNiftiVolume};
 
 #[test]
 fn minimal_img_gz() {

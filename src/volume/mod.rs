@@ -9,6 +9,7 @@ pub mod inmem;
 pub mod element;
 pub mod streamed;
 pub use self::inmem::*;
+pub use self::streamed::StreamedNiftiVolume;
 
 mod util;
 use error::{NiftiError, Result};
@@ -17,8 +18,7 @@ use typedef::NiftiType;
 #[cfg(feature = "ndarray_volumes")]
 pub mod ndarray;
 
-/// Public API for NIFTI volume data, exposed as a multi-dimensional
-/// voxel array.
+/// Public API for a NIFTI volume.
 ///
 /// This API is currently experimental and will likely be subjected to
 /// various changes and additions in future versions.
@@ -35,6 +35,15 @@ pub trait NiftiVolume {
         self.dim().len()
     }
 
+    /// Get this volume's data type.
+    fn data_type(&self) -> NiftiType;
+}
+
+/// Public API for a NIFTI volume with full random access to data.
+///
+/// This API is currently experimental and will likely be subjected to
+/// various changes and additions in future versions.
+pub trait RandomAccessNiftiVolume: NiftiVolume {
     /// Fetch a single voxel's value in the given voxel index coordinates
     /// as a double precision floating point value.
     /// All necessary conversions and transformations are made
@@ -47,9 +56,6 @@ pub trait NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     fn get_f64(&self, coords: &[u16]) -> Result<f64>;
-
-    /// Get this volume's data type.
-    fn data_type(&self) -> NiftiType;
 
     /// Fetch a single voxel's value in the given voxel index coordinates
     /// as a single precision floating point value.
@@ -205,7 +211,7 @@ pub trait NiftiVolume {
     }
 }
 
-/// Interface for a volume that can be sliced.
+/// Interface for a volume that can be sliced at an arbitrary position.
 pub trait Sliceable {
     /// The type of the resulting slice, which is also a volume.
     type Slice: NiftiVolume;
@@ -216,8 +222,9 @@ pub trait Sliceable {
 }
 
 /// A view over a single slice of another volume.
-/// Slices are usually created by calling the `get_slice` method (see `Sliceable`).
-/// This implementation is generic and delegates most operations to the underlying volume.
+/// Slices are usually created by calling the `get_slice` method on another
+/// volume with random access to voxels (see `Sliceable`). This implementation
+/// is generic and delegates most operations to the underlying volume.
 #[derive(Debug, Clone)]
 pub struct SliceView<T> {
     volume: T,
@@ -266,6 +273,22 @@ where
         &self.dim
     }
 
+    #[inline]
+    fn dimensionality(&self) -> usize {
+        self.dim.len()
+    }
+
+    #[inline]
+    fn data_type(&self) -> NiftiType {
+        self.volume.data_type()
+    }
+}
+
+
+impl<V> RandomAccessNiftiVolume for SliceView<V>
+where
+    V: RandomAccessNiftiVolume,
+{
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
@@ -324,11 +347,5 @@ where
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_i64(&coords)
-    }
-
-    /// Get this volume's data type.
-    #[inline]
-    fn data_type(&self) -> NiftiType {
-        self.volume.data_type()
     }
 }

@@ -7,7 +7,7 @@
 use volume::element::{DataElement, LinearTransform};
 use error::{NiftiError, Result};
 use std::io::Read;
-use std::ops::{Add, Mul, Deref};
+use std::ops::{Add, Mul};
 use byteordered::{Endian, Endianness};
 use num_traits::AsPrimitive;
 use util::validate_dim;
@@ -21,10 +21,43 @@ pub struct Dim(
 );
 
 impl Dim {
-    /// Validate and create a new volume shape
+    /// Validate and create a new volume shape.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # use nifti::typedef::Dim;
+    /// let dim = Dim::new([3, 64, 32, 16, 0, 0, 0, 0])?;
+    /// assert_eq!(dim.as_ref(), &[64, 32, 16]);
+    /// # Ok::<(), nifti::NiftiError>(())
+    /// ```
     pub fn new(dim: [u16; 8]) -> Result<Self> {
         let _ = validate_dim(&dim)?;
         Ok(Dim(dim))
+    }
+
+    /// Create a new volume shape using the given slice as the concrete
+    /// shape (dim[0] is not the rank but the actual width of the volume).
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # use nifti::typedef::Dim;
+    /// let dim = Dim::from_slice(&[64, 32, 16])?;
+    /// assert_eq!(dim.as_ref(), &[64, 32, 16]);
+    /// # Ok::<(), nifti::NiftiError>(())
+    /// ```
+    pub fn from_slice(dim: &[u16]) -> Result<Self> {
+        if dim.len() > 7 {
+            return Err(NiftiError::InconsistentDim(0, dim.len() as u16));
+        }
+        let mut raw = [0; 8];
+        raw[0] = dim.len() as u16;
+        for (i, d) in dim.iter().enumerate() {
+            raw[i + 1] = *d;
+        }
+        let _ = validate_dim(&raw)?;
+        Ok(Dim(raw))
     }
 
     /// Retrieve a reference to the raw dim field
@@ -33,7 +66,7 @@ impl Dim {
     }
 
     /// Retrieve the rank of this shape (dimensionality)
-    pub fn len(&self) -> usize {
+    pub fn rank(&self) -> usize {
         usize::from(self.0[0])
     }
 
@@ -45,19 +78,24 @@ impl Dim {
             .map(usize::from)
             .product()
     }
+    
+    /// Split the dimension into two parts at the given axis. The first `Dim`
+    /// will cover the first axes up to `axis`, excluding `axis` itself.
+    /// 
+    /// # Panic
+    /// 
+    /// Panics if `axis` is not between 0 and `self.rank()`.
+    pub fn split(&self, axis: u16) -> (Dim, Dim) {
+        let axis = usize::from(axis);
+        assert!(axis <= self.rank());
+        let (l, r) = self.as_ref().split_at(axis);
+        (Dim::from_slice(l).unwrap(), Dim::from_slice(r).unwrap())
+    }
 }
 
 impl AsRef<[u16]> for Dim {
     fn as_ref(&self) -> &[u16] {
-        &self.0[1 .. self.len() + 1]
-    }
-}
-
-impl Deref for Dim {
-    type Target = [u16];
-
-    fn deref(&self) -> &Self::Target {
-        self.as_ref()
+        &self.0[1 .. self.rank() + 1]
     }
 }
 

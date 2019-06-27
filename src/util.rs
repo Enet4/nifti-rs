@@ -70,7 +70,7 @@ where
 pub fn validate_dim(raw_dim: &[u16; 8]) -> Result<&[u16]> {
     let ndim = validate_dimensionality(raw_dim)?;
     let o = &raw_dim[1..ndim + 1];
-    if let Some(i) = o.into_iter().position(|&x| x == 0) {
+    if let Some(i) = o.iter().position(|&x| x == 0) {
         return Err(NiftiError::InconsistentDim(i as u8, raw_dim[i]));
     }
     Ok(o)

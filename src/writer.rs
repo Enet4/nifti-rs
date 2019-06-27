@@ -295,7 +295,7 @@ where
 fn write_data<A, B, S, D, W, E>(mut writer: ByteOrdered<W, E>, data: ArrayBase<S, D>) -> Result<()>
 where
     S: Data<Elem = A>,
-    A: Clone + TriviallyTransmutable,
+    A: TriviallyTransmutable,
     D: Dimension + RemoveAxis,
     W: Write,
     E: Endian + Copy,

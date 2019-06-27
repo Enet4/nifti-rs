@@ -1,10 +1,9 @@
 //! Module holding an in-memory implementation of a NIfTI volume.
 
 use super::util::coords_to_index;
-use super::NiftiVolume;
-use byteordered::{ByteOrdered, Endianness};
+use super::{NiftiVolume, RandomAccessNiftiVolume};
+use byteordered::Endianness;
 use error::{NiftiError, Result};
-use extension::{Extender, ExtensionSequence};
 use flate2::bufread::GzDecoder;
 use header::NiftiHeader;
 use num_traits::{AsPrimitive, Num};
@@ -12,8 +11,8 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ops::{Add, Mul};
 use std::path::Path;
-use typedef::NiftiType;
-use util::nb_bytes_for_data;
+use typedef::{Dim, NiftiType};
+use util::{nb_bytes_for_data, nb_bytes_for_dim_datatype};
 use volume::element::DataElement;
 
 #[cfg(feature = "ndarray_volumes")]
@@ -33,8 +32,7 @@ use volume::ndarray::IntoNdArray;
 ///
 #[derive(Debug, PartialEq, Clone)]
 pub struct InMemNiftiVolume {
-    /// dimensions starting at 1, dim[0] is the dimensionality
-    dim: [u16; 8],
+    dim: Dim,
     datatype: NiftiType,
     scl_slope: f32,
     scl_inter: f32,
@@ -46,18 +44,49 @@ impl InMemNiftiVolume {
     /// Build an InMemNiftiVolume from a header and a buffer. The buffer length and the dimensions
     /// declared in the header are expected to fit.
     pub fn from_raw_data(header: &NiftiHeader, raw_data: Vec<u8>) -> Result<Self> {
-        if nb_bytes_for_data(header)? != raw_data.len() {
-            return Err(NiftiError::IncompatibleLength);
+        let nbytes = nb_bytes_for_data(header)?;
+        if nbytes != raw_data.len() {
+            return Err(NiftiError::IncompatibleLength(raw_data.len(), nbytes));
         }
 
         let datatype = header.data_type()?;
         Ok(InMemNiftiVolume {
-            dim: header.dim,
+            dim: Dim::new(header.dim)?,
             datatype,
             scl_slope: header.scl_slope,
             scl_inter: header.scl_inter,
             raw_data,
             endianness: header.endianness,
+        })
+    }
+
+    /// Build an InMemNiftiVolume from its raw set of attributes. The raw data
+    /// is assumed to contain exactly enough bytes to contain the data elements
+    /// of the volume in F-major order, with the byte order specified in
+    /// `endianness`, as specified by the volume shape in `raw_dim` and data
+    /// type in `datatype`.
+    pub fn from_raw_fields(
+        raw_dim: [u16; 8],
+        datatype: NiftiType,
+        scl_slope: f32,
+        scl_inter: f32,
+        raw_data: Vec<u8>,
+        endianness: Endianness
+        ) -> Result<Self>
+    {
+        let dim = Dim::new(raw_dim)?;
+        let nbytes = nb_bytes_for_dim_datatype(dim.as_ref(), datatype);
+        if nbytes != raw_data.len() {
+            return Err(NiftiError::IncompatibleLength(raw_data.len(), nbytes));
+        }
+
+        Ok(InMemNiftiVolume {
+            dim,
+            datatype,
+            scl_slope,
+            scl_inter,
+            raw_data,
+            endianness,
         })
     }
 
@@ -71,37 +100,13 @@ impl InMemNiftiVolume {
 
         let datatype = header.data_type()?;
         Ok(InMemNiftiVolume {
-            dim: header.dim,
+            dim: Dim::new(header.dim)?,
             datatype,
             scl_slope: header.scl_slope,
             scl_inter: header.scl_inter,
             raw_data,
             endianness: header.endianness,
         })
-    }
-
-    /// Read a NIFTI volume, and extensions, from a stream of data. The header,
-    /// extender code and expected byte order of the volume's data must be
-    /// known in advance.
-    pub fn from_stream_with_extensions<R>(
-        mut source: R,
-        header: &NiftiHeader,
-        extender: Extender,
-    ) -> Result<(Self, ExtensionSequence)>
-    where
-        R: Read,
-    {
-        // fetch extensions
-        let len = header.vox_offset as usize;
-        let len = if len < 352 { 0 } else { len - 352 };
-
-        let ext = {
-            let source = ByteOrdered::runtime(&mut source, header.endianness);
-            ExtensionSequence::from_stream::<_, _>(extender, source, len)?
-        };
-
-        // fetch volume (rest of file)
-        Ok((Self::from_stream(source, &header)?, ext))
     }
 
     /// Read a NIFTI volume from an image file. NIFTI-1 volume files usually have the
@@ -118,31 +123,6 @@ impl InMemNiftiVolume {
             InMemNiftiVolume::from_stream(GzDecoder::new(file), &header)
         } else {
             InMemNiftiVolume::from_stream(file, &header)
-        }
-    }
-
-    /// Read a NIFTI volume, along with the extensions, from an image file. NIFTI-1 volume
-    /// files usually have the extension ".img" or ".img.gz". In the latter case, the file
-    /// is automatically decoded as a Gzip stream.
-    pub fn from_file_with_extensions<P>(
-        path: P,
-        header: &NiftiHeader,
-        extender: Extender,
-    ) -> Result<(Self, ExtensionSequence)>
-    where
-        P: AsRef<Path>,
-    {
-        let gz = path
-            .as_ref()
-            .extension()
-            .map(|a| a.to_string_lossy() == "gz")
-            .unwrap_or(false);
-        let stream = BufReader::new(File::open(path)?);
-
-        if gz {
-            InMemNiftiVolume::from_stream_with_extensions(GzDecoder::new(stream), &header, extender)
-        } else {
-            InMemNiftiVolume::from_stream_with_extensions(stream, &header, extender)
         }
     }
 
@@ -308,32 +288,23 @@ impl<'a> NiftiVolume for &'a InMemNiftiVolume {
     fn data_type(&self) -> NiftiType {
         (**self).data_type()
     }
-
-    fn get_f32(&self, coords: &[u16]) -> Result<f32> {
-        (**self).get_f32(coords)
-    }
-
-    fn get_f64(&self, coords: &[u16]) -> Result<f64> {
-        (**self).get_f64(coords)
-    }
-
-    fn get_u8(&self, coords: &[u16]) -> Result<u8> {
-        (**self).get_u8(coords)
-    }
 }
 
 impl NiftiVolume for InMemNiftiVolume {
     fn dim(&self) -> &[u16] {
-        &self.dim[1..self.dimensionality() + 1]
+        self.dim.as_ref()
     }
 
     fn dimensionality(&self) -> usize {
-        self.dim[0] as usize
+        self.dim.rank()
     }
 
     fn data_type(&self) -> NiftiType {
         self.datatype
     }
+}
+
+impl RandomAccessNiftiVolume for InMemNiftiVolume {
 
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
         self.get_prim(coords)
@@ -376,18 +347,61 @@ impl NiftiVolume for InMemNiftiVolume {
     }
 }
 
+impl<'a> RandomAccessNiftiVolume for &'a InMemNiftiVolume {
+
+    fn get_f32(&self, coords: &[u16]) -> Result<f32> {
+        (**self).get_f32(coords)
+    }
+
+    fn get_f64(&self, coords: &[u16]) -> Result<f64> {
+        (**self).get_f64(coords)
+    }
+
+    fn get_u8(&self, coords: &[u16]) -> Result<u8> {
+        (**self).get_u8(coords)
+    }
+
+    fn get_i8(&self, coords: &[u16]) -> Result<i8> {
+        (**self).get_i8(coords)
+    }
+
+    fn get_u16(&self, coords: &[u16]) -> Result<u16> {
+        (**self).get_u16(coords)
+    }
+
+    fn get_i16(&self, coords: &[u16]) -> Result<i16> {
+        (**self).get_i16(coords)
+    }
+
+    fn get_u32(&self, coords: &[u16]) -> Result<u32> {
+        (**self).get_u32(coords)
+    }
+
+    fn get_i32(&self, coords: &[u16]) -> Result<i32> {
+        (**self).get_i32(coords)
+    }
+
+    fn get_u64(&self, coords: &[u16]) -> Result<u64> {
+        (**self).get_u64(coords)
+    }
+
+    fn get_i64(&self, coords: &[u16]) -> Result<i64> {
+        (**self).get_i64(coords)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use byteordered::Endianness;
-    use typedef::NiftiType;
+    use typedef::{Dim, NiftiType};
     use volume::Sliceable;
 
     #[test]
     fn test_u8_inmem_volume() {
         let data: Vec<u8> = (0..64).map(|x| x * 2).collect();
         let vol = InMemNiftiVolume {
-            dim: [3, 4, 4, 4, 0, 0, 0, 0],
+            dim: Dim::new([3, 4, 4, 4, 0, 0, 0, 0]).unwrap(),
             datatype: NiftiType::Uint8,
             scl_slope: 1.,
             scl_inter: -5.,
@@ -411,7 +425,7 @@ mod tests {
     fn test_u8_inmem_volume_slice() {
         let data: Vec<u8> = (0..64).map(|x| x * 2).collect();
         let vol = InMemNiftiVolume {
-            dim: [3, 4, 4, 4, 0, 0, 0, 0],
+            dim: Dim::new([3, 4, 4, 4, 0, 0, 0, 0]).unwrap(),
             datatype: NiftiType::Uint8,
             scl_slope: 1.,
             scl_inter: -5.,
