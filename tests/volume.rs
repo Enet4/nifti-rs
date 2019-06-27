@@ -58,7 +58,8 @@ mod ndarray_volumes {
     use std::fmt;
     use std::ops::{Add, Mul};
     use nifti::{DataElement, Endianness, InMemNiftiObject, InMemNiftiVolume,
-                NiftiHeader, NiftiObject, NiftiVolume, NiftiType, IntoNdArray};
+                NiftiHeader, NiftiObject, NiftiVolume, NiftiType, IntoNdArray,
+                StreamedNiftiObject};
     use ndarray::{Array, Axis, IxDyn, ShapeBuilder};
     use num_traits::AsPrimitive;
 
@@ -180,6 +181,33 @@ mod ndarray_volumes {
         assert_ulps_eq!(volume[[5, 0, 4]], 0.4_f32 as f64);
         assert_ulps_eq!(volume[[0, 8, 5]], 0.8_f32 as f64);
         assert_ulps_eq!(volume[[5, 5, 5]], 1.0_f32 as f64);
+    }
+
+    #[test]
+    fn streamed_f32_nii_gz_ndarray_f64() {
+        const FILE_NAME: &str = "resources/f32.nii.gz";
+        let volume = StreamedNiftiObject::from_file(FILE_NAME)
+            .unwrap()
+            .into_volume();
+        assert_eq!(volume.data_type(), NiftiType::Float32);
+
+        let slices: Vec<_> = volume
+            .map(|r| r.expect("slice construction should not fail"))
+            .map(|slice| slice.into_ndarray::<f64>().unwrap())
+            .collect();
+
+        for slice in &slices {
+            assert_eq!(slice.shape(), &[11, 11]);
+        }
+        assert!(slices[4].iter().any(|v| *v != 0.));
+        assert!(slices[5].iter().any(|v| *v != 0.));
+
+        assert_ulps_eq!(slices[0][[5, 0]], 0.0);
+        assert_ulps_eq!(slices[0][[0, 5]], 0.0);
+        assert_ulps_eq!(slices[5][[0, 0]], 0.0);
+        assert_ulps_eq!(slices[4][[5, 0]], 0.4_f32 as f64);
+        assert_ulps_eq!(slices[5][[0, 8]], 0.8_f32 as f64);
+        assert_ulps_eq!(slices[5][[5, 5]], 1.0_f32 as f64);
     }
 
     #[test]
