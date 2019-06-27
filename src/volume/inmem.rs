@@ -94,7 +94,16 @@ impl InMemNiftiVolume {
     /// of the volume's data must be known in advance. It it also expected that the
     /// following bytes represent the first voxels of the volume (and not part of the
     /// extensions).
-    pub fn from_stream<R: Read>(mut source: R, header: &NiftiHeader) -> Result<Self> {
+    #[deprecated(since = "0.8.0", note = "use `from_reader` instead")]
+    pub fn from_stream<R: Read>(source: R, header: &NiftiHeader) -> Result<Self> {
+        Self::from_reader(source, header)
+    }
+
+    /// Read a NIFTI volume from a stream of data. The header and expected byte order
+    /// of the volume's data must be known in advance. It it also expected that the
+    /// following bytes represent the first voxels of the volume (and not part of the
+    /// extensions).
+    pub fn from_reader<R: Read>(mut source: R, header: &NiftiHeader) -> Result<Self> {
         let mut raw_data = vec![0u8; nb_bytes_for_data(header)?];
         source.read_exact(&mut raw_data)?;
 
@@ -120,9 +129,9 @@ impl InMemNiftiVolume {
             .unwrap_or(false);
         let file = BufReader::new(File::open(path)?);
         if gz {
-            InMemNiftiVolume::from_stream(GzDecoder::new(file), &header)
+            InMemNiftiVolume::from_reader(GzDecoder::new(file), &header)
         } else {
-            InMemNiftiVolume::from_stream(file, &header)
+            InMemNiftiVolume::from_reader(file, &header)
         }
     }
 

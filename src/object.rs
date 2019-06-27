@@ -110,12 +110,12 @@ impl InMemNiftiObject {
     where
         S: Read,
     {
-        let header = NiftiHeader::from_stream(&mut stream)?;
+        let header = NiftiHeader::from_reader(&mut stream)?;
         let (volume, ext) = if &header.magic == MAGIC_CODE_NI1 {
             // extensions and volume are in another file
 
             // extender is optional
-            let extender = Extender::from_stream_optional(&mut stream)?.unwrap_or_default();
+            let extender = Extender::from_reader_optional(&mut stream)?.unwrap_or_default();
 
             // look for corresponding img file
             let img_path = path.as_ref().to_path_buf();
@@ -146,16 +146,16 @@ impl InMemNiftiObject {
         } else {
             // extensions and volume are in the same source
 
-            let extender = Extender::from_stream(&mut stream)?;
+            let extender = Extender::from_reader(&mut stream)?;
             let len = header.vox_offset as usize;
             let len = if len < 352 { 0 } else { len - 352 };
 
             let ext = {
                 let mut stream = ByteOrdered::runtime(&mut stream, header.endianness);
-                ExtensionSequence::from_stream(extender, stream, len)?
+                ExtensionSequence::from_reader(extender, stream, len)?
             };
 
-            let volume = InMemNiftiVolume::from_stream(stream, &header)?;
+            let volume = InMemNiftiVolume::from_reader(stream, &header)?;
 
             (volume, ext)
         };
@@ -190,8 +190,8 @@ impl InMemNiftiObject {
         S: Read,
         Q: AsRef<Path>,
     {
-        let header = NiftiHeader::from_stream(&mut hdr_stream)?;
-        let extender = Extender::from_stream_optional(hdr_stream)?.unwrap_or_default();
+        let header = NiftiHeader::from_reader(&mut hdr_stream)?;
+        let extender = Extender::from_reader_optional(hdr_stream)?.unwrap_or_default();
         let (volume, extensions) =
             Self::from_file_with_extensions(vol_path, &header, extender)?;
 
@@ -215,20 +215,20 @@ impl InMemNiftiObject {
     /// - `NiftiError::NoVolumeData` if the source only contains (or claims to
     /// contain) a header.
     pub fn from_reader<R: Read>(mut source: R) -> Result<Self> {
-        let header = NiftiHeader::from_stream(&mut source)?;
+        let header = NiftiHeader::from_reader(&mut source)?;
         if &header.magic == MAGIC_CODE_NI1 {
             return Err(NiftiError::NoVolumeData);
         }
         let len = header.vox_offset as usize;
         let len = if len < 352 { 0 } else { len - 352 };
-        let extender = Extender::from_stream(&mut source)?;
+        let extender = Extender::from_reader(&mut source)?;
         
         let ext = {
             let source = ByteOrdered::runtime(&mut source, header.endianness);
-            ExtensionSequence::from_stream(extender, source, len)?
+            ExtensionSequence::from_reader(extender, source, len)?
         };
 
-        let volume = InMemNiftiVolume::from_stream(source, &header)?;
+        let volume = InMemNiftiVolume::from_reader(source, &header)?;
 
         Ok(InMemNiftiObject {
             header,
@@ -254,11 +254,11 @@ impl InMemNiftiObject {
 
         let ext = {
             let source = ByteOrdered::runtime(&mut source, header.endianness);
-            ExtensionSequence::from_stream::<_, _>(extender, source, len)?
+            ExtensionSequence::from_reader::<_, _>(extender, source, len)?
         };
 
         // fetch volume (rest of file)
-        Ok((InMemNiftiVolume::from_stream(source, &header)?, ext))
+        Ok((InMemNiftiVolume::from_reader(source, &header)?, ext))
     }
 
     /// Read a NIFTI volume, along with the extensions, from an image file. NIFTI-1 volume
@@ -300,18 +300,18 @@ where
     ///
     /// - `NiftiError::NoVolumeData` if the source only contains (or claims to contain)
     /// a header.
-    pub fn from_reader(&self, mut source: R) -> Result<Self> {
-        let header = NiftiHeader::from_stream(&mut source)?;
+    pub fn from_reader(mut source: R) -> Result<Self> {
+        let header = NiftiHeader::from_reader(&mut source)?;
         if &header.magic == MAGIC_CODE_NI1 {
             return Err(NiftiError::NoVolumeData);
         }
         let len = header.vox_offset as usize;
         let len = if len < 352 { 0 } else { len - 352 };
-        let extender = Extender::from_stream(&mut source)?;
+        let extender = Extender::from_reader(&mut source)?;
         
         let ext = {
             let source = ByteOrdered::runtime(&mut source, header.endianness);
-            ExtensionSequence::from_stream(extender, source, len)?
+            ExtensionSequence::from_reader(extender, source, len)?
         };
 
         let volume = StreamedNiftiVolume::from_reader(source, &header)?;
@@ -340,7 +340,7 @@ where
 
         let ext = {
             let source = ByteOrdered::runtime(&mut source, header.endianness);
-            ExtensionSequence::from_stream::<_, _>(extender, source, len)?
+            ExtensionSequence::from_reader::<_, _>(extender, source, len)?
         };
 
         // fetch volume (rest of file)
@@ -386,12 +386,12 @@ impl StreamedNiftiObject<Box<dyn Read>> {
     where
         S: Read,
     {
-        let header = NiftiHeader::from_stream(&mut stream)?;
+        let header = NiftiHeader::from_reader(&mut stream)?;
         let (volume, ext) = if &header.magic == MAGIC_CODE_NI1 {
             // extensions and volume are in another file
 
             // extender is optional
-            let extender = Extender::from_stream_optional(&mut stream)?.unwrap_or_default();
+            let extender = Extender::from_reader_optional(&mut stream)?.unwrap_or_default();
 
             // look for corresponding img file
             let img_path = path.as_ref().to_path_buf();
@@ -422,13 +422,13 @@ impl StreamedNiftiObject<Box<dyn Read>> {
         } else {
             // extensions and volume are in the same source
 
-            let extender = Extender::from_stream(&mut stream)?;
+            let extender = Extender::from_reader(&mut stream)?;
             let len = header.vox_offset as usize;
             let len = if len < 352 { 0 } else { len - 352 };
 
             let ext = {
                 let mut stream = ByteOrdered::runtime(&mut stream, header.endianness);
-                ExtensionSequence::from_stream(extender, stream, len)?
+                ExtensionSequence::from_reader(extender, stream, len)?
             };
 
             let stream = Box::from(stream);
@@ -485,8 +485,8 @@ impl StreamedNiftiObject<Box<dyn Read>> {
         S: Read,
         Q: AsRef<Path>,
     {
-        let header = NiftiHeader::from_stream(&mut hdr_stream)?;
-        let extender = Extender::from_stream_optional(hdr_stream)?.unwrap_or_default();
+        let header = NiftiHeader::from_reader(&mut hdr_stream)?;
+        let extender = Extender::from_reader_optional(hdr_stream)?.unwrap_or_default();
         let (volume, extensions) =
             Self::from_file_with_extensions(vol_path, &header, extender)?;
 

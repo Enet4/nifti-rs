@@ -81,7 +81,7 @@ fn minimal_nii() {
 
     const FILE_NAME: &str = "resources/minimal.nii";
     let file = File::open(FILE_NAME).unwrap();
-    let header = NiftiHeader::from_stream(file).unwrap();
+    let header = NiftiHeader::from_reader(file).unwrap();
 
     assert_eq!(header, minimal_hdr);
     assert_eq!(header.endianness, Endianness::Big);
