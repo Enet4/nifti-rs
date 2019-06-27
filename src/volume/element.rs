@@ -4,7 +4,7 @@
 use byteordered::{ByteOrdered, Endian};
 use error::Result;
 use num_traits::cast::AsPrimitive;
-use safe_transmute::guarded_transmute_pod_vec_permissive;
+use safe_transmute::transmute_vec;
 use std::io::Read;
 use std::mem::align_of;
 use std::ops::{Add, Mul};
@@ -155,7 +155,7 @@ impl DataElement for i8 {
     where
         E: Endian,
     {
-        Ok(guarded_transmute_pod_vec_permissive(vec))
+        Ok(transmute_vec(vec).unwrap())
     }
     fn from_raw<R, E>(src: R, _: E) -> Result<Self>
     where

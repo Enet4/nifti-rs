@@ -4,8 +4,7 @@ use std::io::{Read, Seek};
 use std::mem;
 use std::path::{Path, PathBuf};
 use byteordered::Endian;
-use safe_transmute::{guarded_transmute_pod_vec_permissive, PodTransmutable};
-
+use safe_transmute::{transmute_vec, TriviallyTransmutable};
 use error::Result;
 use NiftiHeader;
 
@@ -15,11 +14,16 @@ impl<T: Read + Seek> ReadSeek for T {}
 
 pub fn convert_bytes_to<T, E>(mut a: Vec<u8>, e: E) -> Vec<T>
 where
-    T: PodTransmutable,
+    T: TriviallyTransmutable,
     E: Endian,
 {
     adapt_bytes_inline::<T, _>(&mut a, e);
-    guarded_transmute_pod_vec_permissive(a)
+    match transmute_vec(a) {
+        Ok(v) => v,
+        Err(safe_transmute::Error::IncompatibleVecTarget(e)) => e.copy(),
+        Err(safe_transmute::Error::Unaligned(e)) => e.copy(),
+        _ => unreachable!(),
+    }
 }
 
 /// Adapt a sequence of bytes for reading contiguous values of type `T`,
