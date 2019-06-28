@@ -272,11 +272,8 @@ impl InMemNiftiObject {
     where
         P: AsRef<Path>,
     {
-        let gz = path
-            .as_ref()
-            .extension()
-            .map(|a| a.to_string_lossy() == "gz")
-            .unwrap_or(false);
+        let path = path.as_ref();
+        let gz = is_gz_file(path);
         let stream = BufReader::new(File::open(path)?);
 
         if gz {
@@ -508,11 +505,8 @@ impl StreamedNiftiObject<Box<dyn Read>> {
     where
         P: AsRef<Path>,
     {
-        let gz = path
-            .as_ref()
-            .extension()
-            .map(|a| a.to_string_lossy() == "gz")
-            .unwrap_or(false);
+        let path = path.as_ref();
+        let gz = is_gz_file(path);
         let stream = BufReader::new(File::open(path)?);
 
         if gz {
