@@ -4,27 +4,27 @@
 //! reading voxel values). However, primitive integer values can be
 //! converted to these types and vice-versa.
 
-use volume::element::{DataElement, LinearTransform};
+use byteordered::{Endian, Endianness};
 use error::{NiftiError, Result};
+use num_traits::AsPrimitive;
 use std::io::Read;
 use std::ops::{Add, Mul};
-use byteordered::{Endian, Endianness};
-use num_traits::AsPrimitive;
 use util::validate_dim;
+use volume::element::{DataElement, LinearTransform};
 
 /// A validated NIfTI volume shape.
 #[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
 #[repr(transparent)]
 pub struct Dim(
     /// dimensions starting at 1, dim[0] is the dimensionality
-    [u16; 8]
+    [u16; 8],
 );
 
 impl Dim {
     /// Validate and create a new volume shape.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// # use nifti::typedef::Dim;
     /// let dim = Dim::new([3, 64, 32, 16, 0, 0, 0, 0])?;
@@ -38,9 +38,9 @@ impl Dim {
 
     /// Create a new volume shape using the given slice as the concrete
     /// shape (dim[0] is not the rank but the actual width of the volume).
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// # use nifti::typedef::Dim;
     /// let dim = Dim::from_slice(&[64, 32, 16])?;
@@ -72,18 +72,14 @@ impl Dim {
 
     /// Calculate the number of elements in this shape
     pub fn element_count(&self) -> usize {
-        self.as_ref()
-            .iter()
-            .cloned()
-            .map(usize::from)
-            .product()
+        self.as_ref().iter().cloned().map(usize::from).product()
     }
-    
+
     /// Split the dimension into two parts at the given axis. The first `Dim`
     /// will cover the first axes up to `axis`, excluding `axis` itself.
-    /// 
+    ///
     /// # Panic
-    /// 
+    ///
     /// Panics if `axis` is not between 0 and `self.rank()`.
     pub fn split(&self, axis: u16) -> (Dim, Dim) {
         let axis = usize::from(axis);
@@ -95,7 +91,7 @@ impl Dim {
 
 impl AsRef<[u16]> for Dim {
     fn as_ref(&self) -> &[u16] {
-        &self.0[1 .. self.rank() + 1]
+        &self.0[1..self.rank() + 1]
     }
 }
 
@@ -198,43 +194,83 @@ impl NiftiType {
         match self {
             NiftiType::Uint8 => {
                 let raw = u8::from_raw(source, endianness)?;
-                Ok(<u8 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
+                Ok(<u8 as DataElement>::Transform::linear_transform(
+                    raw.as_(),
+                    slope,
+                    inter,
+                ))
             }
             NiftiType::Int8 => {
                 let raw = i8::from_raw(source, endianness)?;
-                Ok(<i8 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
+                Ok(<i8 as DataElement>::Transform::linear_transform(
+                    raw.as_(),
+                    slope,
+                    inter,
+                ))
             }
             NiftiType::Uint16 => {
                 let raw = endianness.read_u16(source)?;
-                Ok(<u16 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
+                Ok(<u16 as DataElement>::Transform::linear_transform(
+                    raw.as_(),
+                    slope,
+                    inter,
+                ))
             }
             NiftiType::Int16 => {
                 let raw = endianness.read_i16(source)?;
-                Ok(<i16 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
+                Ok(<i16 as DataElement>::Transform::linear_transform(
+                    raw.as_(),
+                    slope,
+                    inter,
+                ))
             }
             NiftiType::Uint32 => {
                 let raw = endianness.read_u32(source)?;
-                Ok(<u32 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
+                Ok(<u32 as DataElement>::Transform::linear_transform(
+                    raw.as_(),
+                    slope,
+                    inter,
+                ))
             }
             NiftiType::Int32 => {
                 let raw = endianness.read_i32(source)?;
-                Ok(<i32 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
+                Ok(<i32 as DataElement>::Transform::linear_transform(
+                    raw.as_(),
+                    slope,
+                    inter,
+                ))
             }
             NiftiType::Uint64 => {
                 let raw = endianness.read_u64(source)?;
-                Ok(<u64 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
+                Ok(<u64 as DataElement>::Transform::linear_transform(
+                    raw.as_(),
+                    slope,
+                    inter,
+                ))
             }
             NiftiType::Int64 => {
                 let raw = endianness.read_i64(source)?;
-                Ok(<i64 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
+                Ok(<i64 as DataElement>::Transform::linear_transform(
+                    raw.as_(),
+                    slope,
+                    inter,
+                ))
             }
             NiftiType::Float32 => {
                 let raw = endianness.read_f32(source)?;
-                Ok(<f32 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
+                Ok(<f32 as DataElement>::Transform::linear_transform(
+                    raw.as_(),
+                    slope,
+                    inter,
+                ))
             }
             NiftiType::Float64 => {
                 let raw = endianness.read_f64(source)?;
-                Ok(<f64 as DataElement>::Transform::linear_transform(raw.as_(), slope, inter))
+                Ok(<f64 as DataElement>::Transform::linear_transform(
+                    raw.as_(),
+                    slope,
+                    inter,
+                ))
             }
             // TODO add support for more data types
             _ => Err(NiftiError::UnsupportedDataType(self)),
