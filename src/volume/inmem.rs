@@ -1,8 +1,8 @@
 //! Module holding an in-memory implementation of a NIfTI volume.
 
-use super::{NiftiVolume, RandomAccessNiftiVolume};
-use super::util::coords_to_index;
 use super::shape::Dim;
+use super::util::coords_to_index;
+use super::{NiftiVolume, RandomAccessNiftiVolume};
 use byteordered::Endianness;
 use error::{NiftiError, Result};
 use flate2::bufread::GzDecoder;
@@ -72,9 +72,8 @@ impl InMemNiftiVolume {
         scl_slope: f32,
         scl_inter: f32,
         raw_data: Vec<u8>,
-        endianness: Endianness
-        ) -> Result<Self>
-    {
+        endianness: Endianness,
+    ) -> Result<Self> {
         let dim = Dim::new(raw_dim)?;
         let nbytes = nb_bytes_for_dim_datatype(dim.as_ref(), datatype);
         if nbytes != raw_data.len() {
@@ -315,7 +314,6 @@ impl NiftiVolume for InMemNiftiVolume {
 }
 
 impl RandomAccessNiftiVolume for InMemNiftiVolume {
-
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
         self.get_prim(coords)
     }
@@ -358,7 +356,6 @@ impl RandomAccessNiftiVolume for InMemNiftiVolume {
 }
 
 impl<'a> RandomAccessNiftiVolume for &'a InMemNiftiVolume {
-
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
         (**self).get_f32(coords)
     }
@@ -405,8 +402,8 @@ mod tests {
     use super::*;
     use byteordered::Endianness;
     use typedef::NiftiType;
-    use volume::Sliceable;
     use volume::shape::Dim;
+    use volume::Sliceable;
 
     #[test]
     fn test_u8_inmem_volume() {
