@@ -5,6 +5,7 @@
 //! In order to do so, you must add the `ndarray_volumes` feature
 //! to this crate.
 
+pub mod shape;
 pub mod inmem;
 pub mod element;
 pub mod streamed;

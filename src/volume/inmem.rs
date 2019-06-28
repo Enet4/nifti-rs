@@ -1,7 +1,8 @@
 //! Module holding an in-memory implementation of a NIfTI volume.
 
-use super::util::coords_to_index;
 use super::{NiftiVolume, RandomAccessNiftiVolume};
+use super::util::coords_to_index;
+use super::shape::Dim;
 use byteordered::Endianness;
 use error::{NiftiError, Result};
 use flate2::bufread::GzDecoder;
@@ -11,7 +12,7 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ops::{Add, Mul};
 use std::path::Path;
-use typedef::{Dim, NiftiType};
+use typedef::NiftiType;
 use util::{nb_bytes_for_data, nb_bytes_for_dim_datatype};
 use volume::element::DataElement;
 
@@ -403,8 +404,9 @@ impl<'a> RandomAccessNiftiVolume for &'a InMemNiftiVolume {
 mod tests {
     use super::*;
     use byteordered::Endianness;
-    use typedef::{Dim, NiftiType};
+    use typedef::NiftiType;
     use volume::Sliceable;
+    use volume::shape::Dim;
 
     #[test]
     fn test_u8_inmem_volume() {

@@ -67,15 +67,28 @@ where
     }
 }
 
+/// Validate a raw volume dimensions array, returning a slice of the concrete
+/// dimensions.
+///
+/// # Error
+///
+/// Errors if `dim[0]` is outside the accepted rank boundaries or
+/// one of the used dimensions is not positive.
 pub fn validate_dim(raw_dim: &[u16; 8]) -> Result<&[u16]> {
     let ndim = validate_dimensionality(raw_dim)?;
-    let o = &raw_dim[1..ndim + 1];
+    let o = &raw_dim[1..=ndim];
     if let Some(i) = o.iter().position(|&x| x == 0) {
         return Err(NiftiError::InconsistentDim(i as u8, raw_dim[i]));
     }
     Ok(o)
 }
 
+/// Validate a raw N-dimensional index or shape, returning its rank.
+///
+/// # Error
+///
+/// Errors if `raw_dim[0]` is outside the accepted rank boundaries: 0 or
+/// larger than 7.
 pub fn validate_dimensionality(raw_dim: &[u16; 8]) -> Result<usize> {
     if raw_dim[0] == 0 || raw_dim[0] > 7 {
         return Err(NiftiError::InconsistentDim(0, raw_dim[0]));

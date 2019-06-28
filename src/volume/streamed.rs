@@ -57,12 +57,13 @@
 
 use super::inmem::InMemNiftiVolume;
 use super::NiftiVolume;
+use super::shape::{Dim, Idx};
 use error::Result;
 use header::NiftiHeader;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
-use typedef::{Dim, NiftiType};
+use typedef::NiftiType;
 use util::nb_bytes_for_dim_datatype;
 use byteordered::Endianness;
 
@@ -201,6 +202,28 @@ where
         }
         Some(self.read_slice_inline(buffer))
     }
+
+    /// Adapt the streamed volume to produce slice indices alongside the produced
+    /// slices.
+    /// 
+    /// # Example
+    /// 
+    /// ```no_run
+    /// # use nifti::{StreamedNiftiVolume, InMemNiftiVolume};
+    /// # use nifti::volume::shape::Idx;
+    /// # fn get_volume() -> StreamedNiftiVolume<Box<dyn std::io::Read>> { unimplemented!() }
+    /// let mut volume = get_volume();
+    /// for slice_pair in volume.indexed() {
+    ///     let (idx, slice): (Idx, InMemNiftiVolume) = slice_pair?;
+    ///     // use idx and slice
+    /// }
+    /// # Ok::<(), nifti::NiftiError>(())
+    /// ```
+    pub fn indexed<'a>(&'a mut self) -> impl Iterator<Item = Result<(Idx, InMemNiftiVolume)>> + 'a {
+        let (_, r) = self.dim.split(self.slice_dim.rank() as u16);
+        self.zip(r.index_iter())
+            .map(|(vol_result, idx)| vol_result.map(|v| (idx, v)))
+    }
 }
 
 impl<'a, R> NiftiVolume for &'a StreamedNiftiVolume<R> {
@@ -310,6 +333,50 @@ mod tests {
                 .expect("should not fail to construct the volume");
 
             assert_eq!(slice.dim(), &[2, 3]);
+            assert_eq!(slice.data_type(), NiftiType::Uint8);
+            assert_eq!(slice.raw_data(), &[13, 15, 17, 19, 21, 23]);
+        }
+        assert!(volume.next().is_none());
+    }
+
+    #[test]
+    fn test_streamed_indexed() {
+        let volume_data = &[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
+        let header = NiftiHeader {
+            dim: [3, 2, 3, 2, 0, 0, 0, 0],
+            datatype: NiftiType::Uint8 as i16,
+            scl_slope: 1.,
+            scl_inter: 0.,
+            endianness: Endianness::native(),
+            ..NiftiHeader::default()
+        };
+
+        let mut volume = StreamedNiftiVolume::from_reader(&volume_data[..], &header).unwrap();
+
+        assert_eq!(volume.dim(), &[2, 3, 2]);
+        assert_eq!(volume.slice_dim(), &[2, 3]);
+        assert_eq!(volume.slices_read(), 0);
+
+        let mut volume = volume.indexed();
+        {
+            let (idx, slice) = volume
+                .next()
+                .expect("1st slice should exist")
+                .expect("should not fail to construct the volume");
+
+            assert_eq!(slice.dim(), &[2, 3]);
+            assert_eq!(idx.as_ref(), &[0]);
+            assert_eq!(slice.data_type(), NiftiType::Uint8);
+            assert_eq!(slice.raw_data(), &[1, 3, 5, 7, 9, 11]);
+        }
+        {
+            let (idx, slice) = volume
+                .next()
+                .expect("2nd slice should exist")
+                .expect("should not fail to construct the volume");
+
+            assert_eq!(slice.dim(), &[2, 3]);
+            assert_eq!(idx.as_ref(), &[1]);
             assert_eq!(slice.data_type(), NiftiType::Uint8);
             assert_eq!(slice.raw_data(), &[13, 15, 17, 19, 21, 23]);
         }
