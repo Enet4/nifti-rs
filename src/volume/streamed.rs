@@ -3,7 +3,7 @@
 //! This API provides slice-by-slice reading of volumes, thus lowering
 //! memory requirements and better supporting the manipulation of
 //! large volumes.
-//! 
+//!
 //! Since volumes are physically persisted in column major order, each slice
 //! will cover the full range of the first axes of the volume and traverse
 //! the rightmost axes in each iteration. As an example, a 3D volume of
@@ -14,14 +14,14 @@
 //! Slices may also have an arbitrary rank (dimensionality), as long as it
 //! is smaller than the original volume's rank. A good default is the
 //! original volume shape minus 1 (`R - 1`).
-//! 
+//!
 //! # Examples
-//! 
+//!
 //! Obtain a [`StreamedNiftiVolume`], usually from loading a
 //! [`StreamedNiftiObject`]. When holding a streamed volume, one can use the
 //! [`Iterator` API] to iteratively fetch data from the byte source, making
 //! in-memory sub-volumes each time.
-//! 
+//!
 //! ```no_run
 //! # use nifti::{StreamedNiftiVolume, InMemNiftiVolume};
 //! # fn get_volume() -> StreamedNiftiVolume<Box<dyn std::io::Read>> { unimplemented!() }
@@ -32,15 +32,15 @@
 //! }
 //! # Ok::<(), nifti::NiftiError>(())
 //! ```
-//! 
+//!
 //! For additional efficiency, a streamed iterator method is provided, which
 //! enables the reuse of the same raw data vector for the slices.
-//! 
+//!
 //! ```no_run
 //! # use nifti::{StreamedNiftiVolume, InMemNiftiVolume};
 //! # fn get_volume() -> StreamedNiftiVolume<Box<dyn std::io::Read>> { unimplemented!() }
 //! let mut volume: StreamedNiftiVolume<_> = get_volume();
-//! 
+//!
 //! let mut buffer = Vec::new(); // or with the expected capacity
 //! while let Some(slice) = volume.next_inline(buffer) {
 //!     let slice: InMemNiftiVolume = slice?;
@@ -49,15 +49,16 @@
 //! }
 //! # Ok::<(), nifti::NiftiError>(())
 //! ```
-//! 
+//!
 //! [`StreamedNiftiVolume`]: ./struct.StreamedNiftiVolume.html
 //! [`StreamedNiftiObject`]: ../../object/type.StreamedNiftiObject.html
 //! [`Iterator` API]: https://doc.rust-lang.org/std/iter/trait.Iterator.html
-//! 
+//!
 
 use super::inmem::InMemNiftiVolume;
-use super::NiftiVolume;
 use super::shape::{Dim, Idx};
+use super::{FromSource, FromSourceOptions, NiftiVolume};
+use byteordered::Endianness;
 use error::Result;
 use header::NiftiHeader;
 use std::fs::File;
@@ -65,12 +66,11 @@ use std::io::{BufReader, Read};
 use std::path::Path;
 use typedef::NiftiType;
 use util::nb_bytes_for_dim_datatype;
-use byteordered::Endianness;
 
 /// A NIfTI-1 volume instance that is read slice by slice from a byte stream.
 ///
 /// See the [module-level documentation] for more details.
-/// 
+///
 /// [module-level documentation]: ./index.html
 #[derive(Debug)]
 pub struct StreamedNiftiVolume<R> {
@@ -205,9 +205,9 @@ where
 
     /// Adapt the streamed volume to produce slice indices alongside the produced
     /// slices.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```no_run
     /// # use nifti::{StreamedNiftiVolume, InMemNiftiVolume};
     /// # use nifti::volume::shape::Idx;
@@ -223,6 +223,23 @@ where
         let (_, r) = self.dim.split(self.slice_dim.rank() as u16);
         self.zip(r.index_iter())
             .map(|(vol_result, idx)| vol_result.map(|v| (idx, v)))
+    }
+}
+
+impl<R> FromSourceOptions for StreamedNiftiVolume<R> {
+    type Options = Option<u16>;
+}
+
+impl<R> FromSource<R> for StreamedNiftiVolume<R>
+where
+    R: Read,
+{
+    fn from_reader(reader: R, header: &NiftiHeader, options: Self::Options) -> Result<Self> {
+        if let Some(slice_rank) = options {
+            StreamedNiftiVolume::from_reader_rank(reader, header, slice_rank)
+        } else {
+            StreamedNiftiVolume::from_reader(reader, header)
+        }
     }
 }
 

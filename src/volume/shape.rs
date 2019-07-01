@@ -1,13 +1,13 @@
 //! Shape and N-dimensional index constructs.
-//! 
+//!
 //! The NIfTI-1 format has a hard dimensionality limit of 7. This is
 //! specified in the `dim` field as an array of 8 integers where the
 //! first element represents the number of dimensions. In order
 //! to make dimensions and indices easier to manipulate, the types
 //! [`Dim`] and [`Idx`] are provided here.
-//! 
+//!
 //! [`Dim`]: ./struct.Dim.html
-//! [`Idx`]: ./struct.Idx.html 
+//! [`Idx`]: ./struct.Idx.html
 use error::{NiftiError, Result};
 use util::{validate_dim, validate_dimensionality};
 
@@ -97,9 +97,7 @@ impl AsMut<[u16]> for Idx {
 /// A validated NIfTI volume shape.
 #[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
 #[repr(transparent)]
-pub struct Dim(
-    Idx
-);
+pub struct Dim(Idx);
 
 impl Dim {
     /// Validate and create a new volume shape.
@@ -226,11 +224,12 @@ impl Iterator for DimIter {
             DimIterState::First => {
                 let out = Idx([self.shape.rank() as u16, 0, 0, 0, 0, 0, 0, 0]);
                 dbg!((Some(out), DimIterState::Middle(out)))
-            },
+            }
             DimIterState::Fused => dbg!((None, DimIterState::Fused)),
             DimIterState::Middle(mut current) => {
                 let mut good = false;
-                for (c, s) in Iterator::zip(current.as_mut().iter_mut(), self.shape.as_ref().iter()) {
+                for (c, s) in Iterator::zip(current.as_mut().iter_mut(), self.shape.as_ref().iter())
+                {
                     if *c < *s - 1 {
                         *c += 1;
                         good = true;

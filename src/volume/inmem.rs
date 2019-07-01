@@ -15,6 +15,7 @@ use std::path::Path;
 use typedef::NiftiType;
 use util::{nb_bytes_for_data, nb_bytes_for_dim_datatype};
 use volume::element::DataElement;
+use volume::{FromSource, FromSourceOptions};
 
 #[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
@@ -220,6 +221,19 @@ impl InMemNiftiVolume {
         );
 
         Ok(Array::from_shape_vec(IxDyn(&dim).f(), data).expect("Inconsistent raw data size"))
+    }
+}
+
+impl FromSourceOptions for InMemNiftiVolume {
+    type Options = ();
+}
+
+impl<R> FromSource<R> for InMemNiftiVolume
+where
+    R: Read,
+{
+    fn from_reader(reader: R, header: &NiftiHeader, (): Self::Options) -> Result<Self> {
+        InMemNiftiVolume::from_reader(reader, header)
     }
 }
 

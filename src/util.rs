@@ -1,9 +1,11 @@
 //! Private utility module
 use std::borrow::Cow;
-use std::io::{Read, Seek};
+use std::fs::File;
+use std::io::{BufReader, Read, Result as IoResult, Seek};
 use std::mem;
 use std::path::{Path, PathBuf};
 use byteordered::Endian;
+use flate2::read::GzDecoder;
 use safe_transmute::{transmute_vec, TriviallyTransmutable};
 use super::typedef::NiftiType;
 use super::error::NiftiError;
@@ -150,6 +152,21 @@ pub fn into_img_file_gz(mut path: PathBuf) -> PathBuf {
         let _ = path.set_extension("");
     }
     path.with_extension("img.gz")
+}
+
+/// Open a file for reading, which might be Gzip compressed based on whether
+/// the extension ends with ".gz".
+pub fn open_file_maybe_gz<P>(path: P) -> IoResult<Box<dyn Read>>
+where
+    P: AsRef<Path>,
+{
+    let path = path.as_ref();
+    let file = BufReader::new(File::open(path)?);
+    if is_gz_file(path) {
+        Ok(Box::from(GzDecoder::new(file)))
+    } else {
+        Ok(Box::from(file))
+    }
 }
 
 #[cfg(test)]

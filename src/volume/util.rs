@@ -26,7 +26,8 @@ pub fn coords_to_index(coords: &[u16], dim: &[u16]) -> Result<usize> {
 
     let mut crds = coords.into_iter();
     let start = *crds.next_back().unwrap() as usize;
-    let index = crds.zip(dim)
+    let index = crds
+        .zip(dim)
         .rev()
         .fold(start, |a, b| a * *b.1 as usize + *b.0 as usize);
 
