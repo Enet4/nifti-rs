@@ -43,8 +43,7 @@ fn minimal_img_gz() {
                 let coords = [i, j, k];
                 let got_value = volume.get_f32(&coords).unwrap();
                 assert_eq!(
-                    expected_value,
-                    got_value,
+                    expected_value, got_value,
                     "bad value at coords {:?}",
                     &coords
                 );
@@ -57,9 +56,8 @@ fn minimal_img_gz() {
 mod ndarray_volumes {
     use std::fmt;
     use std::ops::{Add, Mul};
-    use nifti::{DataElement, Endianness, InMemNiftiObject, InMemNiftiVolume,
-                NiftiHeader, NiftiObject, NiftiVolume, NiftiType, IntoNdArray,
-                StreamedNiftiObject};
+    use nifti::{DataElement, Endianness, InMemNiftiObject, InMemNiftiVolume, IntoNdArray,
+                NiftiHeader, NiftiObject, NiftiType, NiftiVolume, StreamedNiftiObject};
     use ndarray::{Array, Axis, IxDyn, ShapeBuilder};
     use num_traits::AsPrimitive;
 
@@ -270,8 +268,7 @@ mod ndarray_volumes {
         test_all(FILE_NAME, NiftiType::Float64);
     }
 
-    fn test_all(path: &str, dtype: NiftiType)
-    {
+    fn test_all(path: &str, dtype: NiftiType) {
         test_types::<i8>(path, dtype);
         test_types::<u8>(path, dtype);
         test_types::<i16>(path, dtype);
@@ -285,23 +282,23 @@ mod ndarray_volumes {
     }
 
     fn test_types<T>(path: &str, dtype: NiftiType)
-        where
-            T: fmt::Debug,
-            T: Add<Output = T>,
-            T: Mul<Output = T>,
-            T: DataElement,
-            T: PartialEq<T>,
-            u8: AsPrimitive<T>,
-            i8: AsPrimitive<T>,
-            u16: AsPrimitive<T>,
-            i16: AsPrimitive<T>,
-            u32: AsPrimitive<T>,
-            i32: AsPrimitive<T>,
-            u64: AsPrimitive<T>,
-            i64: AsPrimitive<T>,
-            f32: AsPrimitive<T>,
-            f64: AsPrimitive<T>,
-            usize: AsPrimitive<T>,
+    where
+        T: fmt::Debug,
+        T: Add<Output = T>,
+        T: Mul<Output = T>,
+        T: DataElement,
+        T: PartialEq<T>,
+        u8: AsPrimitive<T>,
+        i8: AsPrimitive<T>,
+        u16: AsPrimitive<T>,
+        i16: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i32: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        f32: AsPrimitive<T>,
+        f64: AsPrimitive<T>,
+        usize: AsPrimitive<T>,
     {
         let volume = InMemNiftiObject::from_file(path)
             .expect("Can't read input file.")

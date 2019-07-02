@@ -123,24 +123,6 @@ impl InMemNiftiObject {
             Self::from_file_pair_2(file, vol_path, Default::default())
         }
     }
-    /*
-        fn from_file_pair_2<S, Q>(mut hdr_stream: S, vol_path: Q) -> Result<InMemNiftiObject>
-        where
-            S: Read,
-            Q: AsRef<Path>,
-        {
-            let header = NiftiHeader::from_reader(&mut hdr_stream)?;
-            let extender = Extender::from_reader_optional(hdr_stream)?.unwrap_or_default();
-            let (volume, extensions) =
-                Self::from_file_with_extensions(vol_path, &header, extender, Default::default())?;
-
-            Ok(InMemNiftiObject {
-                header,
-                extensions,
-                volume,
-            })
-        }
-    */
 
     /// Retrieve an in-memory NIfTI object from a stream of data.
     #[deprecated(note = "use `from_reader` instead")]
@@ -278,20 +260,18 @@ impl<V> GenericNiftiObject<V> {
         if &header.magic == MAGIC_CODE_NI1 {
             return Err(NiftiError::NoVolumeData);
         }
-        let len = header.vox_offset as usize;
-        let len = if len < 352 { 0 } else { len - 352 };
         let extender = Extender::from_reader(&mut source)?;
 
-        let ext = {
-            let source = ByteOrdered::runtime(&mut source, header.endianness);
-            ExtensionSequence::from_reader(extender, source, len)?
-        };
-
-        let volume = V::from_reader(source, &header, Default::default())?;
+        let (volume, extensions) = GenericNiftiObject::from_reader_with_extensions(
+            source,
+            &header,
+            extender,
+            Default::default(),
+        )?;
 
         Ok(GenericNiftiObject {
             header,
-            extensions: ext,
+            extensions,
             volume,
         })
     }
@@ -315,7 +295,7 @@ impl<V> GenericNiftiObject<V> {
 
         let ext = {
             let source = ByteOrdered::runtime(&mut source, header.endianness);
-            ExtensionSequence::from_reader::<_, _>(extender, source, len)?
+            ExtensionSequence::from_reader(extender, source, len)?
         };
 
         // fetch volume (rest of file)
