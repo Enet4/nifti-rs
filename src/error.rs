@@ -57,9 +57,10 @@ quick_error! {
             cause(err)
             description(err.description())
         }
-        /// Raw data and buffer length are incompatible
-        IncompatibleLength {
+        /// Raw data buffer length and volume dimensions are incompatible
+        IncompatibleLength(got: usize, expected: usize) {
             description("The buffer length and the header dimensions are incompatible.")
+            display("The buffer length ({}) and header dimensions ({} elements) are incompatible", got, expected)
         }
         /// Description length must be lower than or equal to 80 bytes
         IncorrectDescriptionLength(len: usize) {

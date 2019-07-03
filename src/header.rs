@@ -18,7 +18,7 @@ use std::io::{BufReader, Read};
 use std::ops::Deref;
 use std::path::Path;
 use typedef::*;
-use util::is_gz_file;
+use util::{is_gz_file, validate_dim, validate_dimensionality};
 
 /// Magic code for NIFTI-1 header files (extention ".hdr[.gz]").
 pub const MAGIC_CODE_NI1: &'static [u8; 4] = b"ni1\0";
@@ -226,16 +226,27 @@ impl NiftiHeader {
         let gz = is_gz_file(&path);
         let file = BufReader::new(File::open(path)?);
         if gz {
-            NiftiHeader::from_stream(GzDecoder::new(file))
+            NiftiHeader::from_reader(GzDecoder::new(file))
         } else {
-            NiftiHeader::from_stream(file)
+            NiftiHeader::from_reader(file)
         }
     }
 
     /// Read a NIfTI-1 header, along with its byte order, from the given byte stream.
     /// It is assumed that the input is currently at the start of the
     /// NIFTI header.
+    #[deprecated(since = "0.8.0", note = "use `from_reader` instead")]
     pub fn from_stream<S: Read>(input: S) -> Result<NiftiHeader> {
+        Self::from_reader(input)
+    }
+
+    /// Read a NIfTI-1 header, along with its byte order, from the given byte stream.
+    /// It is assumed that the input is currently at the start of the
+    /// NIFTI header.
+    pub fn from_reader<S>(input: S) -> Result<NiftiHeader>
+    where
+        S: Read,
+    {
         parse_header_1(input)
     }
 
@@ -248,12 +259,7 @@ impl NiftiHeader {
     /// `NiftiError::InconsistentDim` if `dim[0]` does not represent a valid
     /// dimensionality, or any of the real dimensions are zero.
     pub fn dim(&self) -> Result<&[u16]> {
-        let ndim = self.dimensionality()?;
-        let o = &self.dim[1..ndim + 1];
-        if let Some(i) = o.into_iter().position(|&x| x == 0) {
-            return Err(NiftiError::InconsistentDim(i as u8, self.dim[i]));
-        }
-        Ok(o)
+        validate_dim(&self.dim)
     }
 
     /// Retrieve and validate the number of dimensions of the volume. This is
@@ -263,11 +269,8 @@ impl NiftiHeader {
     /// 
     /// `NiftiError::` if `dim[0]` does not represent a valid dimensionality
     /// (it must be positive and not higher than 7).
-    pub fn dimensionality(&self) -> Result <usize> {
-        if self.dim[0] == 0 || self.dim[0] > 7 {
-            return Err(NiftiError::InconsistentDim(0, self.dim[0]));
-        }
-        Ok(usize::from(self.dim[0]))
+    pub fn dimensionality(&self) -> Result<usize> {
+        validate_dimensionality(&self.dim)
     }
 
     /// Get the data type as a validated enum.

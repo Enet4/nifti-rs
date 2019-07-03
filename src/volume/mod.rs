@@ -5,19 +5,23 @@
 //! In order to do so, you must add the `ndarray_volumes` feature
 //! to this crate.
 
-pub mod inmem;
 pub mod element;
+pub mod inmem;
+pub mod shape;
+pub mod streamed;
 pub use self::inmem::*;
+pub use self::streamed::StreamedNiftiVolume;
 
 mod util;
 use error::{NiftiError, Result};
+use header::NiftiHeader;
+use std::io::Read;
 use typedef::NiftiType;
 
 #[cfg(feature = "ndarray_volumes")]
 pub mod ndarray;
 
-/// Public API for NIFTI volume data, exposed as a multi-dimensional
-/// voxel array.
+/// Public API for a NIFTI volume.
 ///
 /// This API is currently experimental and will likely be subjected to
 /// various changes and additions in future versions.
@@ -34,6 +38,15 @@ pub trait NiftiVolume {
         self.dim().len()
     }
 
+    /// Get this volume's data type.
+    fn data_type(&self) -> NiftiType;
+}
+
+/// Public API for a NIFTI volume with full random access to data.
+///
+/// This API is currently experimental and will likely be subjected to
+/// various changes and additions in future versions.
+pub trait RandomAccessNiftiVolume: NiftiVolume {
     /// Fetch a single voxel's value in the given voxel index coordinates
     /// as a double precision floating point value.
     /// All necessary conversions and transformations are made
@@ -46,9 +59,6 @@ pub trait NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     fn get_f64(&self, coords: &[u16]) -> Result<f64>;
-
-    /// Get this volume's data type.
-    fn data_type(&self) -> NiftiType;
 
     /// Fetch a single voxel's value in the given voxel index coordinates
     /// as a single precision floating point value.
@@ -63,8 +73,7 @@ pub trait NiftiVolume {
     /// volume's boundaries.
     #[inline]
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
-        self.get_f64(coords)
-            .map(|v| v as f32)
+        self.get_f64(coords).map(|v| v as f32)
     }
 
     /// Fetch a single voxel's value in the given voxel index coordinates
@@ -80,8 +89,7 @@ pub trait NiftiVolume {
     /// volume's boundaries.
     #[inline]
     fn get_u8(&self, coords: &[u16]) -> Result<u8> {
-        self.get_f64(coords)
-            .map(|v| v as u8)
+        self.get_f64(coords).map(|v| v as u8)
     }
 
     /// Fetch a single voxel's value in the given voxel index coordinates
@@ -97,8 +105,7 @@ pub trait NiftiVolume {
     /// volume's boundaries.
     #[inline]
     fn get_i8(&self, coords: &[u16]) -> Result<i8> {
-        self.get_f64(coords)
-            .map(|v| v as i8)
+        self.get_f64(coords).map(|v| v as i8)
     }
 
     /// Fetch a single voxel's value in the given voxel index coordinates
@@ -114,8 +121,7 @@ pub trait NiftiVolume {
     /// volume's boundaries.
     #[inline]
     fn get_u16(&self, coords: &[u16]) -> Result<u16> {
-        self.get_f64(coords)
-            .map(|v| v as u16)
+        self.get_f64(coords).map(|v| v as u16)
     }
 
     /// Fetch a single voxel's value in the given voxel index coordinates
@@ -131,8 +137,7 @@ pub trait NiftiVolume {
     /// volume's boundaries.
     #[inline]
     fn get_i16(&self, coords: &[u16]) -> Result<i16> {
-        self.get_f64(coords)
-            .map(|v| v as i16)
+        self.get_f64(coords).map(|v| v as i16)
     }
 
     /// Fetch a single voxel's value in the given voxel index coordinates
@@ -148,8 +153,7 @@ pub trait NiftiVolume {
     /// volume's boundaries.
     #[inline]
     fn get_u32(&self, coords: &[u16]) -> Result<u32> {
-        self.get_f64(coords)
-            .map(|v| v as u32)
+        self.get_f64(coords).map(|v| v as u32)
     }
 
     /// Fetch a single voxel's value in the given voxel index coordinates
@@ -165,8 +169,7 @@ pub trait NiftiVolume {
     /// volume's boundaries.
     #[inline]
     fn get_i32(&self, coords: &[u16]) -> Result<i32> {
-        self.get_f64(coords)
-            .map(|v| v as i32)
+        self.get_f64(coords).map(|v| v as i32)
     }
 
     /// Fetch a single voxel's value in the given voxel index coordinates
@@ -182,8 +185,7 @@ pub trait NiftiVolume {
     /// volume's boundaries.
     #[inline]
     fn get_u64(&self, coords: &[u16]) -> Result<u64> {
-        self.get_f64(coords)
-            .map(|v| v as u64)
+        self.get_f64(coords).map(|v| v as u64)
     }
 
     /// Fetch a single voxel's value in the given voxel index coordinates
@@ -199,12 +201,11 @@ pub trait NiftiVolume {
     /// volume's boundaries.
     #[inline]
     fn get_i64(&self, coords: &[u16]) -> Result<i64> {
-        self.get_f64(coords)
-            .map(|v| v as i64)
+        self.get_f64(coords).map(|v| v as i64)
     }
 }
 
-/// Interface for a volume that can be sliced.
+/// Interface for a volume that can be sliced at an arbitrary position.
 pub trait Sliceable {
     /// The type of the resulting slice, which is also a volume.
     type Slice: NiftiVolume;
@@ -214,9 +215,30 @@ pub trait Sliceable {
     fn get_slice(&self, axis: u16, index: u16) -> Result<Self::Slice>;
 }
 
+/// Interface for specifying the type for the set of options that are relevent
+/// for constructing a volume instance from a data source. The separation
+/// between this type and `FromSource` is important because the options are
+/// invariant with respect to the reader type `R`.
+pub trait FromSourceOptions {
+    /// Set of additional options required (or useful) for constructing a volume.
+    type Options: Clone + Default;
+}
+
+/// Interface for constructing a volume instance from the given data source.
+pub trait FromSource<R>: FromSourceOptions + Sized {
+    /// Read a NIfTI volume from a stream of raw voxel data. The header and
+    /// expected byte order of the volume's data must be known in advance. It
+    /// is also expected that the following bytes represent the first voxels of
+    /// the volume (and not part of the extensions).
+    fn from_reader(reader: R, header: &NiftiHeader, options: Self::Options) -> Result<Self>
+    where
+        R: Read;
+}
+
 /// A view over a single slice of another volume.
-/// Slices are usually created by calling the `get_slice` method (see `Sliceable`).
-/// This implementation is generic and delegates most operations to the underlying volume.
+/// Slices are usually created by calling the `get_slice` method on another
+/// volume with random access to voxels (see `Sliceable`). This implementation
+/// is generic and delegates most operations to the underlying volume.
 #[derive(Debug, Clone)]
 pub struct SliceView<T> {
     volume: T,
@@ -265,6 +287,21 @@ where
         &self.dim
     }
 
+    #[inline]
+    fn dimensionality(&self) -> usize {
+        self.dim.len()
+    }
+
+    #[inline]
+    fn data_type(&self) -> NiftiType {
+        self.volume.data_type()
+    }
+}
+
+impl<V> RandomAccessNiftiVolume for SliceView<V>
+where
+    V: RandomAccessNiftiVolume,
+{
     fn get_f32(&self, coords: &[u16]) -> Result<f32> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
@@ -323,11 +360,5 @@ where
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_i64(&coords)
-    }
-
-    /// Get this volume's data type.
-    #[inline]
-    fn data_type(&self) -> NiftiType {
-        self.volume.data_type()
     }
 }

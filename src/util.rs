@@ -1,10 +1,15 @@
 //! Private utility module
 use std::borrow::Cow;
-use std::io::{Read, Seek};
+use std::fs::File;
+use std::io::{BufReader, Read, Result as IoResult, Seek};
 use std::mem;
 use std::path::{Path, PathBuf};
 use byteordered::Endian;
+use flate2::read::GzDecoder;
 use safe_transmute::{transmute_vec, TriviallyTransmutable};
+use super::typedef::NiftiType;
+use super::error::NiftiError;
+
 use error::Result;
 use NiftiHeader;
 
@@ -64,12 +69,51 @@ where
     }
 }
 
+/// Validate a raw volume dimensions array, returning a slice of the concrete
+/// dimensions.
+///
+/// # Error
+///
+/// Errors if `dim[0]` is outside the accepted rank boundaries or
+/// one of the used dimensions is not positive.
+pub fn validate_dim(raw_dim: &[u16; 8]) -> Result<&[u16]> {
+    let ndim = validate_dimensionality(raw_dim)?;
+    let o = &raw_dim[1..=ndim];
+    if let Some(i) = o.iter().position(|&x| x == 0) {
+        return Err(NiftiError::InconsistentDim(i as u8, raw_dim[i]));
+    }
+    Ok(o)
+}
+
+/// Validate a raw N-dimensional index or shape, returning its rank.
+///
+/// # Error
+///
+/// Errors if `raw_dim[0]` is outside the accepted rank boundaries: 0 or
+/// larger than 7.
+pub fn validate_dimensionality(raw_dim: &[u16; 8]) -> Result<usize> {
+    if raw_dim[0] == 0 || raw_dim[0] > 7 {
+        return Err(NiftiError::InconsistentDim(0, raw_dim[0]));
+    }
+    Ok(usize::from(raw_dim[0]))
+}
+
 pub fn nb_bytes_for_data(header: &NiftiHeader) -> Result<usize> {
-    let resolution: usize = header.dim()?
-        .iter()
-        .map(|d| *d as usize)
-        .product();
+    let resolution = nb_values_for_dims(header.dim()?);
     Ok(resolution * header.bitpix as usize / 8)
+}
+
+pub fn nb_values_for_dims(dim: &[u16]) -> usize {
+    dim
+        .iter()
+        .cloned()
+        .map(usize::from)
+        .product::<usize>()
+}
+
+pub fn nb_bytes_for_dim_datatype(dim: &[u16], datatype: NiftiType) -> usize {
+    let resolution = nb_values_for_dims(dim);
+    resolution * datatype.size_of()
 }
 
 #[cfg(feature = "ndarray_volumes")]
@@ -110,13 +154,44 @@ pub fn into_img_file_gz(mut path: PathBuf) -> PathBuf {
     path.with_extension("img.gz")
 }
 
+/// Open a file for reading, which might be Gzip compressed based on whether
+/// the extension ends with ".gz".
+pub fn open_file_maybe_gz<P>(path: P) -> IoResult<Box<dyn Read>>
+where
+    P: AsRef<Path>,
+{
+    let path = path.as_ref();
+    let file = BufReader::new(File::open(path)?);
+    if is_gz_file(path) {
+        Ok(Box::from(GzDecoder::new(file)))
+    } else {
+        Ok(Box::from(file))
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::into_img_file_gz;
-    use super::is_gz_file;
+    use super::{into_img_file_gz, is_gz_file, nb_bytes_for_dim_datatype};
     #[cfg(feature = "ndarray_volumes")]
     use super::is_hdr_file;
     use std::path::PathBuf;
+    use typedef::NiftiType;
+
+    #[test]
+    fn test_nbytes() {
+        assert_eq!(
+            nb_bytes_for_dim_datatype(&[2, 3, 2], NiftiType::Uint8),
+            12
+        );
+        assert_eq!(
+            nb_bytes_for_dim_datatype(&[2, 3], NiftiType::Uint8),
+            6
+        );
+        assert_eq!(
+            nb_bytes_for_dim_datatype(&[2, 3], NiftiType::Uint16),
+            12
+        );
+    }
 
     #[test]
     fn filenames() {

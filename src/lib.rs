@@ -45,6 +45,22 @@
 //! # }
 //! ```
 //!
+//! An additional volume API is also available for reading large volumes slice
+//! by slice.
+//! 
+//! ```no_run
+//! # use nifti::{NiftiObject, StreamedNiftiObject};
+//! # use nifti::error::NiftiError;
+//! let obj = StreamedNiftiObject::from_file("minimal.nii.gz")?;
+//!
+//! let volume = obj.into_volume();
+//! for slice in volume {
+//!     let slice = slice?;
+//!     // manipulate slice here
+//! }
+//! # Ok::<(), NiftiError>(())
+//! ```
+//!
 #![deny(missing_debug_implementations)]
 #![warn(missing_docs, unused_extern_crates, trivial_casts, unused_results)]
 #![recursion_limit = "128"]
@@ -73,10 +89,10 @@ pub mod typedef;
 mod util;
 
 pub use error::{NiftiError, Result};
-pub use object::{NiftiObject, InMemNiftiObject};
+pub use object::{NiftiObject, InMemNiftiObject, StreamedNiftiObject};
 pub use extension::{Extender, Extension, ExtensionSequence};
 pub use header::{NiftiHeader, NiftiHeaderBuilder};
-pub use volume::{NiftiVolume, InMemNiftiVolume, Sliceable};
+pub use volume::{NiftiVolume, RandomAccessNiftiVolume, InMemNiftiVolume, StreamedNiftiVolume, Sliceable};
 pub use volume::element::DataElement;
 #[cfg(feature = "ndarray_volumes")] pub use volume::ndarray::IntoNdArray;
 pub use typedef::{NiftiType, Unit, Intent, XForm, SliceOrder};
