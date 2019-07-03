@@ -87,13 +87,10 @@ impl InMemNiftiObject {
     /// # Example
     ///
     /// ```no_run
-    /// use nifti::InMemNiftiObject;
-    /// # use nifti::error::Result;
+    /// use nifti::{NiftiObject, InMemNiftiObject};
     ///
-    /// # fn run() -> Result<()> {
     /// let obj = InMemNiftiObject::from_file("minimal.nii.gz")?;
-    /// # Ok(())
-    /// # }
+    /// # Ok::<(), nifti::NiftiError>(())
     /// ```
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let gz = is_gz_file(&path);
@@ -147,17 +144,15 @@ impl StreamedNiftiObject<Box<dyn Read>> {
     ///
     /// ```no_run
     /// use nifti::{NiftiObject, StreamedNiftiObject};
-    /// # use nifti::error::Result;
     ///
-    /// # fn run() -> Result<()> {
     /// let obj = StreamedNiftiObject::from_file("minimal.nii.gz")?;
     ///
     /// let volume = obj.into_volume();
     /// for slice in volume {
+    ///     let slice = slice?;
     ///     // manipulate slice here
     /// }
-    /// # Ok(())
-    /// # }
+    /// # Ok::<(), nifti::NiftiError>(())
     /// ```
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let gz = is_gz_file(&path);
@@ -195,9 +190,7 @@ impl StreamedNiftiObject<Box<dyn Read>> {
     ///
     /// ```no_run
     /// use nifti::{NiftiObject, StreamedNiftiObject};
-    /// # use nifti::error::Result;
     ///
-    /// # fn run() -> Result<()> {
     /// let obj = StreamedNiftiObject::from_file_pair("abc.hdr", "abc.img.gz")?;
     ///
     /// let volume = obj.into_volume();
@@ -205,8 +198,7 @@ impl StreamedNiftiObject<Box<dyn Read>> {
     ///     let slice = slice?;
     ///     // manipulate slice here
     /// }
-    /// # Ok(())
-    /// # }
+    /// # Ok::<(), nifti::NiftiError>(())
     /// ```
     pub fn from_file_pair<P, Q>(hdr_path: P, vol_path: Q) -> Result<Self>
     where

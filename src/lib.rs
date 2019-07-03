@@ -45,6 +45,22 @@
 //! # }
 //! ```
 //!
+//! An additional volume API is also available for reading large volumes slice
+//! by slice.
+//! 
+//! ```no_run
+//! # use nifti::{NiftiObject, StreamedNiftiObject};
+//! # use nifti::error::NiftiError;
+//! let obj = StreamedNiftiObject::from_file("minimal.nii.gz")?;
+//!
+//! let volume = obj.into_volume();
+//! for slice in volume {
+//!     let slice = slice?;
+//!     // manipulate slice here
+//! }
+//! # Ok::<(), NiftiError>(())
+//! ```
+//!
 #![deny(missing_debug_implementations)]
 #![warn(missing_docs, unused_extern_crates, trivial_casts, unused_results)]
 #![recursion_limit = "128"]
