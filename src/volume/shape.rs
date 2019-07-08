@@ -8,8 +8,8 @@
 //!
 //! [`Dim`]: ./struct.Dim.html
 //! [`Idx`]: ./struct.Idx.html
-use error::{NiftiError, Result};
-use util::{validate_dim, validate_dimensionality};
+use crate::error::{NiftiError, Result};
+use crate::util::{validate_dim, validate_dimensionality};
 
 /// A validated N-dimensional index in the NIfTI format.
 #[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
