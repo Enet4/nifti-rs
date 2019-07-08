@@ -1,6 +1,5 @@
 //! Module for handling and retrieving complete NIFTI-1 objects.
 
-use byteordered::ByteOrdered;
 use crate::error::NiftiError;
 use crate::error::Result;
 use crate::extension::{Extender, ExtensionSequence};
@@ -10,10 +9,13 @@ use crate::util::{into_img_file_gz, is_gz_file, open_file_maybe_gz};
 use crate::volume::inmem::InMemNiftiVolume;
 use crate::volume::streamed::StreamedNiftiVolume;
 use crate::volume::{FromSource, FromSourceOptions, NiftiVolume};
+use byteordered::ByteOrdered;
 use flate2::bufread::GzDecoder;
 use std::fs::File;
 use std::io::{self, BufReader, Read};
 use std::path::Path;
+
+pub use crate::util::{GzDecodedFile, MaybeGzDecodedFile};
 
 /// Trait type for all possible implementations of
 /// owning NIFTI-1 objects. Objects contain a NIFTI header,
@@ -97,9 +99,9 @@ impl InMemNiftiObject {
 
         let file = BufReader::new(File::open(&path)?);
         if gz {
-            Self::from_file_2(path, GzDecoder::new(file), Default::default())
+            Self::from_file_impl(path, GzDecoder::new(file), Default::default())
         } else {
-            Self::from_file_2(path, file, Default::default())
+            Self::from_file_impl(path, file, Default::default())
         }
     }
 
@@ -115,9 +117,9 @@ impl InMemNiftiObject {
 
         let file = BufReader::new(File::open(&hdr_path)?);
         if gz {
-            Self::from_file_pair_2(GzDecoder::new(file), vol_path, Default::default())
+            Self::from_file_pair_impl(GzDecoder::new(file), vol_path, Default::default())
         } else {
-            Self::from_file_pair_2(file, vol_path, Default::default())
+            Self::from_file_pair_impl(file, vol_path, Default::default())
         }
     }
 
@@ -133,7 +135,7 @@ impl InMemNiftiObject {
 /// [streamed volume]: ../volume/streamed/index.html
 pub type StreamedNiftiObject<R> = GenericNiftiObject<StreamedNiftiVolume<R>>;
 
-impl StreamedNiftiObject<Box<dyn Read>> {
+impl StreamedNiftiObject<MaybeGzDecodedFile> {
     /// Retrieve the NIfTI object and prepare the volume for streamed reading.
     /// The given file system path is used as reference.
     /// If the file only contains the header, this method will
@@ -155,14 +157,8 @@ impl StreamedNiftiObject<Box<dyn Read>> {
     /// # Ok::<(), nifti::NiftiError>(())
     /// ```
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let gz = is_gz_file(&path);
-
-        let file = BufReader::new(File::open(&path)?);
-        if gz {
-            Self::from_file_2_erased(path, GzDecoder::new(file), None)
-        } else {
-            Self::from_file_2_erased(path, file, None)
-        }
+        let reader = open_file_maybe_gz(&path)?;
+        Self::from_file_impl(path, reader, None)
     }
 
     /// Retrieve the NIfTI object and prepare the volume for streamed reading,
@@ -172,14 +168,8 @@ impl StreamedNiftiObject<Box<dyn Read>> {
     /// look for the corresponding file with the extension ".img",
     /// or ".img.gz" if the former wasn't found.
     pub fn from_file_rank<P: AsRef<Path>>(path: P, slice_rank: u16) -> Result<Self> {
-        let gz = is_gz_file(&path);
-
-        let file = BufReader::new(File::open(&path)?);
-        if gz {
-            Self::from_file_2_erased(path, GzDecoder::new(file), Some(slice_rank))
-        } else {
-            Self::from_file_2_erased(path, file, Some(slice_rank))
-        }
+        let reader = open_file_maybe_gz(&path)?;
+        Self::from_file_impl(path, reader, Some(slice_rank))
     }
 
     /// Retrieve a NIfTI object as separate header and volume files, for
@@ -205,14 +195,8 @@ impl StreamedNiftiObject<Box<dyn Read>> {
         P: AsRef<Path>,
         Q: AsRef<Path>,
     {
-        let gz = is_gz_file(&hdr_path);
-
-        let file = BufReader::new(File::open(&hdr_path)?);
-        if gz {
-            Self::from_file_pair_2_erased(GzDecoder::new(file), vol_path, Default::default())
-        } else {
-            Self::from_file_pair_2_erased(file, vol_path, Default::default())
-        }
+        let reader = open_file_maybe_gz(hdr_path)?;
+        Self::from_file_pair_impl(reader, vol_path, Default::default())
     }
 
     /// Retrieve a NIfTI object as separate header and volume files, for
@@ -224,14 +208,8 @@ impl StreamedNiftiObject<Box<dyn Read>> {
         P: AsRef<Path>,
         Q: AsRef<Path>,
     {
-        let gz = is_gz_file(&hdr_path);
-
-        let file = BufReader::new(File::open(&hdr_path)?);
-        if gz {
-            Self::from_file_pair_2_erased::<_, _>(GzDecoder::new(file), vol_path, Some(slice_rank))
-        } else {
-            Self::from_file_pair_2_erased::<_, _>(file, vol_path, Some(slice_rank))
-        }
+        let reader = open_file_maybe_gz(hdr_path)?;
+        Self::from_file_pair_impl(reader, vol_path, Some(slice_rank))
     }
 }
 
@@ -294,7 +272,7 @@ impl<V> GenericNiftiObject<V> {
         Ok((V::from_reader(source, &header, options)?, ext))
     }
 
-    fn from_file_2<P, R>(
+    fn from_file_impl<P, R>(
         path: P,
         mut stream: R,
         options: <V as FromSourceOptions>::Options,
@@ -303,8 +281,7 @@ impl<V> GenericNiftiObject<V> {
         P: AsRef<Path>,
         R: Read,
         V: FromSource<R>,
-        V: FromSource<BufReader<File>>,
-        V: FromSource<GzDecoder<BufReader<File>>>,
+        V: FromSource<MaybeGzDecodedFile>,
     {
         let header = NiftiHeader::from_reader(&mut stream)?;
         let (volume, ext) = if &header.magic == MAGIC_CODE_NI1 {
@@ -360,76 +337,7 @@ impl<V> GenericNiftiObject<V> {
         })
     }
 
-    fn from_file_2_erased<P: AsRef<Path>, S: 'static>(
-        path: P,
-        mut stream: S,
-        options: <V as FromSourceOptions>::Options,
-    ) -> Result<Self>
-    where
-        S: Read,
-        V: FromSource<Box<dyn Read>>,
-    {
-        let header = NiftiHeader::from_reader(&mut stream)?;
-        let (volume, ext) = if &header.magic == MAGIC_CODE_NI1 {
-            // extensions and volume are in another file
-
-            // extender is optional
-            let extender = Extender::from_reader_optional(&mut stream)?.unwrap_or_default();
-
-            // look for corresponding img file
-            let img_path = path.as_ref().to_path_buf();
-            let mut img_path_gz = into_img_file_gz(img_path);
-
-            Self::from_file_with_extensions_erased(&img_path_gz, &header, extender, options.clone())
-                .or_else(|e| {
-                    match e {
-                        NiftiError::Io(ref io_e) if io_e.kind() == io::ErrorKind::NotFound => {
-                            // try .img file instead (remove .gz extension)
-                            let has_ext = img_path_gz.set_extension("");
-                            debug_assert!(has_ext);
-                            Self::from_file_with_extensions_erased(
-                                img_path_gz,
-                                &header,
-                                extender,
-                                options,
-                            )
-                        }
-                        e => Err(e),
-                    }
-                })
-                .map_err(|e| {
-                    if let NiftiError::Io(io_e) = e {
-                        NiftiError::MissingVolumeFile(io_e)
-                    } else {
-                        e
-                    }
-                })?
-        } else {
-            // extensions and volume are in the same source
-
-            let extender = Extender::from_reader(&mut stream)?;
-            let len = header.vox_offset as usize;
-            let len = if len < 352 { 0 } else { len - 352 };
-
-            let ext = {
-                let stream = ByteOrdered::runtime(&mut stream, header.endianness);
-                ExtensionSequence::from_reader(extender, stream, len)?
-            };
-
-            let stream = Box::from(stream);
-            let volume = FromSource::<Box<dyn Read>>::from_reader(stream, &header, options)?;
-
-            (volume, ext)
-        };
-
-        Ok(GenericNiftiObject {
-            header,
-            extensions: ext,
-            volume,
-        })
-    }
-
-    fn from_file_pair_2<S, Q>(
+    fn from_file_pair_impl<S, Q>(
         mut hdr_stream: S,
         vol_path: Q,
         options: <V as FromSourceOptions>::Options,
@@ -437,35 +345,12 @@ impl<V> GenericNiftiObject<V> {
     where
         S: Read,
         Q: AsRef<Path>,
-        V: FromSource<BufReader<File>>,
-        V: FromSource<GzDecoder<BufReader<File>>>,
+        V: FromSource<MaybeGzDecodedFile>,
     {
         let header = NiftiHeader::from_reader(&mut hdr_stream)?;
         let extender = Extender::from_reader_optional(hdr_stream)?.unwrap_or_default();
         let (volume, extensions) =
             Self::from_file_with_extensions(vol_path, &header, extender, options)?;
-
-        Ok(GenericNiftiObject {
-            header,
-            extensions,
-            volume,
-        })
-    }
-
-    fn from_file_pair_2_erased<S, Q>(
-        mut hdr_stream: S,
-        vol_path: Q,
-        options: <V as FromSourceOptions>::Options,
-    ) -> Result<Self>
-    where
-        S: Read,
-        Q: AsRef<Path>,
-        V: FromSource<Box<dyn Read>>,
-    {
-        let header = NiftiHeader::from_reader(&mut hdr_stream)?;
-        let extender = Extender::from_reader_optional(hdr_stream)?.unwrap_or_default();
-        let (volume, extensions) =
-            Self::from_file_with_extensions_erased(vol_path, &header, extender, options)?;
 
         Ok(GenericNiftiObject {
             header,
@@ -485,32 +370,7 @@ impl<V> GenericNiftiObject<V> {
     ) -> Result<(V, ExtensionSequence)>
     where
         P: AsRef<Path>,
-        V: FromSource<BufReader<File>>,
-        V: FromSource<GzDecoder<BufReader<File>>>,
-    {
-        let path = path.as_ref();
-        let gz = is_gz_file(path);
-        let stream = BufReader::new(File::open(path)?);
-
-        if gz {
-            Self::from_reader_with_extensions(GzDecoder::new(stream), &header, extender, options)
-        } else {
-            Self::from_reader_with_extensions(stream, &header, extender, options)
-        }
-    }
-
-    /// Read a NIFTI volume, along with the extensions, from an image file. NIFTI-1 volume
-    /// files usually have the extension ".img" or ".img.gz". In the latter case, the file
-    /// is automatically decoded as a Gzip stream.
-    fn from_file_with_extensions_erased<P>(
-        path: P,
-        header: &NiftiHeader,
-        extender: Extender,
-        options: <V as FromSourceOptions>::Options,
-    ) -> Result<(V, ExtensionSequence)>
-    where
-        P: AsRef<Path>,
-        V: FromSource<Box<dyn Read>>,
+        V: FromSource<MaybeGzDecodedFile>,
     {
         let reader = open_file_maybe_gz(path)?;
         Self::from_reader_with_extensions(reader, &header, extender, options)

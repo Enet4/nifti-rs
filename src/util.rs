@@ -5,7 +5,8 @@ use std::io::{BufReader, Read, Result as IoResult, Seek};
 use std::mem;
 use std::path::{Path, PathBuf};
 use byteordered::Endian;
-use flate2::read::GzDecoder;
+use either::Either;
+use flate2::bufread::GzDecoder;
 use safe_transmute::{transmute_vec, TriviallyTransmutable};
 use super::typedef::NiftiType;
 use super::error::NiftiError;
@@ -153,18 +154,28 @@ pub fn into_img_file_gz(mut path: PathBuf) -> PathBuf {
     path.with_extension("img.gz")
 }
 
+/// A reader for a GZip encoded file.
+pub type GzDecodedFile = GzDecoder<BufReader<File>>;
+
+/// A byte reader which might be GZip encoded based on some run-time condition.
+pub type MaybeGzDecoded<T> = Either<T, GzDecoder<T>>;
+
+/// A reader for a file which might be GZip encoded based on some run-time
+/// condition.
+pub type MaybeGzDecodedFile = MaybeGzDecoded<BufReader<File>>;
+
 /// Open a file for reading, which might be Gzip compressed based on whether
 /// the extension ends with ".gz".
-pub fn open_file_maybe_gz<P>(path: P) -> IoResult<Box<dyn Read>>
+pub fn open_file_maybe_gz<P>(path: P) -> IoResult<MaybeGzDecodedFile>
 where
     P: AsRef<Path>,
 {
     let path = path.as_ref();
     let file = BufReader::new(File::open(path)?);
     if is_gz_file(path) {
-        Ok(Box::from(GzDecoder::new(file)))
+        Ok(Either::Right(GzDecoder::new(file)))
     } else {
-        Ok(Box::from(file))
+        Ok(Either::Left(file))
     }
 }
 
