@@ -2,14 +2,14 @@
 //! volume API implementations to read, write and convert data
 //! elements.
 use byteordered::{ByteOrdered, Endian};
-use error::Result;
+use crate::NiftiType;
+use crate::error::Result;
+use crate::util::convert_bytes_to;
 use num_traits::cast::AsPrimitive;
 use safe_transmute::transmute_vec;
 use std::io::Read;
 use std::mem::align_of;
 use std::ops::{Add, Mul};
-use util::convert_bytes_to;
-use NiftiType;
 
 /// Interface for linear (affine) transformations to values. Multiple
 /// implementations are needed because the original type `T` may not have

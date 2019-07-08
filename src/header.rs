@@ -2,11 +2,14 @@
 //! to provide important information about NIFTI-1 volumes.
 
 #[cfg(feature = "nalgebra_affine")]
-use affine::*;
+use crate::affine::*;
 #[cfg(feature = "nalgebra_affine")]
 use alga::general::SubsetOf;
 use byteordered::{ByteOrdered, Endian, Endianness};
-use error::{NiftiError, Result};
+use crate::error::{NiftiError, Result};
+use crate::typedef::*;
+use crate::util::{is_gz_file, validate_dim, validate_dimensionality};
+use derive_builder::Builder;
 use flate2::bufread::GzDecoder;
 #[cfg(feature = "nalgebra_affine")]
 use nalgebra::{Matrix3, Matrix4, Quaternion, RealField, Vector3};
@@ -17,8 +20,6 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ops::Deref;
 use std::path::Path;
-use typedef::*;
-use util::{is_gz_file, validate_dim, validate_dimensionality};
 
 /// Magic code for NIFTI-1 header files (extention ".hdr[.gz]").
 pub const MAGIC_CODE_NI1: &'static [u8; 4] = b"ni1\0";

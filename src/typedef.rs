@@ -4,12 +4,13 @@
 //! reading voxel values). However, primitive integer values can be
 //! converted to these types and vice-versa.
 
-use byteordered::{Endian, Endianness};
-use error::{NiftiError, Result};
-use num_traits::AsPrimitive;
+use crate::volume::element::{DataElement, LinearTransform};
+use crate::error::{NiftiError, Result};
 use std::io::Read;
 use std::ops::{Add, Mul};
-use volume::element::{DataElement, LinearTransform};
+use byteordered::{Endian, Endianness};
+use num_derive::FromPrimitive;
+use num_traits::AsPrimitive;
 
 /// Data type for representing a NIFTI value type in a volume.
 /// Methods for reading values of that type from a source are also included.

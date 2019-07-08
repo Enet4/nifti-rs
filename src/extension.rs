@@ -5,7 +5,7 @@
 //! other than 0.
 
 use byteordered::{ByteOrdered, Endian};
-use error::{NiftiError, Result};
+use crate::error::{NiftiError, Result};
 use std::io::{ErrorKind as IoErrorKind, Read};
 
 /// Data type for the extender code.

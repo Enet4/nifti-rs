@@ -58,14 +58,14 @@
 use super::inmem::InMemNiftiVolume;
 use super::shape::{Dim, Idx};
 use super::{FromSource, FromSourceOptions, NiftiVolume};
+use crate::error::Result;
+use crate::header::NiftiHeader;
+use crate::typedef::NiftiType;
+use crate::util::nb_bytes_for_dim_datatype;
 use byteordered::Endianness;
-use error::Result;
-use header::NiftiHeader;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
-use typedef::NiftiType;
-use util::nb_bytes_for_dim_datatype;
 
 /// A NIfTI-1 volume instance that is read slice by slice from a byte stream.
 ///
@@ -311,9 +311,9 @@ mod tests {
 
     use super::super::{NiftiVolume, RandomAccessNiftiVolume};
     use super::StreamedNiftiVolume;
+    use crate::typedef::NiftiType;
+    use crate::NiftiHeader;
     use byteordered::Endianness;
-    use typedef::NiftiType;
-    use NiftiHeader;
 
     #[test]
     fn test_streamed_base() {

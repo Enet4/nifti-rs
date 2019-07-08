@@ -10,7 +10,7 @@ use flate2::Compression;
 use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis};
 use safe_transmute::{transmute_to_bytes, TriviallyTransmutable};
 
-use {
+use crate::{
     header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
     util::{adapt_bytes, is_gz_file, is_hdr_file},
     volume::element::DataElement,

@@ -9,9 +9,8 @@ use flate2::read::GzDecoder;
 use safe_transmute::{transmute_vec, TriviallyTransmutable};
 use super::typedef::NiftiType;
 use super::error::NiftiError;
-
-use error::Result;
-use NiftiHeader;
+use crate::error::Result;
+use crate::NiftiHeader;
 
 /// A trait that is both Read and Seek.
 pub trait ReadSeek: Read + Seek {}
@@ -174,8 +173,8 @@ mod tests {
     use super::{into_img_file_gz, is_gz_file, nb_bytes_for_dim_datatype};
     #[cfg(feature = "ndarray_volumes")]
     use super::is_hdr_file;
+    use crate::typedef::NiftiType;
     use std::path::PathBuf;
-    use typedef::NiftiType;
 
     #[test]
     fn test_nbytes() {

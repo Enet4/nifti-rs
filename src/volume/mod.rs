@@ -13,10 +13,10 @@ pub use self::inmem::*;
 pub use self::streamed::StreamedNiftiVolume;
 
 mod util;
-use error::{NiftiError, Result};
-use header::NiftiHeader;
+use crate::error::{NiftiError, Result};
+use crate::header::NiftiHeader;
+use crate::typedef::NiftiType;
 use std::io::Read;
-use typedef::NiftiType;
 
 #[cfg(feature = "ndarray_volumes")]
 pub mod ndarray;

@@ -1,6 +1,7 @@
 //! Types for error handling go here.
+use quick_error::quick_error;
 use std::io::Error as IOError;
-use typedef::NiftiType;
+use crate::typedef::NiftiType;
 
 quick_error! {
     /// Error type for all error variants originated by this crate.

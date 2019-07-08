@@ -25,12 +25,12 @@
 //! [`Array`]: ../../../ndarray/type.Array.html
 //! [element type]: ../element/trait.DataElement.html
 //!
-use error::Result;
+use crate::error::Result;
+use crate::volume::element::DataElement;
+use crate::volume::NiftiVolume;
 use ndarray::{Array, Axis, Ix, IxDyn};
 use num_traits::AsPrimitive;
 use std::ops::{Add, Mul};
-use volume::element::DataElement;
-use volume::NiftiVolume;
 
 /// Trait for volumes which can be converted to an ndarray.
 ///
