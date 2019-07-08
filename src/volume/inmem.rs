@@ -1,8 +1,7 @@
 //! Module holding an in-memory implementation of a NIfTI volume.
 
-use byteordered::{ByteOrdered, Endianness};
+use byteordered::{Endianness};
 use crate::error::{NiftiError, Result};
-use crate::extension::{Extender, ExtensionSequence};
 use crate::header::NiftiHeader;
 use crate::typedef::NiftiType;
 use crate::util::{nb_bytes_for_data, nb_bytes_for_dim_datatype};
