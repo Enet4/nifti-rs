@@ -171,7 +171,7 @@ impl Default for NiftiHeader {
             datatype: 0,
             bitpix: 0,
             slice_start: 0,
-            pixdim: [0.; 8],
+            pixdim: [1.; 8],
             vox_offset: 352.,
             scl_slope: 0.,
             scl_inter: 0.,
@@ -196,9 +196,9 @@ impl Default for NiftiHeader {
             quatern_y: 0.,
             quatern_z: 0.,
 
-            srow_x: [0.; 4],
-            srow_y: [0.; 4],
-            srow_z: [0.; 4],
+            srow_x: [1., 0., 0., 0.,],
+            srow_y: [0., 1., 0., 0.,],
+            srow_z: [0., 0., 1., 0.,],
 
             intent_name: [0; 16],
 
