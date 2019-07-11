@@ -80,7 +80,7 @@ mod util;
 pub use error::{NiftiError, Result};
 pub use object::{NiftiObject, InMemNiftiObject, StreamedNiftiObject};
 pub use extension::{Extender, Extension, ExtensionSequence};
-pub use header::{NiftiHeader, NiftiHeaderBuilder};
+pub use header::NiftiHeader;
 pub use volume::{NiftiVolume, RandomAccessNiftiVolume, InMemNiftiVolume, StreamedNiftiVolume, Sliceable};
 pub use volume::element::DataElement;
 #[cfg(feature = "ndarray_volumes")] pub use volume::ndarray::IntoNdArray;
