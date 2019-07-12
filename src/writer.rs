@@ -176,11 +176,7 @@ where
         Some(r) => r.clone(),
         None => {
             let mut header = NiftiHeader::default();
-            header.pixdim = [1.0; 8];
             header.sform_code = 2;
-            header.srow_x = [1.0, 0.0, 0.0, 0.0];
-            header.srow_y = [0.0, 1.0, 0.0, 0.0];
-            header.srow_z = [0.0, 0.0, 1.0, 0.0];
             header
         }
     };

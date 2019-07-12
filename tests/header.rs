@@ -5,21 +5,13 @@ extern crate pretty_assertions;
 use nifti::{Endianness, Intent, NiftiHeader, NiftiType, SliceOrder, Unit, XForm};
 use std::fs::File;
 
+mod util;
+
+use util::{minimal_header_hdr_gt, minimal_header_nii_gt};
+
 #[test]
 fn minimal_hdr() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        vox_offset: 0.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"ni1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_hdr_gt();
 
     const FILE_NAME: &str = "resources/minimal.hdr";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
@@ -36,19 +28,7 @@ fn minimal_hdr() {
 
 #[test]
 fn minimal_hdr_gz() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        vox_offset: 0.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"ni1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_hdr_gt();
 
     const FILE_NAME: &str = "resources/minimal.hdr.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
@@ -65,19 +45,7 @@ fn minimal_hdr_gz() {
 
 #[test]
 fn minimal_nii() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        vox_offset: 352.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"n+1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_nii_gt();
 
     const FILE_NAME: &str = "resources/minimal.nii";
     let file = File::open(FILE_NAME).unwrap();
@@ -114,10 +82,7 @@ fn avg152T1_LR_hdr_gz() {
         cal_max: 255.,
         cal_min: 0.,
         descrip,
-        aux_file: [
-            b'n', b'o', b'n', b'e', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', 0,
-        ],
+        aux_file: *b"none                   \0",
         qform_code: 0,
         sform_code: 4,
         srow_x: [-2., 0., 0., 90.],
@@ -162,10 +127,7 @@ fn avg152T1_LR_nii_gz() {
         cal_max: 255.,
         cal_min: 0.,
         descrip,
-        aux_file: [
-            b'n', b'o', b'n', b'e', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', 0,
-        ],
+        aux_file: *b"none                   \0",
         qform_code: 0,
         sform_code: 4,
         srow_x: [-2., 0., 0., 90.],
@@ -202,6 +164,9 @@ fn zstat1_nii_gz() {
         datatype: 16,
         bitpix: 32,
         pixdim: [-1., 4., 4., 6., 1., 1., 1., 1.],
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
         vox_offset: 352.,
         scl_slope: 0.,
         scl_inter: 0.,

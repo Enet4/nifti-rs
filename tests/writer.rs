@@ -7,6 +7,8 @@ extern crate num_traits;
 #[cfg(feature = "ndarray_volumes")]
 extern crate tempfile;
 
+mod util;
+
 #[cfg(feature = "ndarray_volumes")]
 mod tests {
     use std::{
@@ -23,8 +25,10 @@ mod tests {
         header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
         object::NiftiObject,
         writer::{write_nifti, write_rgb_nifti},
-        DataElement, Endianness, InMemNiftiObject, IntoNdArray, NiftiHeader, NiftiType,
+        DataElement, InMemNiftiObject, IntoNdArray, NiftiHeader, NiftiType,
     };
+
+    use super::util::rgb_header_gt;
 
     fn get_temporary_path(ext: &str) -> PathBuf {
         let dir = tempdir().unwrap();
@@ -271,16 +275,7 @@ mod tests {
 
         let header_path = get_temporary_path("3d.hdr");
         let data_path = header_path.with_extension("img");
-        let header = NiftiHeader {
-            datatype: NiftiType::Rgb24 as i16,
-            pixdim: [1.0; 8],
-            sform_code: 2,
-            srow_x: [1.0, 0.0, 0.0, 0.0],
-            srow_y: [0.0, 1.0, 0.0, 0.0],
-            srow_z: [0.0, 0.0, 1.0, 0.0],
-            endianness: Endianness::Little,
-            ..NiftiHeader::default()
-        };
+        let header = rgb_header_gt();
         write_rgb_nifti(&header_path, &data, Some(&header)).unwrap();
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
@@ -306,16 +301,7 @@ mod tests {
         data[(0, 1, 0)] = [0, 55, 55];
 
         let path = get_temporary_path("rgb.nii");
-        let header = NiftiHeader {
-            datatype: NiftiType::Rgb24 as i16,
-            pixdim: [1.0; 8],
-            sform_code: 2,
-            srow_x: [1.0, 0.0, 0.0, 0.0],
-            srow_y: [0.0, 1.0, 0.0, 0.0],
-            srow_z: [0.0, 0.0, 1.0, 0.0],
-            endianness: Endianness::Little,
-            ..NiftiHeader::default()
-        };
+        let header = rgb_header_gt();
         write_rgb_nifti(&path, &data, Some(&header)).unwrap();
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
@@ -337,16 +323,7 @@ mod tests {
         data[(1, 0, 0, 1)] = [0, 55, 55];
 
         let path = get_temporary_path("rgb.nii");
-        let header = NiftiHeader {
-            datatype: NiftiType::Rgb24 as i16,
-            pixdim: [1.0; 8],
-            sform_code: 2,
-            srow_x: [1.0, 0.0, 0.0, 0.0],
-            srow_y: [0.0, 1.0, 0.0, 0.0],
-            srow_z: [0.0, 0.0, 1.0, 0.0],
-            endianness: Endianness::Little,
-            ..NiftiHeader::default()
-        };
+        let header = rgb_header_gt();
         write_rgb_nifti(&path, &data, Some(&header)).unwrap();
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
