@@ -9,7 +9,6 @@ use byteordered::{ByteOrdered, Endian, Endianness};
 use crate::error::{NiftiError, Result};
 use crate::typedef::*;
 use crate::util::{is_gz_file, validate_dim, validate_dimensionality};
-use derive_builder::Builder;
 use flate2::bufread::GzDecoder;
 #[cfg(feature = "nalgebra_affine")]
 use nalgebra::{Matrix3, Matrix4, Quaternion, RealField, Vector3};
@@ -29,7 +28,7 @@ pub const MAGIC_CODE_NIP1: &'static [u8; 4] = b"n+1\0";
 /// The NIFTI-1 header data type.
 /// All fields are public and named after the specification's header file.
 /// The type of each field was adjusted according to their use and
-/// array limitations. A builder is also available.
+/// array limitations.
 ///
 /// # Examples
 ///
@@ -48,27 +47,18 @@ pub const MAGIC_CODE_NIP1: &'static [u8; 4] = b"n+1\0";
 /// Or to build one yourself:
 ///
 /// ```
-/// use nifti::NiftiHeaderBuilder;
-/// # use std::error::Error;
-///
-/// # fn run() -> Result<(), Box<Error>> {
-/// let hdr = NiftiHeaderBuilder::default()
-///     .cal_min(0.)
-///     .cal_max(128.)
-///     .build()?;
+/// # use nifti::{NiftiHeader, NiftiType};
+/// let mut hdr = NiftiHeader::default();
+/// hdr.cal_min = 0.;
+/// hdr.cal_max = 128.;
+/// hdr.datatype = 4;
 /// assert_eq!(hdr.cal_min, 0.);
 /// assert_eq!(hdr.cal_max, 128.);
-/// # Ok(())
-/// # }
-/// # run().unwrap();
+/// assert_eq!(hdr.data_type().unwrap(), NiftiType::Int16);
 /// ```
-#[derive(Debug, Clone, PartialEq, Builder)]
-#[builder(derive(Debug))]
-#[builder(field(public))]
-#[builder(default)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NiftiHeader {
     /// Header size, must be 348
-    #[builder(default = "348")]
     pub sizeof_hdr: i32,
     /// Unused in NIFTI-1
     pub data_type: [u8; 10],
@@ -160,7 +150,6 @@ pub struct NiftiHeader {
     pub magic: [u8; 4],
 
     /// Original data Endianness
-    #[builder(default = "Endianness::native()")]
     pub endianness: Endianness,
 }
 
