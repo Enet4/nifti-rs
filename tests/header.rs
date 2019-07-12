@@ -82,10 +82,7 @@ fn avg152T1_LR_hdr_gz() {
         cal_max: 255.,
         cal_min: 0.,
         descrip,
-        aux_file: [
-            b'n', b'o', b'n', b'e', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', 0,
-        ],
+        aux_file: *b"none                   \0",
         qform_code: 0,
         sform_code: 4,
         srow_x: [-2., 0., 0., 90.],
@@ -130,10 +127,7 @@ fn avg152T1_LR_nii_gz() {
         cal_max: 255.,
         cal_min: 0.,
         descrip,
-        aux_file: [
-            b'n', b'o', b'n', b'e', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', 0,
-        ],
+        aux_file: *b"none                   \0",
         qform_code: 0,
         sform_code: 4,
         srow_x: [-2., 0., 0., 90.],
