@@ -36,31 +36,6 @@ use std::ops::{Add, Mul};
 ///
 /// Please see the [module-level documentation](index.html) for more details.
 pub trait IntoNdArray {
-    /// Consume the volume into an ndarray with the same number of dimensions
-    /// and the given target element type `T`.
-    #[deprecated(
-        since = "0.6.0",
-        note = "unconventional naming, please use/implement `into_ndarray` instead"
-    )]
-    fn to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
-    where
-        Self: Sized,
-        T: Mul<Output = T>,
-        T: Add<Output = T>,
-        T: DataElement,
-        u8: AsPrimitive<T>,
-        i8: AsPrimitive<T>,
-        u16: AsPrimitive<T>,
-        i16: AsPrimitive<T>,
-        u32: AsPrimitive<T>,
-        i32: AsPrimitive<T>,
-        u64: AsPrimitive<T>,
-        i64: AsPrimitive<T>,
-        f32: AsPrimitive<T>,
-        f64: AsPrimitive<T>,
-    {
-        self.into_ndarray::<T>()
-    }
 
     /// Consume the volume into an ndarray with the same number of dimensions
     /// and the given target element type `T`.

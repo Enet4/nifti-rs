@@ -136,34 +136,13 @@ impl InMemNiftiVolume {
     }
 
     /// Retrieve the raw data, consuming the volume.
-    #[deprecated(
-        since = "0.6.0",
-        note = "naming was unconventional, please use `into_raw_data` instead"
-    )]
-    pub fn to_raw_data(self) -> Vec<u8> {
-        self.into_raw_data()
-    }
-
-    /// Retrieve the raw data, consuming the volume.
     pub fn into_raw_data(self) -> Vec<u8> {
         self.raw_data
     }
 
     /// Retrieve a reference to the raw data.
-    #[deprecated(note = "unconventional naming, please use `raw_data` instead")]
-    pub fn get_raw_data(&self) -> &[u8] {
-        self.raw_data()
-    }
-
-    /// Retrieve a reference to the raw data.
     pub fn raw_data(&self) -> &[u8] {
         &self.raw_data
-    }
-
-    /// Retrieve a mutable reference to the raw data.
-    #[deprecated(note = "unconventional naming, please use `raw_data_mut` instead")]
-    pub fn get_raw_data_mut(&mut self) -> &mut [u8] {
-        self.raw_data_mut()
     }
 
     /// Retrieve a mutable reference to the raw data.
