@@ -10,24 +10,13 @@ use nifti::{
     NiftiVolume, RandomAccessNiftiVolume, XForm,
 };
 
+mod util;
+
+use util::{minimal_header_hdr_gt, minimal_header_nii_gt};
+
 #[test]
 fn minimal_nii_gz() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        srow_x: [0.; 4],
-        srow_y: [0.; 4],
-        srow_z: [0.; 4],
-        vox_offset: 352.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"n+1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_nii_gt();
 
     const FILE_NAME: &str = "resources/minimal.nii.gz";
     let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
@@ -39,22 +28,7 @@ fn minimal_nii_gz() {
 
 #[test]
 fn streamed_minimal_nii_gz() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        srow_x: [0.; 4],
-        srow_y: [0.; 4],
-        srow_z: [0.; 4],
-        vox_offset: 352.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"n+1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_nii_gt();
 
     const FILE_NAME: &str = "resources/minimal.nii.gz";
     let obj = StreamedNiftiObject::from_file(FILE_NAME).unwrap();
@@ -66,22 +40,7 @@ fn streamed_minimal_nii_gz() {
 
 #[test]
 fn minimal_nii() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        srow_x: [0.; 4],
-        srow_y: [0.; 4],
-        srow_z: [0.; 4],
-        vox_offset: 352.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"n+1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_nii_gt();
 
     const FILE_NAME: &str = "resources/minimal.nii";
     let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
@@ -93,22 +52,7 @@ fn minimal_nii() {
 
 #[test]
 fn streamed_minimal_nii() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        srow_x: [0.; 4],
-        srow_y: [0.; 4],
-        srow_z: [0.; 4],
-        vox_offset: 352.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"n+1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_nii_gt();
 
     const FILE_NAME: &str = "resources/minimal.nii";
     let obj = StreamedNiftiObject::from_file(FILE_NAME).unwrap();
@@ -120,22 +64,7 @@ fn streamed_minimal_nii() {
 
 #[test]
 fn minimal_by_hdr() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        srow_x: [0.; 4],
-        srow_y: [0.; 4],
-        srow_z: [0.; 4],
-        vox_offset: 0.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"ni1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_hdr_gt();
 
     const FILE_NAME: &str = "resources/minimal.hdr";
     let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
@@ -147,22 +76,7 @@ fn minimal_by_hdr() {
 
 #[test]
 fn streamed_minimal_by_hdr() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        srow_x: [0.; 4],
-        srow_y: [0.; 4],
-        srow_z: [0.; 4],
-        vox_offset: 0.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"ni1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_hdr_gt();
 
     const FILE_NAME: &str = "resources/minimal.hdr";
     let obj = StreamedNiftiObject::from_file(FILE_NAME).unwrap();
@@ -174,22 +88,7 @@ fn streamed_minimal_by_hdr() {
 
 #[test]
 fn minimal_by_hdr_and_img_gz() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        srow_x: [0.; 4],
-        srow_y: [0.; 4],
-        srow_z: [0.; 4],
-        vox_offset: 0.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"ni1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_hdr_gt();
 
     const FILE_NAME: &str = "resources/minimal2.hdr";
     // should attempt to read "resources/minimal2.img.gz"
@@ -202,22 +101,7 @@ fn minimal_by_hdr_and_img_gz() {
 
 #[test]
 fn minimal_by_hdr_gz() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        srow_x: [0.; 4],
-        srow_y: [0.; 4],
-        srow_z: [0.; 4],
-        vox_offset: 0.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"ni1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_hdr_gt();
 
     const FILE_NAME: &str = "resources/minimal.hdr.gz";
     let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
@@ -229,22 +113,7 @@ fn minimal_by_hdr_gz() {
 
 #[test]
 fn minimal_by_pair() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        srow_x: [0.; 4],
-        srow_y: [0.; 4],
-        srow_z: [0.; 4],
-        vox_offset: 0.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"ni1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_hdr_gt();
 
     const HDR_FILE_NAME: &str = "resources/minimal.hdr.gz";
     const IMG_FILE_NAME: &str = "resources/minimal.img.gz";
@@ -270,6 +139,7 @@ fn f32_nii_gz() {
         srow_y: [0., 1., 0., 0.],
         srow_z: [0., 0., 1., 0.],
         sform_code: 2,
+        qform_code: 0,
         magic: *b"n+1\0",
         endianness: Endianness::Little,
         ..Default::default()
@@ -308,6 +178,7 @@ fn streamed_f32_nii_gz() {
         srow_y: [0., 1., 0., 0.],
         srow_z: [0., 0., 1., 0.],
         sform_code: 2,
+        qform_code: 0,
         magic: *b"n+1\0",
         endianness: Endianness::Little,
         ..Default::default()

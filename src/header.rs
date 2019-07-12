@@ -187,8 +187,8 @@ impl Default for NiftiHeader {
 
             descrip: vec![0; 80],
             aux_file: [0; 24],
-            qform_code: 0,
-            sform_code: 0,
+            qform_code: 1,
+            sform_code: 1,
             quatern_b: 0.,
             quatern_c: 0.,
             quatern_d: 0.,

@@ -13,23 +13,15 @@ extern crate num_traits;
 #[cfg(feature = "ndarray_volumes")]
 extern crate safe_transmute;
 
-use nifti::{Endianness, InMemNiftiVolume, NiftiHeader, NiftiVolume, RandomAccessNiftiVolume};
+use nifti::{InMemNiftiVolume, NiftiVolume, RandomAccessNiftiVolume};
+
+mod util;
+
+use util::minimal_header_hdr_gt;
 
 #[test]
 fn minimal_img_gz() {
-    let minimal_hdr = NiftiHeader {
-        sizeof_hdr: 348,
-        dim: [3, 64, 64, 10, 0, 0, 0, 0],
-        datatype: 2,
-        bitpix: 8,
-        pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-        vox_offset: 0.,
-        scl_slope: 0.,
-        scl_inter: 0.,
-        magic: *b"ni1\0",
-        endianness: Endianness::Big,
-        ..Default::default()
-    };
+    let minimal_hdr = minimal_header_hdr_gt();
 
     const FILE_NAME: &str = "resources/minimal.img.gz";
     let volume = InMemNiftiVolume::from_file(FILE_NAME, &minimal_hdr).unwrap();
@@ -56,26 +48,15 @@ fn minimal_img_gz() {
 mod ndarray_volumes {
     use std::fmt;
     use std::ops::{Add, Mul};
-    use nifti::{DataElement, Endianness, InMemNiftiObject, InMemNiftiVolume, IntoNdArray,
-                NiftiHeader, NiftiObject, NiftiType, NiftiVolume, StreamedNiftiObject};
+    use nifti::{DataElement, InMemNiftiObject, InMemNiftiVolume, IntoNdArray,
+                NiftiObject, NiftiType, NiftiVolume, StreamedNiftiObject};
     use ndarray::{Array, Axis, IxDyn, ShapeBuilder};
     use num_traits::AsPrimitive;
+    use super::util::minimal_header_hdr_gt;
 
     #[test]
     fn minimal_img_gz_ndarray_f32() {
-        let minimal_hdr = NiftiHeader {
-            sizeof_hdr: 348,
-            dim: [3, 64, 64, 10, 0, 0, 0, 0],
-            datatype: 2,
-            bitpix: 8,
-            pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-            vox_offset: 0.,
-            scl_slope: 0.,
-            scl_inter: 0.,
-            magic: *b"ni1\0",
-            endianness: Endianness::Big,
-            ..Default::default()
-        };
+        let minimal_hdr = minimal_header_hdr_gt();
 
         const FILE_NAME: &str = "resources/minimal.img.gz";
         let volume = InMemNiftiVolume::from_file(FILE_NAME, &minimal_hdr).unwrap();
@@ -101,19 +82,7 @@ mod ndarray_volumes {
 
     #[test]
     fn minimal_img_gz_ndarray_u8() {
-        let minimal_hdr = NiftiHeader {
-            sizeof_hdr: 348,
-            dim: [3, 64, 64, 10, 0, 0, 0, 0],
-            datatype: 2,
-            bitpix: 8,
-            pixdim: [0., 3., 3., 3., 0., 0., 0., 0.],
-            vox_offset: 0.,
-            scl_slope: 0.,
-            scl_inter: 0.,
-            magic: *b"ni1\0",
-            endianness: Endianness::Big,
-            ..Default::default()
-        };
+        let minimal_hdr = minimal_header_hdr_gt();
 
         const FILE_NAME: &str = "resources/minimal.img.gz";
         let volume = InMemNiftiVolume::from_file(FILE_NAME, &minimal_hdr).unwrap();
