@@ -37,7 +37,6 @@ pub fn minimal_header_hdr_gt() -> NiftiHeader {
 pub fn rgb_header_gt() -> NiftiHeader {
     NiftiHeader {
         datatype: NiftiType::Rgb24 as i16,
-        pixdim: [1.0; 8],
         sform_code: 2,
         qform_code: 0,
         endianness: Endianness::Little,
