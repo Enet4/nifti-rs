@@ -1,0 +1,31 @@
+
+[package]
+name = "nifti-fuzz"
+version = "0.0.1"
+authors = ["Automatically generated"]
+edition = "2018"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies.nifti]
+path = ".."
+[dependencies.libfuzzer-sys]
+git = "https://github.com/rust-fuzz/libfuzzer-sys.git"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "read_header"
+path = "fuzz_targets/read_header.rs"
+
+[[bin]]
+name = "read_inmem_object"
+path = "fuzz_targets/read_inmem_object.rs"
+
+[[bin]]
+name = "read_streamed_object"
+path = "fuzz_targets/read_streamed_object.rs"
