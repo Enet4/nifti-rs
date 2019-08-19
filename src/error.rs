@@ -48,6 +48,11 @@ quick_error! {
         IncorrectVolumeDimensionality(expected: u16, got: u16) {
             description("Unexpected volume data dimensionality")
         }
+        /// Inconsistent or unsupported volume size (due to one or more
+        /// dimensions being too large).
+        BadVolumeSize {
+            description("Bad volume size")
+        }
         /// This voxel data type is not supported. Sorry. :(
         UnsupportedDataType(t: NiftiType) {
             description("Unsupported data type")

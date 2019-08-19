@@ -175,10 +175,22 @@ impl ExtensionSequence {
             while offset < len {
                 let esize = source.read_i32()?;
                 let ecode = source.read_i32()?;
-                let data_size = esize as usize - 8;
-                let mut edata = vec![0u8; data_size];
-                source.read_exact(&mut edata)?;
-                extensions.push(Extension::new(esize, ecode, edata));
+
+                let data_size = (esize as usize).saturating_sub(8);
+                // rather than pre-allocating for the data size, this will
+                // pre-allocate up to a more reliable amount and feed the
+                // vector sequentially, to prevent some trivial OOM attacks
+                let mut edata = Vec::with_capacity(usize::min(data_size, 1 << 25 /* 32M */));
+                let nb_bytes_written = std::io::copy(&mut (&mut source).take(data_size as u64), &mut edata)?;
+
+                if nb_bytes_written as usize != data_size {
+                    return Err(NiftiError::IncompatibleLength(nb_bytes_written as usize, data_size));
+                }
+                if nb_bytes_written as usize != data_size {
+                    return Err(NiftiError::IncompatibleLength(nb_bytes_written as usize, data_size));
+                }
+
+                extensions.push(Extension::new(i32::max(esize, 8), ecode, edata));
                 offset += esize as usize;
             }
         }
