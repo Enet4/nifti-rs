@@ -186,9 +186,6 @@ impl ExtensionSequence {
                 if nb_bytes_written as usize != data_size {
                     return Err(NiftiError::IncompatibleLength(nb_bytes_written as usize, data_size));
                 }
-                if nb_bytes_written as usize != data_size {
-                    return Err(NiftiError::IncompatibleLength(nb_bytes_written as usize, data_size));
-                }
 
                 extensions.push(Extension::new(i32::max(esize, 8), ecode, edata));
                 offset += esize as usize;
