@@ -184,10 +184,10 @@ impl ExtensionSequence {
                 // pre-allocate up to a more reliable amount and feed the
                 // vector sequentially, to prevent some trivial OOM attacks
                 let mut edata = Vec::with_capacity(data_size.min(PREALLOC_MAX_SIZE));
-                let nb_bytes_written = std::io::copy(&mut (&mut source).take(data_size as u64), &mut edata)?;
+                let nb_bytes_written = std::io::copy(&mut (&mut source).take(data_size as u64), &mut edata)? as usize;
 
-                if nb_bytes_written as usize != data_size {
-                    return Err(NiftiError::IncompatibleLength(nb_bytes_written as usize, data_size));
+                if nb_bytes_written != data_size {
+                    return Err(NiftiError::IncompatibleLength(nb_bytes_written, data_size));
                 }
 
                 extensions.push(Extension::new(i32::max(esize, 8), ecode, edata));

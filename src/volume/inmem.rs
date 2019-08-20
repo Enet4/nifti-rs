@@ -114,10 +114,10 @@ impl InMemNiftiVolume {
         // sequentially, to prevent some trivial OOM attacks
         let nb_bytes = nb_bytes_for_data(header)?;
         let mut raw_data = Vec::with_capacity(nb_bytes.min(PREALLOC_MAX_SIZE));
-        let nb_bytes_written = std::io::copy(&mut source.take(nb_bytes as u64), &mut raw_data)?;
+        let nb_bytes_written = std::io::copy(&mut source.take(nb_bytes as u64), &mut raw_data)? as usize;
 
-        if nb_bytes_written as usize != nb_bytes {
-            return Err(NiftiError::IncompatibleLength(nb_bytes_written as usize, nb_bytes));
+        if nb_bytes_written != nb_bytes {
+            return Err(NiftiError::IncompatibleLength(nb_bytes_written, nb_bytes));
         }
 
         let datatype = header.data_type()?;
