@@ -21,6 +21,9 @@ use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
 #[cfg(feature = "ndarray_volumes")]
 use super::ndarray::IntoNdArray;
 
+/// The maximum size in bytes to reserve before the volume voxel data is read.
+const PREALLOC_MAX_SIZE: usize = 1 << 28; // 256M
+
 /// A data type for a NIFTI-1 volume contained in memory. Objects of this type
 /// contain raw image data, which is converted automatically when using reading
 /// methods or [converting it to an `ndarray`] (only with the `ndarray_volumes`
@@ -76,8 +79,10 @@ impl InMemNiftiVolume {
     ) -> Result<Self> {
         let dim = Dim::new(raw_dim)?;
         let nbytes = nb_bytes_for_dim_datatype(dim.as_ref(), datatype);
-        if nbytes != raw_data.len() {
-            return Err(NiftiError::IncompatibleLength(raw_data.len(), nbytes));
+        if nbytes != Some(raw_data.len()) {
+            return Err(NiftiError::IncompatibleLength(
+                raw_data.len(),
+                nbytes.unwrap_or(usize::max_value())));
         }
 
         Ok(InMemNiftiVolume {
@@ -103,9 +108,17 @@ impl InMemNiftiVolume {
     /// of the volume's data must be known in advance. It it also expected that the
     /// following bytes represent the first voxels of the volume (and not part of the
     /// extensions).
-    pub fn from_reader<R: Read>(mut source: R, header: &NiftiHeader) -> Result<Self> {
-        let mut raw_data = vec![0u8; nb_bytes_for_data(header)?];
-        source.read_exact(&mut raw_data)?;
+    pub fn from_reader<R: Read>(source: R, header: &NiftiHeader) -> Result<Self> {
+        // rather than pre-allocating for the full volume size, this will
+        // pre-allocate up to a more reliable amount and feed the vector
+        // sequentially, to prevent some trivial OOM attacks
+        let nb_bytes = nb_bytes_for_data(header)?;
+        let mut raw_data = Vec::with_capacity(nb_bytes.min(PREALLOC_MAX_SIZE));
+        let nb_bytes_written = std::io::copy(&mut source.take(nb_bytes as u64), &mut raw_data)? as usize;
+
+        if nb_bytes_written != nb_bytes {
+            return Err(NiftiError::IncompatibleLength(nb_bytes_written, nb_bytes));
+        }
 
         let datatype = header.data_type()?;
         Ok(InMemNiftiVolume {

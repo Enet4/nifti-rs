@@ -100,20 +100,21 @@ pub fn validate_dimensionality(raw_dim: &[u16; 8]) -> Result<usize> {
 
 pub fn nb_bytes_for_data(header: &NiftiHeader) -> Result<usize> {
     let resolution = nb_values_for_dims(header.dim()?);
-    Ok(resolution * header.bitpix as usize / 8)
+    resolution.and_then(|r| r.checked_mul(header.bitpix as usize / 8))
+        .ok_or(NiftiError::BadVolumeSize)
 }
 
-pub fn nb_values_for_dims(dim: &[u16]) -> usize {
+pub fn nb_values_for_dims(dim: &[u16]) -> Option<usize> {
     dim
         .iter()
         .cloned()
         .map(usize::from)
-        .product::<usize>()
+        .fold(Some(1), |acc, v| acc.and_then(|x| x.checked_mul(v)))
 }
 
-pub fn nb_bytes_for_dim_datatype(dim: &[u16], datatype: NiftiType) -> usize {
+pub fn nb_bytes_for_dim_datatype(dim: &[u16], datatype: NiftiType) -> Option<usize> {
     let resolution = nb_values_for_dims(dim);
-    resolution * datatype.size_of()
+    resolution.and_then(|r| r.checked_mul(datatype.size_of()))
 }
 
 #[cfg(feature = "ndarray_volumes")]
@@ -191,15 +192,19 @@ mod tests {
     fn test_nbytes() {
         assert_eq!(
             nb_bytes_for_dim_datatype(&[2, 3, 2], NiftiType::Uint8),
-            12
+            Some(12),
         );
         assert_eq!(
             nb_bytes_for_dim_datatype(&[2, 3], NiftiType::Uint8),
-            6
+            Some(6),
         );
         assert_eq!(
             nb_bytes_for_dim_datatype(&[2, 3], NiftiType::Uint16),
-            12
+            Some(12),
+        );
+        assert_eq!(
+            nb_bytes_for_dim_datatype(&[0x4000, 0x4000, 0x4000, 0x4000, 0x4000], NiftiType::Uint32),
+            None,
         );
     }
 

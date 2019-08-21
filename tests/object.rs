@@ -215,3 +215,21 @@ fn bad_file_1() {
     let _ = InMemNiftiObject::from_file("resources/fuzz_artifacts/crash-1.nii");
     // must not panic
 }
+
+#[test]
+fn bad_file_2() {
+    let _ = InMemNiftiObject::from_file("resources/fuzz_artifacts/crash-98aa054390f8d3f932f190dc22ef62c6ff2d6619");
+    // must not panic or abort
+}
+
+#[test]
+fn bad_file_3() {
+    let _ = InMemNiftiObject::from_file("resources/fuzz_artifacts/crash-d03c6346fe83a026738f6b8cd2a9335a3f8cb158");
+    // must not panic or abort
+}
+
+#[test]
+fn bad_file_4() {
+    let _ = InMemNiftiObject::from_file("resources/fuzz_artifacts/crash-08123ef33416bd6f0c5fa63d44b681b8581d62a0");
+    // must not panic or abort
+}

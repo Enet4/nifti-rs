@@ -173,7 +173,8 @@ where
     pub fn read_slice_inline(&mut self, buffer: Vec<u8>) -> Result<InMemNiftiVolume> {
         let mut raw_data = buffer;
         raw_data.resize(
-            nb_bytes_for_dim_datatype(self.slice_dim(), self.datatype),
+            // unwrapping because `slice_dim()` is assumed to have a reasonable size
+            nb_bytes_for_dim_datatype(self.slice_dim(), self.datatype).unwrap(),
             0,
         );
         self.source.read_exact(&mut raw_data)?;
