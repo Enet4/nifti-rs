@@ -17,7 +17,8 @@ mod tests {
         path::{Path, PathBuf},
     };
 
-    use ndarray::{s, Array, Array2, Axis, Dimension, IxDyn, ShapeBuilder};
+    use approx::assert_abs_diff_eq;
+    use ndarray::{s, Array, Array1, Array2, Axis, Dimension, Ix2, IxDyn, ShapeBuilder};
     use num_traits::AsPrimitive;
     use tempfile::tempdir;
 
@@ -81,7 +82,7 @@ mod tests {
         (header, dyn_data.into_dimensionality::<D>().unwrap())
     }
 
-    fn test_write_read(arr: &Array<f32, IxDyn>, path: &str) {
+    fn test_write_read(arr: Array<f32, IxDyn>, path: &str) {
         let path = get_temporary_path(path);
         let mut dim = [1; 8];
         dim[0] = arr.ndim() as u16;
@@ -91,8 +92,9 @@ mod tests {
         let header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
         write_nifti(&path, &arr, Some(&header)).unwrap();
 
+        let gt = arr.into_dimensionality::<Ix2>().unwrap();
         let read_nifti: Array2<f32> = read_as_ndarray(path).1;
-        assert!(read_nifti.all_close(&arr, 1e-10));
+        assert_abs_diff_eq!(read_nifti, gt, epsilon = 1e-10);
     }
 
     fn f_order_array() -> Array<f32, IxDyn> {
@@ -111,36 +113,36 @@ mod tests {
     fn fortran_writing() {
         // Test .nii
         let arr = f_order_array();
-        test_write_read(&arr, "test.nii");
+        test_write_read(arr, "test.nii");
         let mut arr = f_order_array();
         arr.invert_axis(Axis(1));
-        test_write_read(&arr, "test_non_contiguous.nii");
+        test_write_read(arr, "test_non_contiguous.nii");
 
         // Test .nii.gz
         let arr = f_order_array();
-        test_write_read(&arr, "test.nii.gz");
+        test_write_read(arr, "test.nii.gz");
         let mut arr = f_order_array();
         arr.invert_axis(Axis(1));
-        test_write_read(&arr, "test_non_contiguous.nii.gz");
+        test_write_read(arr, "test_non_contiguous.nii.gz");
     }
 
     #[test]
     fn c_writing() {
         // Test .nii
         let arr = c_order_array();
-        test_write_read(&arr, "test.nii");
+        test_write_read(arr, "test.nii");
 
         let mut arr = c_order_array();
         arr.invert_axis(Axis(1));
-        test_write_read(&arr, "test_non_contiguous.nii");
+        test_write_read(arr, "test_non_contiguous.nii");
 
         // Test .nii.gz
         let arr = c_order_array();
-        test_write_read(&arr, "test.nii.gz");
+        test_write_read(arr, "test.nii.gz");
 
         let mut arr = c_order_array();
         arr.invert_axis(Axis(1));
-        test_write_read(&arr, "test_non_contiguous.nii.gz");
+        test_write_read(arr, "test_non_contiguous.nii.gz");
     }
 
     #[test]
@@ -159,13 +161,17 @@ mod tests {
         let transformed_data = arr.mul(slope).add(inter);
         write_nifti(&path, &transformed_data, Some(&header)).unwrap();
 
+        let gt = transformed_data.into_dimensionality::<Ix2>().unwrap();
         let read_nifti: Array2<f32> = read_as_ndarray(path).1;
-        assert!(read_nifti.all_close(&transformed_data, 1e-10));
+        assert_abs_diff_eq!(read_nifti, gt, epsilon = 1e-10);
     }
 
     #[test]
     fn half_slope() {
-        let data = Array::from_iter(0..216).into_shape((6, 6, 6)).unwrap();
+        let data = (0..216)
+            .collect::<Array1<_>>()
+            .into_shape((6, 6, 6))
+            .unwrap();
         let dim = [3, 6, 6, 6, 1, 1, 1, 1];
         let slope = 0.4;
         let inter = 100.1;
@@ -200,11 +206,13 @@ mod tests {
 
         let path = get_temporary_path("non_contiguous_0.nii.gz");
         write_nifti(&path, &data.slice(s![.., .., ..;2]), None).unwrap();
-        assert_eq!(read_as_ndarray(path).1, Array::from_elem((3, 4, 6), 42.0));
+        let loaded_data = read_as_ndarray::<_, f32, _>(path).1;
+        assert_eq!(loaded_data, Array::from_elem((3, 4, 6), 42.0));
 
         let path = get_temporary_path("non_contiguous_1.nii.gz");
         write_nifti(&path, &data.slice(s![.., .., 1..;2]), None).unwrap();
-        assert_eq!(read_as_ndarray(path).1, Array::from_elem((3, 4, 5), 1.5));
+        let loaded_data = read_as_ndarray::<_, f32, _>(path).1;
+        assert_eq!(loaded_data, Array::from_elem((3, 4, 5), 1.5));
     }
 
     #[test]
@@ -227,14 +235,14 @@ mod tests {
         // set_description
         header.set_description("ひらがな".as_bytes()).unwrap();
         write_nifti(&path, &data, Some(&header)).unwrap();
-        let (new_header, new_data) = read_as_ndarray(&path);
+        let (new_header, new_data) = read_as_ndarray::<_, f32, _>(&path);
         assert_eq!(new_header, header);
         assert_eq!(new_data, data);
 
         // set_description_str
         header.set_description_str("русский").unwrap();
         write_nifti(&path, &data, Some(&header)).unwrap();
-        let (new_header, new_data) = read_as_ndarray(&path);
+        let (new_header, new_data) = read_as_ndarray::<_, f32, _>(&path);
         assert_eq!(new_header, header);
         assert_eq!(new_data, data);
     }
