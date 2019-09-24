@@ -11,7 +11,7 @@ use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis};
 use safe_transmute::{transmute_to_bytes, TriviallyTransmutable};
 
 use crate::{
-    header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
+    header::{build_dim_array, MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
     util::{adapt_bytes, is_gz_file, is_hdr_file},
     volume::element::DataElement,
     NiftiHeader, NiftiType, Result,
@@ -165,12 +165,6 @@ where
     T: Data,
     D: Dimension,
 {
-    let mut dim = [1; 8];
-    dim[0] = data.ndim() as u16;
-    for (i, s) in data.shape().iter().enumerate() {
-        dim[i + 1] = *s as u16;
-    }
-
     // If no reference header is given, use the default.
     let reference = match reference {
         Some(r) => r.clone(),
@@ -182,7 +176,7 @@ where
     };
 
     let mut header = NiftiHeader {
-        dim,
+        dim: build_dim_array(data.shape()),
         sizeof_hdr: 348,
         datatype: datatype as i16,
         bitpix: (datatype.size_of() * 8) as i16,

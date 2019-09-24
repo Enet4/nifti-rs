@@ -3,12 +3,12 @@
 
 #[cfg(feature = "nalgebra_affine")]
 use crate::affine::*;
-#[cfg(feature = "nalgebra_affine")]
-use alga::general::SubsetOf;
-use byteordered::{ByteOrdered, Endian, Endianness};
 use crate::error::{NiftiError, Result};
 use crate::typedef::*;
 use crate::util::{is_gz_file, validate_dim, validate_dimensionality};
+#[cfg(feature = "nalgebra_affine")]
+use alga::general::SubsetOf;
+use byteordered::{ByteOrdered, Endian, Endianness};
 use flate2::bufread::GzDecoder;
 #[cfg(feature = "nalgebra_affine")]
 use nalgebra::{Matrix3, Matrix4, Quaternion, RealField, Vector3};
@@ -196,9 +196,9 @@ impl Default for NiftiHeader {
             quatern_y: 0.,
             quatern_z: 0.,
 
-            srow_x: [1., 0., 0., 0.,],
-            srow_y: [0., 1., 0., 0.,],
-            srow_z: [0., 0., 1., 0.,],
+            srow_x: [1., 0., 0., 0.],
+            srow_y: [0., 1., 0., 0.],
+            srow_z: [0., 0., 1., 0.],
 
             intent_name: [0; 16],
 
@@ -243,9 +243,9 @@ impl NiftiHeader {
     /// Retrieve and validate the dimensions of the volume. Unlike how NIfTI-1
     /// stores dimensions, the returned slice does not include `dim[0]` and is
     /// clipped to the effective number of dimensions.
-    /// 
+    ///
     /// # Error
-    /// 
+    ///
     /// `NiftiError::InconsistentDim` if `dim[0]` does not represent a valid
     /// dimensionality, or any of the real dimensions are zero.
     pub fn dim(&self) -> Result<&[u16]> {
@@ -254,9 +254,9 @@ impl NiftiHeader {
 
     /// Retrieve and validate the number of dimensions of the volume. This is
     /// `dim[0]` after the necessary byte order conversions.
-    /// 
+    ///
     /// # Error
-    /// 
+    ///
     /// `NiftiError::` if `dim[0]` does not represent a valid dimensionality
     /// (it must be positive and not higher than 7).
     pub fn dimensionality(&self) -> Result<usize> {
@@ -387,10 +387,22 @@ impl NiftiHeader {
         f32: SubsetOf<T>,
     {
         let affine = Matrix4::new(
-            self.srow_x[0], self.srow_x[1], self.srow_x[2], self.srow_x[3],
-            self.srow_y[0], self.srow_y[1], self.srow_y[2], self.srow_y[3],
-            self.srow_z[0], self.srow_z[1], self.srow_z[2], self.srow_z[3],
-            0.0, 0.0, 0.0, 1.0,
+            self.srow_x[0],
+            self.srow_x[1],
+            self.srow_x[2],
+            self.srow_x[3],
+            self.srow_y[0],
+            self.srow_y[1],
+            self.srow_y[2],
+            self.srow_y[3],
+            self.srow_z[0],
+            self.srow_z[1],
+            self.srow_z[2],
+            self.srow_z[3],
+            0.0,
+            0.0,
+            0.0,
+            1.0,
         );
         nalgebra::convert(affine)
     }
@@ -416,10 +428,22 @@ impl NiftiHeader {
         ));
         let m = r * s;
         let affine = Matrix4::new(
-            m[0], m[3], m[6], self.quatern_x as f64,
-            m[1], m[4], m[7], self.quatern_y as f64,
-            m[2], m[5], m[8], self.quatern_z as f64,
-            0.0, 0.0, 0.0, 1.0,
+            m[0],
+            m[3],
+            m[6],
+            self.quatern_x as f64,
+            m[1],
+            m[4],
+            m[7],
+            self.quatern_y as f64,
+            m[2],
+            m[5],
+            m[8],
+            self.quatern_z as f64,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
         );
         nalgebra::convert(affine)
     }
@@ -510,9 +534,15 @@ impl NiftiHeader {
             (aff2[6] + aff2[7] + aff2[8]).sqrt(),
         );
         let mut r = Matrix3::new(
-            affine[0] / spacing.0, affine[3] / spacing.1, affine[6] / spacing.2,
-            affine[1] / spacing.0, affine[4] / spacing.1, affine[7] / spacing.2,
-            affine[2] / spacing.0, affine[5] / spacing.1, affine[8] / spacing.2,
+            affine[0] / spacing.0,
+            affine[3] / spacing.1,
+            affine[6] / spacing.2,
+            affine[1] / spacing.0,
+            affine[4] / spacing.1,
+            affine[7] / spacing.2,
+            affine[2] / spacing.0,
+            affine[5] / spacing.1,
+            affine[8] / spacing.2,
         );
 
         // Set qfac to make R determinant positive
@@ -545,6 +575,26 @@ impl NiftiHeader {
         self.quatern_y = translation[1] as f32;
         self.quatern_z = translation[2] as f32;
     }
+}
+
+/// Build the `dim` field of the `NiftiHeader` from a ndarray shape.
+///
+/// # Example
+///
+/// ```
+/// use ndarray::Array3;
+/// use nifti::header::build_dim_array;
+/// let im = Array3::<f32>::zeros((3, 4, 5));
+/// assert_eq!(build_dim_array(im.shape()), [3, 3, 4, 5, 1, 1, 1, 1]);
+/// ```
+#[cfg(feature = "ndarray_volumes")]
+pub fn build_dim_array(data_shape: &[usize]) -> [u16; 8] {
+    let mut dim = [1; 8];
+    dim[0] = data_shape.len() as u16;
+    for (i, s) in data_shape.iter().enumerate() {
+        dim[i + 1] = *s as u16;
+    }
+    dim
 }
 
 fn parse_header_1<S>(input: S) -> Result<NiftiHeader>
