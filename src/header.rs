@@ -386,23 +386,12 @@ impl NiftiHeader {
         T: RealField,
         f32: SubsetOf<T>,
     {
+        #[rustfmt::skip]
         let affine = Matrix4::new(
-            self.srow_x[0],
-            self.srow_x[1],
-            self.srow_x[2],
-            self.srow_x[3],
-            self.srow_y[0],
-            self.srow_y[1],
-            self.srow_y[2],
-            self.srow_y[3],
-            self.srow_z[0],
-            self.srow_z[1],
-            self.srow_z[2],
-            self.srow_z[3],
-            0.0,
-            0.0,
-            0.0,
-            1.0,
+            self.srow_x[0], self.srow_x[1], self.srow_x[2], self.srow_x[3],
+            self.srow_y[0], self.srow_y[1], self.srow_y[2], self.srow_y[3],
+            self.srow_z[0], self.srow_z[1], self.srow_z[2], self.srow_z[3],
+            0.0, 0.0, 0.0, 1.0,
         );
         nalgebra::convert(affine)
     }
@@ -427,23 +416,12 @@ impl NiftiHeader {
             self.pixdim[3] as f64 * self.pixdim[0] as f64,
         ));
         let m = r * s;
+        #[rustfmt::skip]
         let affine = Matrix4::new(
-            m[0],
-            m[3],
-            m[6],
-            self.quatern_x as f64,
-            m[1],
-            m[4],
-            m[7],
-            self.quatern_y as f64,
-            m[2],
-            m[5],
-            m[8],
-            self.quatern_z as f64,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
+            m[0], m[3], m[6], self.quatern_x as f64,
+            m[1], m[4], m[7], self.quatern_y as f64,
+            m[2], m[5], m[8], self.quatern_z as f64,
+            0.0, 0.0, 0.0, 1.0,
         );
         nalgebra::convert(affine)
     }
@@ -533,16 +511,11 @@ impl NiftiHeader {
             (aff2[3] + aff2[4] + aff2[5]).sqrt(),
             (aff2[6] + aff2[7] + aff2[8]).sqrt(),
         );
+        #[rustfmt::skip]
         let mut r = Matrix3::new(
-            affine[0] / spacing.0,
-            affine[3] / spacing.1,
-            affine[6] / spacing.2,
-            affine[1] / spacing.0,
-            affine[4] / spacing.1,
-            affine[7] / spacing.2,
-            affine[2] / spacing.0,
-            affine[5] / spacing.1,
-            affine[8] / spacing.2,
+            affine[0] / spacing.0, affine[3] / spacing.1, affine[6] / spacing.2,
+            affine[1] / spacing.0, affine[4] / spacing.1, affine[7] / spacing.2,
+            affine[2] / spacing.0, affine[5] / spacing.1, affine[8] / spacing.2,
         );
 
         // Set qfac to make R determinant positive
