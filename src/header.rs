@@ -550,26 +550,6 @@ impl NiftiHeader {
     }
 }
 
-/// Build the `dim` field of the `NiftiHeader` from a ndarray shape.
-///
-/// # Example
-///
-/// ```
-/// use ndarray::Array3;
-/// use nifti::header::build_dim_array;
-/// let im = Array3::<f32>::zeros((3, 4, 5));
-/// assert_eq!(build_dim_array(im.shape()), [3, 3, 4, 5, 1, 1, 1, 1]);
-/// ```
-#[cfg(feature = "ndarray_volumes")]
-pub fn build_dim_array(data_shape: &[usize]) -> [u16; 8] {
-    let mut dim = [1; 8];
-    dim[0] = data_shape.len() as u16;
-    for (i, s) in data_shape.iter().enumerate() {
-        dim[i + 1] = *s as u16;
-    }
-    dim
-}
-
 fn parse_header_1<S>(input: S) -> Result<NiftiHeader>
 where
     S: Read,

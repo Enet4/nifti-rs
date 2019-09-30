@@ -23,8 +23,9 @@ mod tests {
     use tempfile::tempdir;
 
     use nifti::{
-        header::{build_dim_array, MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
+        header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
         object::NiftiObject,
+        volume::shape::Dim,
         writer::{write_nifti, write_rgb_nifti},
         DataElement, InMemNiftiObject, IntoNdArray, NiftiHeader, NiftiType,
     };
@@ -84,7 +85,7 @@ mod tests {
 
     fn test_write_read(arr: Array<f32, IxDyn>, path: &str) {
         let path = get_temporary_path(path);
-        let dim = build_dim_array(arr.shape());
+        let dim = *Dim::from_slice(arr.shape()).unwrap().raw();
         let header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
         write_nifti(&path, &arr, Some(&header)).unwrap();
 
@@ -148,7 +149,7 @@ mod tests {
         let inter = 101.1;
 
         let path = get_temporary_path("test_slope_inter.nii");
-        let dim = build_dim_array(arr.shape());
+        let dim = *Dim::from_slice(arr.shape()).unwrap().raw();
         let header = generate_nifti_header(dim, slope, inter, NiftiType::Float32);
         let transformed_data = arr.mul(slope).add(inter);
         write_nifti(&path, &transformed_data, Some(&header)).unwrap();

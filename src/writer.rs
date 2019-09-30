@@ -11,10 +11,10 @@ use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis};
 use safe_transmute::{transmute_to_bytes, TriviallyTransmutable};
 
 use crate::{
-    header::{build_dim_array, MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
+    header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
     util::{adapt_bytes, is_gz_file, is_hdr_file},
-    volume::element::DataElement,
-    NiftiHeader, NiftiType, Result,
+    volume::shape::Dim,
+    DataElement, NiftiHeader, NiftiType, Result,
 };
 
 /// Write a nifti file (.nii or .nii.gz).
@@ -176,7 +176,7 @@ where
     };
 
     let mut header = NiftiHeader {
-        dim: build_dim_array(data.shape()),
+        dim: *Dim::from_slice(data.shape())?.raw(),
         sizeof_hdr: 348,
         datatype: datatype as i16,
         bitpix: (datatype.size_of() * 8) as i16,
