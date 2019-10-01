@@ -3,12 +3,12 @@
 
 #[cfg(feature = "nalgebra_affine")]
 use crate::affine::*;
-#[cfg(feature = "nalgebra_affine")]
-use alga::general::SubsetOf;
-use byteordered::{ByteOrdered, Endian, Endianness};
 use crate::error::{NiftiError, Result};
 use crate::typedef::*;
 use crate::util::{is_gz_file, validate_dim, validate_dimensionality};
+#[cfg(feature = "nalgebra_affine")]
+use alga::general::SubsetOf;
+use byteordered::{ByteOrdered, Endian, Endianness};
 use flate2::bufread::GzDecoder;
 #[cfg(feature = "nalgebra_affine")]
 use nalgebra::{Matrix3, Matrix4, Quaternion, RealField, Vector3};
@@ -196,9 +196,9 @@ impl Default for NiftiHeader {
             quatern_y: 0.,
             quatern_z: 0.,
 
-            srow_x: [1., 0., 0., 0.,],
-            srow_y: [0., 1., 0., 0.,],
-            srow_z: [0., 0., 1., 0.,],
+            srow_x: [1., 0., 0., 0.],
+            srow_y: [0., 1., 0., 0.],
+            srow_z: [0., 0., 1., 0.],
 
             intent_name: [0; 16],
 
@@ -243,9 +243,9 @@ impl NiftiHeader {
     /// Retrieve and validate the dimensions of the volume. Unlike how NIfTI-1
     /// stores dimensions, the returned slice does not include `dim[0]` and is
     /// clipped to the effective number of dimensions.
-    /// 
+    ///
     /// # Error
-    /// 
+    ///
     /// `NiftiError::InconsistentDim` if `dim[0]` does not represent a valid
     /// dimensionality, or any of the real dimensions are zero.
     pub fn dim(&self) -> Result<&[u16]> {
@@ -254,9 +254,9 @@ impl NiftiHeader {
 
     /// Retrieve and validate the number of dimensions of the volume. This is
     /// `dim[0]` after the necessary byte order conversions.
-    /// 
+    ///
     /// # Error
-    /// 
+    ///
     /// `NiftiError::` if `dim[0]` does not represent a valid dimensionality
     /// (it must be positive and not higher than 7).
     pub fn dimensionality(&self) -> Result<usize> {
@@ -386,6 +386,7 @@ impl NiftiHeader {
         T: RealField,
         f32: SubsetOf<T>,
     {
+        #[rustfmt::skip]
         let affine = Matrix4::new(
             self.srow_x[0], self.srow_x[1], self.srow_x[2], self.srow_x[3],
             self.srow_y[0], self.srow_y[1], self.srow_y[2], self.srow_y[3],
@@ -415,6 +416,7 @@ impl NiftiHeader {
             self.pixdim[3] as f64 * self.pixdim[0] as f64,
         ));
         let m = r * s;
+        #[rustfmt::skip]
         let affine = Matrix4::new(
             m[0], m[3], m[6], self.quatern_x as f64,
             m[1], m[4], m[7], self.quatern_y as f64,
@@ -509,6 +511,7 @@ impl NiftiHeader {
             (aff2[3] + aff2[4] + aff2[5]).sqrt(),
             (aff2[6] + aff2[7] + aff2[8]).sqrt(),
         );
+        #[rustfmt::skip]
         let mut r = Matrix3::new(
             affine[0] / spacing.0, affine[3] / spacing.1, affine[6] / spacing.2,
             affine[1] / spacing.0, affine[4] / spacing.1, affine[7] / spacing.2,

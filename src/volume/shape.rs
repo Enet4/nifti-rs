@@ -8,6 +8,8 @@
 //!
 //! [`Dim`]: ./struct.Dim.html
 //! [`Idx`]: ./struct.Idx.html
+use num_traits::AsPrimitive;
+
 use crate::error::{NiftiError, Result};
 use crate::util::{validate_dim, validate_dimensionality};
 
@@ -137,14 +139,17 @@ impl Dim {
     /// assert_eq!(dim.as_ref(), &[64, 32, 16]);
     /// # Ok::<(), nifti::NiftiError>(())
     /// ```
-    pub fn from_slice(dim: &[u16]) -> Result<Self> {
+    pub fn from_slice<T>(dim: &[T]) -> Result<Self>
+    where
+        T: 'static + Copy + AsPrimitive<u16>,
+    {
         if dim.len() == 0 || dim.len() > 7 {
             return Err(NiftiError::InconsistentDim(0, dim.len() as u16));
         }
-        let mut raw = [0; 8];
+        let mut raw = [1; 8];
         raw[0] = dim.len() as u16;
         for (i, d) in dim.iter().enumerate() {
-            raw[i + 1] = *d;
+            raw[i + 1] = d.as_();
         }
         let _ = validate_dim(&raw)?;
         Ok(Dim(Idx(raw)))
