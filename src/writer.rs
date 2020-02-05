@@ -290,7 +290,13 @@ where
     W: Write,
     E: Endian + Copy,
 {
-    let mut iter = data.axis_iter(Axis(0));
+    // We always write the image by iterating on the first axis, thus
+    //   3D (depth, height, width) => per axial slice
+    //   4D (time, depth, height, width) => per volume
+    // However, there's a problem when dim == (1, ...). We must iterate by the first non-one length
+    // axis, otherwise the image will be written in the wrong ordering. See issue #63.
+    let first_good_axis = data.shape().iter().position(|&d| d > 1).unwrap_or(0);
+    let mut iter = data.axis_iter(Axis(first_good_axis));
     if let Some(arr_data) = iter.next() {
         // Keep slice voxels in a separate array to ensure `C` ordering even after `into_shape`.
         let mut slice = arr_data.to_owned();
