@@ -3,7 +3,7 @@ use nifti::{Endianness, NiftiHeader, NiftiType};
 /// Known meta-data for the "minimal.nii" test file.
 #[allow(dead_code)]
 pub fn minimal_header_nii_gt() -> NiftiHeader {
-     NiftiHeader {
+    NiftiHeader {
         vox_offset: 352.,
         magic: *b"n+1\0",
         ..minimal_header_hdr_gt()
@@ -12,7 +12,7 @@ pub fn minimal_header_nii_gt() -> NiftiHeader {
 
 /// Known meta-data for the "minimal.hdr" test file.
 pub fn minimal_header_hdr_gt() -> NiftiHeader {
-     NiftiHeader {
+    NiftiHeader {
         sizeof_hdr: 348,
         dim: [3, 64, 64, 10, 0, 0, 0, 0],
         datatype: NiftiType::Uint8 as i16,
