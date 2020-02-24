@@ -18,7 +18,9 @@ mod tests {
     };
 
     use approx::assert_abs_diff_eq;
-    use ndarray::{s, Array, Array1, Array2, Axis, Dimension, Ix2, IxDyn, ShapeBuilder};
+    use ndarray::{
+        s, Array, Array1, Array2, Array3, Array4, Array5, Axis, Dimension, Ix2, IxDyn, ShapeBuilder,
+    };
     use num_traits::AsPrimitive;
     use tempfile::tempdir;
 
@@ -265,6 +267,45 @@ mod tests {
         let mut header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
         let description: String = std::iter::repeat('é').take(41).collect();
         assert!(header.set_description_str(description).is_err());
+    }
+
+    #[test]
+    fn write_3d_only_1_slice() {
+        // See issue #63
+        let mut data = Array3::zeros((5, 5, 3));
+        data.slice_mut(s![.., 2, 0]).fill(1.0);
+        data.slice_mut(s![.., 3, 0]).fill(1.1);
+
+        let path = get_temporary_path("3d_1s.nii.gz");
+        write_nifti(&path, &data.select(Axis(2), &[0]), None).unwrap();
+        let loaded: Array3<f32> = read_as_ndarray(path).1;
+        assert_eq!(data.index_axis(Axis(2), 0), loaded.index_axis(Axis(2), 0));
+    }
+
+    #[test]
+    fn write_4d_only_1_volume() {
+        // See issue #63
+        let mut data = Array4::zeros((5, 5, 4, 3));
+        data.slice_mut(s![.., 2, 2, 0]).fill(1.0);
+        data.slice_mut(s![.., 3, 2, 0]).fill(1.1);
+
+        let path = get_temporary_path("4d_1v.nii.gz");
+        write_nifti(&path, &data.select(Axis(3), &[0]), None).unwrap();
+        let loaded: Array4<f32> = read_as_ndarray(path).1;
+        assert_eq!(data.index_axis(Axis(3), 0), loaded.index_axis(Axis(3), 0));
+    }
+
+    #[test]
+    fn write_5d_only_1_slice() {
+        // See issue #63
+        let mut data = Array5::zeros((5, 5, 4, 1, 3));
+        data.slice_mut(s![.., 2, 2, 0, 0]).fill(1.0);
+        data.slice_mut(s![.., 3, 2, 0, 0]).fill(1.1);
+
+        let path = get_temporary_path("5d_1s.nii.gz");
+        write_nifti(&path, &data.select(Axis(4), &[0]), None).unwrap();
+        let loaded: Array5<f32> = read_as_ndarray(path).1;
+        assert_eq!(data.index_axis(Axis(4), 0), loaded.index_axis(Axis(4), 0));
     }
 
     #[test]
