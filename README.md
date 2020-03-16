@@ -4,6 +4,8 @@ This library is a pure Rust implementation for reading files in the [NIfTI](http
 
 ## Example
 
+Please see [the documentation](https://docs.rs/nifti) for more.
+
 ```rust
 use nifti::{NiftiObject, InMemNiftiObject, NiftiVolume};
 
@@ -23,7 +25,7 @@ use nifti::{NiftiObject, InMemNiftiObject};
 let obj = InMemNiftiObject::from_file("myvolume.hdr.gz")?;
 ```
 
-With the "ndarray_volumes" feature enabled, you can also convert a volume to an [`ndarray::Array`](https://docs.rs/ndarray/0.12.0/ndarray/index.html) and work from there:
+With the `ndarray_volumes` feature enabled, you can also convert a volume to an [`ndarray::Array`](https://docs.rs/ndarray/0.12.0/ndarray/index.html) and work from there:
 
 ```rust
 let volume = obj.into_volume().into_ndarray::<f32>();
@@ -31,14 +33,13 @@ let volume = obj.into_volume().into_ndarray::<f32>();
 
 ## Roadmap
 
-This library should hopefully fulfil a good number of use cases. However, it still is a bit far
-from a complete solution. In particular, future versions should be able to:
+This library should hopefully fulfil a good number of use cases. However, some gaps
+are yet to be filled fill. In particular, future versions should be able to:
 
 - Write NIFTI files;
 - Provide a more elegant volume API;
 - Handle more kinds of volumes;
 - Provide a real spatial-temporal interpretation of the volume (rather than just voxel-indexed);
-- Maybe add support for NIFTI-2?
 
 There are no deadlines for these features, so your help is much appreciated. Consider filing an [issue](https://github.com/Enet4/nifti-rs/issues) in case something is missing for your use case to work. Pull requests are also welcome.
 
