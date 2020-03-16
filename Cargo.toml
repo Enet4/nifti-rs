@@ -13,7 +13,7 @@ version = "0.9.0"
 exclude = ["resources/*"]
 
 [package.metadata.docs.rs]
-features = ["ndarray_volumes"]
+features = ["ndarray_volumes", "nalgebra_affine"]
 
 [badges]
 
