@@ -25,7 +25,6 @@ repository = "Enet4/nifti-rs"
 approx = "0.3"
 byteordered = "0.4.0"
 flate2 = "1.0.1"
-num = "0.2.0"
 num-derive = "0.3.0"
 num-traits = "0.2.0"
 quick-error = "1.2.0"
@@ -33,10 +32,12 @@ safe-transmute = "0.11.0-rc.1"
 either = "1.5.2"
 
 [dependencies.alga]
+default-features = false
 optional = true
 version = "0.9"
 
 [dependencies.nalgebra]
+default-features = false
 optional = true
 version = "0.18"
 
