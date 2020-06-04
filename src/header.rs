@@ -381,7 +381,7 @@ impl NiftiHeader {
     }
 
     /// Retrieve affine transformation from 'sform' fields.
-    fn sform_affine<T>(&self) -> Matrix4<T>
+    pub fn sform_affine<T>(&self) -> Matrix4<T>
     where
         T: RealField,
         f32: SubsetOf<T>,
@@ -397,7 +397,7 @@ impl NiftiHeader {
     }
 
     /// Retrieve affine transformation from qform-related fields.
-    fn qform_affine<T>(&self) -> Matrix4<T>
+    pub fn qform_affine<T>(&self) -> Matrix4<T>
     where
         T: RealField,
     {
