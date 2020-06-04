@@ -439,6 +439,8 @@ pub enum XForm {
     Talairach = 3,
     /// MNI 152 normalized coordinates.
     Mni152 = 4,
+    /// Normalized coordinates (for any general standard template space).
+    TemplateOther = 5,
 }
 
 /// An enum type for representing the slice order.
