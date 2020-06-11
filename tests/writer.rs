@@ -29,7 +29,7 @@ mod tests {
         object::NiftiObject,
         volume::shape::Dim,
         writer::{write_nifti, write_rgb_nifti},
-        DataElement, InMemNiftiObject, IntoNdArray, NiftiHeader, NiftiType,
+        DataElement, IntoNdArray, NiftiHeader, NiftiType, ReaderOptions,
     };
 
     use super::util::rgb_header_gt;
@@ -78,7 +78,9 @@ mod tests {
         f32: AsPrimitive<T>,
         f64: AsPrimitive<T>,
     {
-        let nifti_object = InMemNiftiObject::from_file(path).expect("Nifti file is unreadable.");
+        let nifti_object = ReaderOptions::new()
+            .read_file(path)
+            .expect("Nifti file is unreadable.");
         let header = nifti_object.header().clone();
         let volume = nifti_object.into_volume();
         let dyn_data = volume.into_ndarray::<T>().unwrap();

@@ -46,13 +46,15 @@ fn minimal_img_gz() {
 
 #[cfg(feature = "ndarray_volumes")]
 mod ndarray_volumes {
+    use super::util::minimal_header_hdr_gt;
+    use ndarray::{Array, Axis, IxDyn, ShapeBuilder};
+    use nifti::{
+        DataElement, InMemNiftiVolume, IntoNdArray, NiftiObject, NiftiType, NiftiVolume,
+        ReaderOptions, ReaderStreamedOptions,
+    };
+    use num_traits::AsPrimitive;
     use std::fmt;
     use std::ops::{Add, Mul};
-    use nifti::{DataElement, InMemNiftiObject, InMemNiftiVolume, IntoNdArray,
-                NiftiObject, NiftiType, NiftiVolume, StreamedNiftiObject};
-    use ndarray::{Array, Axis, IxDyn, ShapeBuilder};
-    use num_traits::AsPrimitive;
-    use super::util::minimal_header_hdr_gt;
 
     #[test]
     fn minimal_img_gz_ndarray_f32() {
@@ -109,7 +111,8 @@ mod ndarray_volumes {
     #[test]
     fn f32_nii_gz_ndarray() {
         const FILE_NAME: &str = "resources/f32.nii.gz";
-        let volume = InMemNiftiObject::from_file(FILE_NAME)
+        let volume = ReaderOptions::new()
+            .read_file(FILE_NAME)
             .unwrap()
             .into_volume();
         assert_eq!(volume.data_type(), NiftiType::Float32);
@@ -131,7 +134,8 @@ mod ndarray_volumes {
     #[test]
     fn f32_nii_gz_ndarray_f64() {
         const FILE_NAME: &str = "resources/f32.nii.gz";
-        let volume = InMemNiftiObject::from_file(FILE_NAME)
+        let volume = ReaderOptions::new()
+            .read_file(FILE_NAME)
             .unwrap()
             .into_volume();
         assert_eq!(volume.data_type(), NiftiType::Float32);
@@ -153,7 +157,8 @@ mod ndarray_volumes {
     #[test]
     fn streamed_f32_nii_gz_ndarray_f64() {
         const FILE_NAME: &str = "resources/f32.nii.gz";
-        let volume = StreamedNiftiObject::from_file(FILE_NAME)
+        let volume = ReaderStreamedOptions::new()
+            .read_file(FILE_NAME)
             .unwrap()
             .into_volume();
         assert_eq!(volume.data_type(), NiftiType::Float32);
@@ -269,7 +274,8 @@ mod ndarray_volumes {
         f64: AsPrimitive<T>,
         usize: AsPrimitive<T>,
     {
-        let volume = InMemNiftiObject::from_file(path)
+        let volume = ReaderOptions::new()
+            .read_file(path)
             .expect("Can't read input file.")
             .into_volume();
         assert_eq!(volume.data_type(), dtype);
