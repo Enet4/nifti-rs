@@ -18,7 +18,7 @@ use std::path::Path;
 pub use crate::util::{GzDecodedFile, MaybeGzDecodedFile};
 
 /// Options and flags which can be used to configure how a NIfTI image is read.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReaderOptions {
     /// Whether to automatically fix value in the header
     fix_header: bool,
@@ -94,7 +94,7 @@ impl ReaderOptions {
 }
 
 /// Options and flags which can be used to configure how a NIfTI image is read and iterated.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReaderStreamedOptions {
     /// Whether to automatically fix value in the header
     fix_header: bool,
