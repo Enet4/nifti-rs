@@ -56,7 +56,12 @@ impl ReaderOptions {
     where
         P: AsRef<Path>,
     {
-        let mut obj = InMemNiftiObject::from_file(path)?;
+        let file = BufReader::new(File::open(&path)?);
+        let mut obj = if is_gz_file(&path) {
+            InMemNiftiObject::from_file_impl(path, GzDecoder::new(file), Default::default())
+        } else {
+            InMemNiftiObject::from_file_impl(path, file, Default::default())
+        }?;
         if self.fix_header {
             apply_fix_on_header(&mut obj.header);
         }
@@ -71,7 +76,16 @@ impl ReaderOptions {
         P: AsRef<Path>,
         Q: AsRef<Path>,
     {
-        let mut obj = InMemNiftiObject::from_file_pair(hdr_path, vol_path)?;
+        let file = BufReader::new(File::open(&hdr_path)?);
+        let mut obj = if is_gz_file(&hdr_path) {
+            InMemNiftiObject::from_file_pair_impl(
+                GzDecoder::new(file),
+                vol_path,
+                Default::default(),
+            )
+        } else {
+            InMemNiftiObject::from_file_pair_impl(file, vol_path, Default::default())
+        }?;
         if self.fix_header {
             apply_fix_on_header(&mut obj.header);
         }
@@ -124,7 +138,8 @@ impl ReaderStreamedOptions {
     where
         P: AsRef<Path>,
     {
-        let mut obj = StreamedNiftiObject::from_file(path)?;
+        let reader = open_file_maybe_gz(&path)?;
+        let mut obj = StreamedNiftiObject::from_file_impl(path, reader, None)?;
         if self.fix_header {
             apply_fix_on_header(&mut obj.header);
         }
@@ -145,7 +160,8 @@ impl ReaderStreamedOptions {
     where
         P: AsRef<Path>,
     {
-        let mut obj = StreamedNiftiObject::from_file_rank(path, slice_rank)?;
+        let reader = open_file_maybe_gz(&path)?;
+        let mut obj = StreamedNiftiObject::from_file_impl(path, reader, Some(slice_rank))?;
         if self.fix_header {
             apply_fix_on_header(&mut obj.header);
         }
@@ -179,7 +195,9 @@ impl ReaderStreamedOptions {
         P: AsRef<Path>,
         Q: AsRef<Path>,
     {
-        let mut obj = StreamedNiftiObject::from_file_pair(hdr_path, vol_path)?;
+        let reader = open_file_maybe_gz(hdr_path)?;
+        let mut obj =
+            StreamedNiftiObject::from_file_pair_impl(reader, vol_path, Default::default())?;
         if self.fix_header {
             apply_fix_on_header(&mut obj.header);
         }
@@ -200,7 +218,8 @@ impl ReaderStreamedOptions {
         P: AsRef<Path>,
         Q: AsRef<Path>,
     {
-        let mut obj = StreamedNiftiObject::from_file_pair_rank(hdr_path, vol_path, slice_rank)?;
+        let reader = open_file_maybe_gz(hdr_path)?;
+        let mut obj = StreamedNiftiObject::from_file_pair_impl(reader, vol_path, Some(slice_rank))?;
         if self.fix_header {
             apply_fix_on_header(&mut obj.header);
         }
@@ -277,7 +296,22 @@ where
 pub type InMemNiftiObject = GenericNiftiObject<InMemNiftiVolume>;
 
 impl InMemNiftiObject {
-    fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+    /// Retrieve the full contents of a NIFTI object.
+    /// The given file system path is used as reference.
+    /// If the file only contains the header, this method will
+    /// look for the corresponding file with the extension ".img",
+    /// or ".img.gz" if the former wasn't found.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use nifti::{NiftiObject, InMemNiftiObject};
+    ///
+    /// let obj = InMemNiftiObject::from_file("minimal.nii.gz")?;
+    /// # Ok::<(), nifti::NiftiError>(())
+    /// ```
+    #[deprecated(note = "use `read_file` from `ReaderOptions` instead")]
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let gz = is_gz_file(&path);
 
         let file = BufReader::new(File::open(&path)?);
@@ -288,7 +322,11 @@ impl InMemNiftiObject {
         }
     }
 
-    fn from_file_pair<P, Q>(hdr_path: P, vol_path: Q) -> Result<Self>
+    /// Retrieve a NIFTI object as separate header and volume files.
+    /// This method is useful when file names are not conventional for a
+    /// NIFTI file pair.
+    #[deprecated(note = "use `read_file_pair` from `ReaderOptions` instead")]
+    pub fn from_file_pair<P, Q>(hdr_path: P, vol_path: Q) -> Result<Self>
     where
         P: AsRef<Path>,
         Q: AsRef<Path>,
@@ -310,17 +348,64 @@ impl InMemNiftiObject {
 pub type StreamedNiftiObject<R> = GenericNiftiObject<StreamedNiftiVolume<R>>;
 
 impl StreamedNiftiObject<MaybeGzDecodedFile> {
-    fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+    /// Retrieve the NIfTI object and prepare the volume for streamed reading.
+    /// The given file system path is used as reference.
+    /// If the file only contains the header, this method will
+    /// look for the corresponding file with the extension ".img",
+    /// or ".img.gz" if the former wasn't found.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use nifti::{NiftiObject, StreamedNiftiObject};
+    ///
+    /// let obj = StreamedNiftiObject::from_file("minimal.nii.gz")?;
+    ///
+    /// let volume = obj.into_volume();
+    /// for slice in volume {
+    ///     let slice = slice?;
+    ///     // manipulate slice here
+    /// }
+    /// # Ok::<(), nifti::NiftiError>(())
+    /// ```
+    #[deprecated(note = "use `read_file` from `ReaderStreamedOptions` instead")]
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let reader = open_file_maybe_gz(&path)?;
         Self::from_file_impl(path, reader, None)
     }
 
-    fn from_file_rank<P: AsRef<Path>>(path: P, slice_rank: u16) -> Result<Self> {
+    /// Retrieve the NIfTI object and prepare the volume for streamed reading,
+    /// using `slice_rank` as the dimensionality of each slice.
+    /// The given file system path is used as reference.
+    /// If the file only contains the header, this method will
+    /// look for the corresponding file with the extension ".img",
+    /// or ".img.gz" if the former wasn't found.
+    #[deprecated(note = "use `read_file_rank` from `ReaderStreamedOptions` instead")]
+    pub fn from_file_rank<P: AsRef<Path>>(path: P, slice_rank: u16) -> Result<Self> {
         let reader = open_file_maybe_gz(&path)?;
         Self::from_file_impl(path, reader, Some(slice_rank))
     }
 
-    fn from_file_pair<P, Q>(hdr_path: P, vol_path: Q) -> Result<Self>
+    /// Retrieve a NIfTI object as separate header and volume files, for
+    /// streamed volume reading. This method is useful when file names are not
+    /// conventional for a NIfTI file pair.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use nifti::{NiftiObject, StreamedNiftiObject};
+    ///
+    /// let obj = StreamedNiftiObject::from_file_pair("abc.hdr", "abc.img.gz")?;
+    ///
+    /// let volume = obj.into_volume();
+    /// for slice in volume {
+    ///     let slice = slice?;
+    ///     // manipulate slice here
+    /// }
+    /// # Ok::<(), nifti::NiftiError>(())
+    /// ```
+    #[deprecated(note = "use `read_file_pair` from `ReaderStreamedOptions` instead")]
+    pub fn from_file_pair<P, Q>(hdr_path: P, vol_path: Q) -> Result<Self>
     where
         P: AsRef<Path>,
         Q: AsRef<Path>,
@@ -329,7 +414,12 @@ impl StreamedNiftiObject<MaybeGzDecodedFile> {
         Self::from_file_pair_impl(reader, vol_path, Default::default())
     }
 
-    fn from_file_pair_rank<P, Q>(hdr_path: P, vol_path: Q, slice_rank: u16) -> Result<Self>
+    /// Retrieve a NIfTI object as separate header and volume files, for
+    /// streamed volume reading, using `slice_rank` as the dimensionality of
+    /// each slice. This method is useful when file names are not conventional
+    /// for a NIfTI file pair.
+    #[deprecated(note = "use `read_file_pair_rank` from `ReaderStreamedOptions` instead")]
+    pub fn from_file_pair_rank<P, Q>(hdr_path: P, vol_path: Q, slice_rank: u16) -> Result<Self>
     where
         P: AsRef<Path>,
         Q: AsRef<Path>,
