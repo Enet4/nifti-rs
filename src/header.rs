@@ -240,6 +240,16 @@ impl NiftiHeader {
         parse_header_1(input)
     }
 
+    /// Fix some commonly invalid fields.
+    ///
+    /// Currently, only the following problems are fixed:
+    /// - If `pixdim[0]` isn't equal to -1.0 or 1.0, it will be set to 1.0
+    pub fn fix(&mut self) {
+        if self.pixdim[0].abs() != 1.0 {
+            self.pixdim[0] = 1.0;
+        }
+    }
+
     /// Retrieve and validate the dimensions of the volume. Unlike how NIfTI-1
     /// stores dimensions, the returned slice does not include `dim[0]` and is
     /// clipped to the effective number of dimensions.

@@ -63,7 +63,7 @@ impl ReaderOptions {
             InMemNiftiObject::from_file_impl(path, file, Default::default())
         }?;
         if self.fix_header {
-            apply_fix_on_header(&mut obj.header);
+            obj.header.fix();
         }
         Ok(obj)
     }
@@ -87,7 +87,7 @@ impl ReaderOptions {
             InMemNiftiObject::from_file_pair_impl(file, vol_path, Default::default())
         }?;
         if self.fix_header {
-            apply_fix_on_header(&mut obj.header);
+            obj.header.fix();
         }
         Ok(obj)
     }
@@ -141,7 +141,7 @@ impl ReaderStreamedOptions {
         let reader = open_file_maybe_gz(&path)?;
         let mut obj = StreamedNiftiObject::from_file_impl(path, reader, None)?;
         if self.fix_header {
-            apply_fix_on_header(&mut obj.header);
+            obj.header.fix();
         }
         Ok(obj)
     }
@@ -163,7 +163,7 @@ impl ReaderStreamedOptions {
         let reader = open_file_maybe_gz(&path)?;
         let mut obj = StreamedNiftiObject::from_file_impl(path, reader, Some(slice_rank))?;
         if self.fix_header {
-            apply_fix_on_header(&mut obj.header);
+            obj.header.fix();
         }
         Ok(obj)
     }
@@ -199,7 +199,7 @@ impl ReaderStreamedOptions {
         let mut obj =
             StreamedNiftiObject::from_file_pair_impl(reader, vol_path, Default::default())?;
         if self.fix_header {
-            apply_fix_on_header(&mut obj.header);
+            obj.header.fix();
         }
         Ok(obj)
     }
@@ -221,15 +221,9 @@ impl ReaderStreamedOptions {
         let reader = open_file_maybe_gz(hdr_path)?;
         let mut obj = StreamedNiftiObject::from_file_pair_impl(reader, vol_path, Some(slice_rank))?;
         if self.fix_header {
-            apply_fix_on_header(&mut obj.header);
+            obj.header.fix();
         }
         Ok(obj)
-    }
-}
-
-fn apply_fix_on_header(header: &mut NiftiHeader) {
-    if header.pixdim[0].abs() != 1.0 {
-        header.pixdim[0] = 1.0;
     }
 }
 
