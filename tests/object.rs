@@ -6,8 +6,8 @@ extern crate nifti;
 extern crate pretty_assertions;
 
 use nifti::{
-    Endianness, InMemNiftiObject, StreamedNiftiObject, NiftiHeader, NiftiObject, NiftiType,
-    NiftiVolume, RandomAccessNiftiVolume, XForm,
+    Endianness, NiftiHeader, NiftiObject, NiftiType, NiftiVolume, RandomAccessNiftiVolume,
+    ReaderOptions, ReaderStreamedOptions, XForm,
 };
 
 mod util;
@@ -19,7 +19,7 @@ fn minimal_nii_gz() {
     let minimal_hdr = minimal_header_nii_gt();
 
     const FILE_NAME: &str = "resources/minimal.nii.gz";
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = ReaderOptions::new().read_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -31,7 +31,7 @@ fn streamed_minimal_nii_gz() {
     let minimal_hdr = minimal_header_nii_gt();
 
     const FILE_NAME: &str = "resources/minimal.nii.gz";
-    let obj = StreamedNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = ReaderStreamedOptions::new().read_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -43,7 +43,7 @@ fn minimal_nii() {
     let minimal_hdr = minimal_header_nii_gt();
 
     const FILE_NAME: &str = "resources/minimal.nii";
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = ReaderOptions::new().read_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -55,7 +55,7 @@ fn streamed_minimal_nii() {
     let minimal_hdr = minimal_header_nii_gt();
 
     const FILE_NAME: &str = "resources/minimal.nii";
-    let obj = StreamedNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = ReaderStreamedOptions::new().read_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -67,7 +67,7 @@ fn minimal_by_hdr() {
     let minimal_hdr = minimal_header_hdr_gt();
 
     const FILE_NAME: &str = "resources/minimal.hdr";
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = ReaderOptions::new().read_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -79,7 +79,7 @@ fn streamed_minimal_by_hdr() {
     let minimal_hdr = minimal_header_hdr_gt();
 
     const FILE_NAME: &str = "resources/minimal.hdr";
-    let obj = StreamedNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = ReaderStreamedOptions::new().read_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -92,7 +92,7 @@ fn minimal_by_hdr_and_img_gz() {
 
     const FILE_NAME: &str = "resources/minimal2.hdr";
     // should attempt to read "resources/minimal2.img.gz"
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = ReaderOptions::new().read_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -104,7 +104,7 @@ fn minimal_by_hdr_gz() {
     let minimal_hdr = minimal_header_hdr_gt();
 
     const FILE_NAME: &str = "resources/minimal.hdr.gz";
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = ReaderOptions::new().read_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -117,7 +117,9 @@ fn minimal_by_pair() {
 
     const HDR_FILE_NAME: &str = "resources/minimal.hdr.gz";
     const IMG_FILE_NAME: &str = "resources/minimal.img.gz";
-    let obj = InMemNiftiObject::from_file_pair(HDR_FILE_NAME, IMG_FILE_NAME).unwrap();
+    let obj = ReaderOptions::new()
+        .read_file_pair(HDR_FILE_NAME, IMG_FILE_NAME)
+        .unwrap();
     assert_eq!(obj.header(), &minimal_hdr);
     let volume = obj.volume();
     assert_eq!(volume.data_type(), NiftiType::Uint8);
@@ -145,7 +147,7 @@ fn f32_nii_gz() {
     };
 
     const FILE_NAME: &str = "resources/f32.nii.gz";
-    let obj = InMemNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = ReaderOptions::new().read_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &f32_hdr);
 
     assert_eq!(obj.header().sform().unwrap(), XForm::AlignedAnat);
@@ -183,7 +185,7 @@ fn streamed_f32_nii_gz() {
     };
 
     const FILE_NAME: &str = "resources/f32.nii.gz";
-    let obj = StreamedNiftiObject::from_file(FILE_NAME).unwrap();
+    let obj = ReaderStreamedOptions::new().read_file(FILE_NAME).unwrap();
     assert_eq!(obj.header(), &f32_hdr);
 
     assert_eq!(obj.header().sform().unwrap(), XForm::AlignedAnat);
@@ -212,24 +214,27 @@ fn streamed_f32_nii_gz() {
 
 #[test]
 fn bad_file_1() {
-    let _ = InMemNiftiObject::from_file("resources/fuzz_artifacts/crash-1.nii");
+    let _ = ReaderOptions::new().read_file("resources/fuzz_artifacts/crash-1.nii");
     // must not panic
 }
 
 #[test]
 fn bad_file_2() {
-    let _ = InMemNiftiObject::from_file("resources/fuzz_artifacts/crash-98aa054390f8d3f932f190dc22ef62c6ff2d6619");
+    let _ = ReaderOptions::new()
+        .read_file("resources/fuzz_artifacts/crash-98aa054390f8d3f932f190dc22ef62c6ff2d6619");
     // must not panic or abort
 }
 
 #[test]
 fn bad_file_3() {
-    let _ = InMemNiftiObject::from_file("resources/fuzz_artifacts/crash-d03c6346fe83a026738f6b8cd2a9335a3f8cb158");
+    let _ = ReaderOptions::new()
+        .read_file("resources/fuzz_artifacts/crash-d03c6346fe83a026738f6b8cd2a9335a3f8cb158");
     // must not panic or abort
 }
 
 #[test]
 fn bad_file_4() {
-    let _ = InMemNiftiObject::from_file("resources/fuzz_artifacts/crash-08123ef33416bd6f0c5fa63d44b681b8581d62a0");
+    let _ = ReaderOptions::new()
+        .read_file("resources/fuzz_artifacts/crash-08123ef33416bd6f0c5fa63d44b681b8581d62a0");
     // must not panic or abort
 }
