@@ -31,20 +31,20 @@ quick-error = "1.2"
 safe-transmute = "0.11"
 either = "1.5"
 
-[dependencies.alga]
-default-features = false
-optional = true
-version = "0.9"
-
 [dependencies.nalgebra]
 default-features = false
 optional = true
-version = "0.18"
+version = "0.21"
 
 [dependencies.ndarray]
 optional = true
 version = "0.13"
 features = ["approx"]
+
+[dependencies.simba]
+default-features = false
+optional = true
+version = "0.1"
 
 [dev-dependencies]
 pretty_assertions = "0.6"
@@ -55,5 +55,5 @@ name = "niftidump"
 path = "examples/niftidump/main.rs"
 
 [features]
-nalgebra_affine = ["alga", "nalgebra"]
+nalgebra_affine = ["nalgebra", "simba"]
 ndarray_volumes = ["ndarray"]
