@@ -23,13 +23,13 @@ repository = "Enet4/nifti-rs"
 
 [dependencies]
 approx = "0.3"
-byteordered = "0.4.0"
-flate2 = "1.0.1"
-num-derive = "0.3.0"
-num-traits = "0.2.0"
-quick-error = "1.2.0"
-safe-transmute = "0.11.0-rc.1"
-either = "1.5.2"
+byteordered = "0.5"
+flate2 = "1.0"
+num-derive = "0.3"
+num-traits = "0.2"
+quick-error = "1.2"
+safe-transmute = "0.11"
+either = "1.5"
 
 [dependencies.alga]
 default-features = false
@@ -47,8 +47,8 @@ version = "0.13"
 features = ["approx"]
 
 [dev-dependencies]
-pretty_assertions = "0.6.1"
-tempfile = "3.0"
+pretty_assertions = "0.6"
+tempfile = "3.1"
 
 [[example]]
 name = "niftidump"
