@@ -17,25 +17,10 @@ pub struct Extender([u8; 4]);
 
 impl Extender {
     /// Fetch the extender code from the given source, while expecting it to exist.
-    #[deprecated(since = "0.8.0", note = "use `from_reader` instead")]
-    pub fn from_stream<S: Read>(source: S) -> Result<Self> {
-        Self::from_reader(source)
-    }
-
-    /// Fetch the extender code from the given source, while expecting it to exist.
     pub fn from_reader<S: Read>(mut source: S) -> Result<Self> {
         let mut extension = [0u8; 4];
         source.read_exact(&mut extension)?;
         Ok(extension.into())
-    }
-
-    /// Fetch the extender code from the given source, while
-    /// being possible to not be available.
-    /// Returns `None` if the source reaches EoF prematurely.
-    /// Any other I/O error is delegated to a `NiftiError`.
-    #[deprecated(since = "0.8.0", note = "use `from_reader_optional` instead")]
-    pub fn from_stream_optional<S: Read>(source: S) -> Result<Option<Self>> {
-        Self::from_reader_optional(source)
     }
 
     /// Fetch the extender code from the given source, while
@@ -148,20 +133,6 @@ impl<'a> IntoIterator for &'a ExtensionSequence {
 }
 
 impl ExtensionSequence {
-    /// Read a sequence of extensions from a source, up until `len` bytes.
-    #[deprecated(since = "0.8.0", note = "use `from_reader` instead")]
-    pub fn from_stream<S, E>(
-        extender: Extender,
-        source: ByteOrdered<S, E>,
-        len: usize,
-    ) -> Result<Self>
-    where
-        S: Read,
-        E: Endian,
-    {
-        Self::from_reader(extender, source, len)
-    }
-
     /// Read a sequence of extensions from a source, up until `len` bytes.
     pub fn from_reader<S, E>(
         extender: Extender,
