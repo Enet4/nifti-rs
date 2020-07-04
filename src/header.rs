@@ -6,8 +6,6 @@ use crate::affine::*;
 use crate::error::{NiftiError, Result};
 use crate::typedef::*;
 use crate::util::{is_gz_file, validate_dim, validate_dimensionality};
-#[cfg(feature = "nalgebra_affine")]
-use alga::general::SubsetOf;
 use byteordered::{ByteOrdered, Endian, Endianness};
 use flate2::bufread::GzDecoder;
 #[cfg(feature = "nalgebra_affine")]
@@ -15,6 +13,8 @@ use nalgebra::{Matrix3, Matrix4, Quaternion, RealField, Vector3};
 use num_traits::FromPrimitive;
 #[cfg(feature = "nalgebra_affine")]
 use num_traits::ToPrimitive;
+#[cfg(feature = "nalgebra_affine")]
+use simba::scalar::SubsetOf;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ops::Deref;

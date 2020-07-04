@@ -10,7 +10,10 @@ pub type Affine4 = Matrix4<f32>;
 const QUARTERNION_THRESHOLD: f64 = -::std::f32::EPSILON as f64 * 3.0;
 
 /// Separate a 4x4 affine into its 3x3 affine and translation components.
-pub fn affine_and_translation<T: Scalar>(affine: &Matrix4<T>) -> (Matrix3<T>, Vector3<T>) {
+pub fn affine_and_translation<T>(affine: &Matrix4<T>) -> (Matrix3<T>, Vector3<T>)
+where
+    T: Copy + Scalar,
+{
     let translation = Vector3::new(affine[12], affine[13], affine[14]);
     let affine = affine.fixed_slice::<U3, U3>(0, 0).into_owned();
     (affine, translation)
@@ -19,6 +22,7 @@ pub fn affine_and_translation<T: Scalar>(affine: &Matrix4<T>) -> (Matrix3<T>, Ve
 /// Get affine implied by given shape and zooms.
 ///
 /// We get the translations from the center of the image (implied by `shape`).
+#[rustfmt::skip]
 pub(crate) fn shape_zoom_affine(shape: &[u16], spacing: &[f32]) -> Matrix4<f64> {
     // Get translations from center of image
     let origin = Vector3::new(
@@ -70,6 +74,7 @@ pub(crate) fn fill_positive(xyz: Vector3<f64>) -> Quaternion<f64> {
 ///
 /// Bar-Itzhack, Itzhack Y. "New method for extracting the quaternion from a rotation
 /// matrix", AIAA Journal of Guidance, Control and Dynamics 23(6):1085-1087, 2000
+#[rustfmt::skip]
 pub(crate) fn affine_to_quaternion(affine: &Matrix3<f64>) -> RowVector4<f64> {
     // qyx refers to the contribution of the y input vector component to the x output vector
     // component. qyx is therefore the same as M[0, 1]. The notation is from the Wikipedia article.
@@ -121,6 +126,7 @@ pub(crate) fn affine_to_quaternion(affine: &Matrix3<f64>) -> RowVector4<f64> {
 /// The algorithm here allows non-unit quaternions.
 ///
 /// Algorithm from https://en.wikipedia.org/wiki/Rotation_matrix#Quaternion
+#[rustfmt::skip]
 pub(crate) fn quaternion_to_affine(q: Quaternion<f64>) -> Matrix3<f64> {
     let nq = q.w * q.w + q.i * q.i + q.j * q.j + q.k * q.k;
     if nq < ::std::f64::EPSILON {
@@ -151,6 +157,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[rustfmt::skip]
     fn test_shape_zoom_affine() {
         let affine = shape_zoom_affine(&[3, 5, 7], &[3.0, 2.0, 1.0]);
         let real_affine = Matrix4::new(
