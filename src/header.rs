@@ -225,14 +225,6 @@ impl NiftiHeader {
     /// Read a NIfTI-1 header, along with its byte order, from the given byte stream.
     /// It is assumed that the input is currently at the start of the
     /// NIFTI header.
-    #[deprecated(since = "0.8.0", note = "use `from_reader` instead")]
-    pub fn from_stream<S: Read>(input: S) -> Result<NiftiHeader> {
-        Self::from_reader(input)
-    }
-
-    /// Read a NIfTI-1 header, along with its byte order, from the given byte stream.
-    /// It is assumed that the input is currently at the start of the
-    /// NIFTI header.
     pub fn from_reader<S>(input: S) -> Result<NiftiHeader>
     where
         S: Read,

@@ -99,15 +99,6 @@ impl InMemNiftiVolume {
     /// of the volume's data must be known in advance. It it also expected that the
     /// following bytes represent the first voxels of the volume (and not part of the
     /// extensions).
-    #[deprecated(since = "0.8.0", note = "use `from_reader` instead")]
-    pub fn from_stream<R: Read>(source: R, header: &NiftiHeader) -> Result<Self> {
-        Self::from_reader(source, header)
-    }
-
-    /// Read a NIFTI volume from a stream of data. The header and expected byte order
-    /// of the volume's data must be known in advance. It it also expected that the
-    /// following bytes represent the first voxels of the volume (and not part of the
-    /// extensions).
     pub fn from_reader<R: Read>(source: R, header: &NiftiHeader) -> Result<Self> {
         // rather than pre-allocating for the full volume size, this will
         // pre-allocate up to a more reliable amount and feed the vector
