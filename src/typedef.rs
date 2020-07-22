@@ -416,20 +416,20 @@ pub enum Intent {
     Shape = 2005,
 
     /// FSL FNIRT Displacement field.
-    FSLFNIRTDisplacementField = 2006,
+    FslFnirtDisplacementField = 2006,
     /// FSL Cubic spline coefficients.
-    FSLCubicSplineCoefficients = 2007,
+    FslCubicSplineCoefficients = 2007,
     /// FSL Discrete cosine transform coefficients.
-    FSLDCTCoefficients = 2008,
+    FslDctCoefficients = 2008,
     /// FSL Quadratic spline coefficients.
-    FSLQuadraticSplineCoefficients = 2009,
+    FslQuadraticSplineCoefficients = 2009,
 
     /// FSL Topup cubic spline coefficients.
-    FSLTopupCubicSplineCoefficients = 2016,
+    FslTopupCubicSplineCoefficients = 2016,
     /// FSL Topup quadratic spline coefficients.
-    FSLTopupQuadraticSplineCoefficients = 2017,
+    FslTopupQuadraticSplineCoefficients = 2017,
     /// FSL Topup field.
-    FSLTopupField = 2018,
+    FslTopupField = 2018,
 }
 
 impl Intent {
