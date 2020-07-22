@@ -4,13 +4,13 @@
 //! reading voxel values). However, primitive integer values can be
 //! converted to these types and vice-versa.
 
-use crate::volume::element::{DataElement, LinearTransform};
 use crate::error::{NiftiError, Result};
-use std::io::Read;
-use std::ops::{Add, Mul};
+use crate::volume::element::{DataElement, LinearTransform};
 use byteordered::{Endian, Endianness};
 use num_derive::FromPrimitive;
 use num_traits::AsPrimitive;
+use std::io::Read;
+use std::ops::{Add, Mul};
 
 /// Data type for representing a NIFTI value type in a volume.
 /// Methods for reading values of that type from a source are also included.
@@ -414,6 +414,22 @@ pub enum Intent {
     /// To signify that the value at each location is a shape value, such
     /// as the curvature.
     Shape = 2005,
+
+    /// FSL FNIRT Displacement field.
+    FslFnirtDisplacementField = 2006,
+    /// FSL Cubic spline coefficients.
+    FslCubicSplineCoefficients = 2007,
+    /// FSL Discrete cosine transform coefficients.
+    FslDctCoefficients = 2008,
+    /// FSL Quadratic spline coefficients.
+    FslQuadraticSplineCoefficients = 2009,
+
+    /// FSL Topup cubic spline coefficients.
+    FslTopupCubicSplineCoefficients = 2016,
+    /// FSL Topup quadratic spline coefficients.
+    FslTopupQuadraticSplineCoefficients = 2017,
+    /// FSL Topup field.
+    FslTopupField = 2018,
 }
 
 impl Intent {
