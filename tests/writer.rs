@@ -28,7 +28,7 @@ mod tests {
         header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
         object::NiftiObject,
         volume::shape::Dim,
-        writer::{write_nifti, write_rgb_nifti},
+        writer::WriterOptions,
         DataElement, IntoNdArray, NiftiHeader, NiftiType, ReaderOptions,
     };
 
@@ -91,7 +91,10 @@ mod tests {
         let path = get_temporary_path(path);
         let dim = *Dim::from_slice(arr.shape()).unwrap().raw();
         let header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
-        write_nifti(&path, &arr, Some(&header)).unwrap();
+        WriterOptions::new(&path)
+            .reference(&header)
+            .write_nifti(&arr)
+            .unwrap();
 
         let gt = arr.into_dimensionality::<Ix2>().unwrap();
         let read_nifti: Array2<f32> = read_as_ndarray(path).1;
@@ -156,7 +159,10 @@ mod tests {
         let dim = *Dim::from_slice(arr.shape()).unwrap().raw();
         let header = generate_nifti_header(dim, slope, inter, NiftiType::Float32);
         let transformed_data = arr.mul(slope).add(inter);
-        write_nifti(&path, &transformed_data, Some(&header)).unwrap();
+        WriterOptions::new(&path)
+            .reference(&header)
+            .write_nifti(&transformed_data)
+            .unwrap();
 
         let gt = transformed_data.into_dimensionality::<Ix2>().unwrap();
         let read_nifti: Array2<f32> = read_as_ndarray(path).1;
@@ -175,7 +181,11 @@ mod tests {
         let header = generate_nifti_header(dim, slope, inter, NiftiType::Uint8);
 
         let path = get_temporary_path("test_slope_inter.nii");
-        write_nifti(&path, &data, Some(&header)).unwrap();
+        WriterOptions::new(&path)
+            .reference(&header)
+            .write_nifti(&data)
+            .unwrap();
+
         let (read_header, read_data) = read_as_ndarray(path);
         assert_eq!(read_header.scl_inter, 0.0);
         assert_eq!(read_header.scl_slope, 1.0);
@@ -190,7 +200,7 @@ mod tests {
 
         for fname in &["3d.hdr", "3d.hdr.gz"] {
             let path = get_temporary_path(fname);
-            write_nifti(&path, &data, None).unwrap();
+            WriterOptions::new(&path).write_nifti(&data).unwrap();
             let data_read = read_as_ndarray(path).1;
             assert_eq!(data, data_read);
         }
@@ -202,12 +212,16 @@ mod tests {
         data.slice_mut(s![.., .., ..;2]).fill(42.0);
 
         let path = get_temporary_path("non_contiguous_0.nii.gz");
-        write_nifti(&path, &data.slice(s![.., .., ..;2]), None).unwrap();
+        WriterOptions::new(&path)
+            .write_nifti(&data.slice(s![.., .., ..;2]))
+            .unwrap();
         let loaded_data = read_as_ndarray::<_, f32, _>(path).1;
         assert_eq!(loaded_data, Array::from_elem((3, 4, 6), 42.0));
 
         let path = get_temporary_path("non_contiguous_1.nii.gz");
-        write_nifti(&path, &data.slice(s![.., .., 1..;2]), None).unwrap();
+        WriterOptions::new(&path)
+            .write_nifti(&data.slice(s![.., .., 1..;2]))
+            .unwrap();
         let loaded_data = read_as_ndarray::<_, f32, _>(path).1;
         assert_eq!(loaded_data, Array::from_elem((3, 4, 5), 1.5));
     }
@@ -223,7 +237,10 @@ mod tests {
         // should be right. To compare the header, we must fix it ourselves.
         let v = "äbcdé".as_bytes();
         header.descrip = v.to_vec();
-        write_nifti(&path, &data, Some(&header)).unwrap();
+        WriterOptions::new(&path)
+            .reference(&header)
+            .write_nifti(&data)
+            .unwrap();
         let (new_header, new_data) = read_as_ndarray::<_, f32, _>(&path);
         header.set_description(v).unwrap(); // Manual fix
         assert_eq!(new_header, header);
@@ -231,14 +248,20 @@ mod tests {
 
         // set_description
         header.set_description("ひらがな".as_bytes()).unwrap();
-        write_nifti(&path, &data, Some(&header)).unwrap();
+        WriterOptions::new(&path)
+            .reference(&header)
+            .write_nifti(&data)
+            .unwrap();
         let (new_header, new_data) = read_as_ndarray::<_, f32, _>(&path);
         assert_eq!(new_header, header);
         assert_eq!(new_data, data);
 
         // set_description_str
         header.set_description_str("русский").unwrap();
-        write_nifti(&path, &data, Some(&header)).unwrap();
+        WriterOptions::new(&path)
+            .reference(&header)
+            .write_nifti(&data)
+            .unwrap();
         let (new_header, new_data) = read_as_ndarray::<_, f32, _>(&path);
         assert_eq!(new_header, header);
         assert_eq!(new_data, data);
@@ -251,7 +274,10 @@ mod tests {
         header.descrip = (0..84).into_iter().collect();
         let path = get_temporary_path("error_description.nii");
         let data = Array::from_elem((3, 4, 5), 1.5);
-        assert!(write_nifti(&path, &data, Some(&header)).is_err());
+        assert!(WriterOptions::new(&path)
+            .reference(&header)
+            .write_nifti(&data)
+            .is_err());
     }
 
     #[test]
@@ -279,7 +305,9 @@ mod tests {
         data.slice_mut(s![.., 3, 0]).fill(1.1);
 
         let path = get_temporary_path("3d_1s.nii.gz");
-        write_nifti(&path, &data.select(Axis(2), &[0]), None).unwrap();
+        WriterOptions::new(&path)
+            .write_nifti(&data.select(Axis(2), &[0]))
+            .unwrap();
         let loaded: Array3<f32> = read_as_ndarray(path).1;
         assert_eq!(data.index_axis(Axis(2), 0), loaded.index_axis(Axis(2), 0));
     }
@@ -292,7 +320,9 @@ mod tests {
         data.slice_mut(s![.., 3, 2, 0]).fill(1.1);
 
         let path = get_temporary_path("4d_1v.nii.gz");
-        write_nifti(&path, &data.select(Axis(3), &[0]), None).unwrap();
+        WriterOptions::new(&path)
+            .write_nifti(&data.select(Axis(3), &[0]))
+            .unwrap();
         let loaded: Array4<f32> = read_as_ndarray(path).1;
         assert_eq!(data.index_axis(Axis(3), 0), loaded.index_axis(Axis(3), 0));
     }
@@ -305,7 +335,9 @@ mod tests {
         data.slice_mut(s![.., 3, 2, 0, 0]).fill(1.1);
 
         let path = get_temporary_path("5d_1s.nii.gz");
-        write_nifti(&path, &data.select(Axis(4), &[0]), None).unwrap();
+        WriterOptions::new(&path)
+            .write_nifti(&data.select(Axis(4), &[0]))
+            .unwrap();
         let loaded: Array5<f32> = read_as_ndarray(path).1;
         assert_eq!(data.index_axis(Axis(4), 0), loaded.index_axis(Axis(4), 0));
     }
@@ -320,7 +352,10 @@ mod tests {
         let header_path = get_temporary_path("3d.hdr");
         let data_path = header_path.with_extension("img");
         let header = rgb_header_gt();
-        write_rgb_nifti(&header_path, &data, Some(&header)).unwrap();
+        WriterOptions::new(&header_path)
+            .reference(&header)
+            .write_rgb_nifti(&data)
+            .unwrap();
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
         // image to the bytes of the prepared 3D RGB image in ressources/rgb/. However, we need to
@@ -346,7 +381,10 @@ mod tests {
 
         let path = get_temporary_path("rgb.nii");
         let header = rgb_header_gt();
-        write_rgb_nifti(&path, &data, Some(&header)).unwrap();
+        WriterOptions::new(&path)
+            .reference(&header)
+            .write_rgb_nifti(&data)
+            .unwrap();
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
         // image to the bytes of the prepared 3D RGB image in ressources/rgb/.
@@ -368,7 +406,10 @@ mod tests {
 
         let path = get_temporary_path("rgb.nii");
         let header = rgb_header_gt();
-        write_rgb_nifti(&path, &data, Some(&header)).unwrap();
+        WriterOptions::new(&path)
+            .reference(&header)
+            .write_rgb_nifti(&data)
+            .unwrap();
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
         // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
