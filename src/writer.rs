@@ -392,3 +392,39 @@ where
     writer.write_all(&*bytes)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_writer_path() {
+        let w = WriterOptions::new("~/image");
+        assert_eq!(w.header_path, PathBuf::from("~/image.nii"));
+
+        for (p, nii, niigz) in &[
+            ("~/image", "~/image.nii", "~/image.nii.gz"),
+            ("~/image.nii", "~/image.nii", "~/image.nii.gz"),
+            ("~/image.nii.gz", "~/image.nii", "~/image.nii.gz"),
+            ("~/image.hdr", "~/image.hdr", "~/image.hdr.gz"),
+            ("~/image.hdr.gz", "~/image.hdr", "~/image.hdr.gz"),
+        ] {
+            let nii = PathBuf::from(nii);
+            let niigz = PathBuf::from(niigz);
+
+            let w = WriterOptions::new(p).compress(true);
+            assert_eq!(w.header_path, niigz);
+            let w = WriterOptions::new(p).compress(true).compress(true);
+            assert_eq!(w.header_path, niigz);
+            let w = WriterOptions::new(p).compress(true).compress(false);
+            assert_eq!(w.header_path, nii);
+
+            let w = WriterOptions::new(p).compress(false);
+            assert_eq!(w.header_path, nii);
+            let w = WriterOptions::new(p).compress(false).compress(false);
+            assert_eq!(w.header_path, nii);
+            let w = WriterOptions::new(p).compress(false).compress(true);
+            assert_eq!(w.header_path, niigz);
+        }
+    }
+}
