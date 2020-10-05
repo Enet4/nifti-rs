@@ -17,60 +17,91 @@ use crate::{
     DataElement, NiftiHeader, NiftiType, Result,
 };
 
+#[derive(Debug, Clone, PartialEq)]
+enum HeaderReference<'a> {
+    None,
+    FromHeader(&'a NiftiHeader),
+    FromFile(&'a Path),
+}
+
+impl<'a> HeaderReference<'a> {
+    fn to_header(&self) -> Result<NiftiHeader> {
+        match self {
+            HeaderReference::FromHeader(h) => Ok(h.clone().to_owned()),
+            HeaderReference::FromFile(path) => NiftiHeader::from_file(path),
+            HeaderReference::None => {
+                let mut header = NiftiHeader::default();
+                header.sform_code = 2;
+                Ok(header)
+            }
+        }
+    }
+}
+
 /// Options and flags which can be used to configure how a NIfTI image is written.
 #[derive(Debug, Clone, PartialEq)]
 pub struct WriterOptions<'a> {
     /// Where to write the output image (header and/or data).
-    header_path: PathBuf,
+    path: PathBuf,
     /// If given, it will be used to fill most of the header's fields. Otherwise, a default
     /// `NiftiHeader` will be built and written. In all cases, the `dim`, `datatype` and `bitpix`
     /// fields will depend only on `data` parameter passed to the `write` function, not on this
-    /// field. This means that the `datatype` defined in `reference` will be ignored. Because of
-    /// this, `scl_slope` will be set to 1.0 and `scl_inter` to 0.0.
-    reference: Option<&'a NiftiHeader>,
-    /// Whether to write the header and data in distinct files. (nii vs hdr+img)
-    header_file: bool,
-    /// Whether to compress the output to gz. Is guessed from the `header_path`, but can be
-    /// overriden with the `compress` method, which will update the `header_path` to keep coherency.
-    compress: bool,
-    /// Compression level to use when writing to the gz file.
-    compression_level: Compression,
+    /// field. This means that the `datatype` defined in `header_reference` will be ignored.
+    /// Because of this, `scl_slope` will be set to 1.0 and `scl_inter` to 0.0.
+    header_reference: HeaderReference<'a>,
+    /// Whether to write the NIfTI file pair. (nii vs hdr+img)
+    write_header_file: bool,
+    /// The volume will be compressed if `path` ends with ".gz", but it can be overriden with the
+    /// `compress` method. If enabled, the volume will be compressed using the specified compression
+    /// level. Default to `Compression::fast()`.
+    compression: Option<Compression>,
 }
 
 impl<'a> WriterOptions<'a> {
     /// Creates a blank new set of options ready for configuration.
-    pub fn new<P>(header_path: P) -> WriterOptions<'a>
+    pub fn new<P>(path: P) -> WriterOptions<'a>
     where
         P: AsRef<Path>,
     {
-        let mut header_path = header_path.as_ref().to_owned();
-        if header_path.extension().is_none() {
-            let _ = header_path.set_extension("nii");
+        let mut path = path.as_ref().to_owned();
+        if path.extension().is_none() {
+            let _ = path.set_extension("nii");
         }
-        let header_file = is_hdr_file(&header_path);
-        let compress = is_gz_file(&header_path);
+        let write_header_file = is_hdr_file(&path);
+        let compression = if is_gz_file(&path) {
+            Some(Compression::fast())
+        } else {
+            None
+        };
         WriterOptions {
-            header_path,
-            reference: None,
-            header_file,
-            compress,
-            compression_level: Compression::fast(),
+            path,
+            header_reference: HeaderReference::None,
+            write_header_file,
+            compression,
         }
     }
 
-    /// Sets the reference header to use instead of the default one.
-    pub fn reference(mut self, reference: &'a NiftiHeader) -> Self {
-        self.reference = Some(reference);
+    /// Sets the reference header.
+    pub fn reference_header(mut self, header: &'a NiftiHeader) -> Self {
+        self.header_reference = HeaderReference::FromHeader(header);
+        self
+    }
+
+    /// Loads a reference header from a Nifti file.
+    pub fn reference_file<P: 'a>(mut self, path: &'a P) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        self.header_reference = HeaderReference::FromFile(path.as_ref());
         self
     }
 
     /// Whether to write the header and data in distinct files.
     ///
     /// Will update the output path accordingly.
-    pub fn header_file(mut self, header_file: bool) -> Self {
-        if self.header_file != header_file {
-            self.header_file = header_file;
-            self.fix_header_path_extension();
+    pub fn write_header_file(mut self, write_header_file: bool) -> Self {
+        if self.write_header_file != write_header_file {
+            self.write_header_file = write_header_file;
         }
         self
     }
@@ -79,27 +110,17 @@ impl<'a> WriterOptions<'a> {
     ///
     /// Will update the output path accordingly.
     pub fn compress(mut self, compress: bool) -> Self {
-        if self.compress != compress {
-            self.compress = compress;
-            self.fix_header_path_extension();
+        if self.compression.is_none() && compress {
+            self.compression = Some(Compression::fast());
+        } else if self.compression.is_some() && !compress {
+            self.compression = None;
         }
         self
     }
 
-    /// Fix the header path extension in case a change in `header_file` or `compress` broke it.
-    fn fix_header_path_extension(&mut self) {
-        let _ = self.header_path.set_extension("");
-        self.header_path = match (self.header_file, self.compress) {
-            (false, false) => self.header_path.with_extension("nii"),
-            (false, true) => self.header_path.with_extension("nii.gz"),
-            (true, false) => self.header_path.with_extension("hdr"),
-            (true, true) => self.header_path.with_extension("hdr.gz"),
-        };
-    }
-
     /// Sets the compression level to use when compressing the output.
     pub fn compression_level(mut self, compression_level: Compression) -> Self {
-        self.compression_level = compression_level;
+        self.compression = Some(compression_level);
         self
     }
 
@@ -111,16 +132,16 @@ impl<'a> WriterOptions<'a> {
         A: TriviallyTransmutable,
         D: Dimension + RemoveAxis,
     {
-        let (header, data_path) = self.prepare_header_and_paths(data, A::DATA_TYPE)?;
+        let (header, header_path, data_path) = self.prepare_header_and_paths(data, A::DATA_TYPE)?;
 
         // Need the transpose for fortran ordering used in nifti file format.
         let data = data.t();
 
-        let header_file = File::create(&self.header_path)?;
+        let header_file = File::create(header_path)?;
         if header.vox_offset > 0.0 {
-            if self.compress {
+            if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(header_file, self.compression_level),
+                    GzEncoder::new(header_file, compression_level),
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
@@ -134,16 +155,16 @@ impl<'a> WriterOptions<'a> {
             }
         } else {
             let data_file = File::create(&data_path)?;
-            if self.compress {
+            if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(header_file, self.compression_level),
+                    GzEncoder::new(header_file, compression_level),
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
                 let _ = writer.into_inner().finish()?;
 
                 let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(data_file, self.compression_level),
+                    GzEncoder::new(data_file, compression_level),
                     header.endianness,
                 );
                 write_data::<_, A, _, _, _, _>(writer.as_mut(), data)?;
@@ -167,16 +188,17 @@ impl<'a> WriterOptions<'a> {
         S: Data<Elem = [u8; 3]>,
         D: Dimension + RemoveAxis,
     {
-        let (header, data_path) = self.prepare_header_and_paths(data, NiftiType::Rgb24)?;
+        let (header, header_path, data_path) =
+            self.prepare_header_and_paths(data, NiftiType::Rgb24)?;
 
         // Need the transpose for fortran used in nifti file format.
         let data = data.t();
 
-        let header_file = File::create(&self.header_path)?;
+        let header_file = File::create(header_path)?;
         if header.vox_offset > 0.0 {
-            if self.compress {
+            if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(header_file, self.compression_level),
+                    GzEncoder::new(header_file, compression_level),
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
@@ -190,16 +212,16 @@ impl<'a> WriterOptions<'a> {
             }
         } else {
             let data_file = File::create(&data_path)?;
-            if self.compress {
+            if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(header_file, self.compression_level),
+                    GzEncoder::new(header_file, compression_level),
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
                 let _ = writer.into_inner().finish()?;
 
                 let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(data_file, self.compression_level),
+                    GzEncoder::new(data_file, compression_level),
                     header.endianness,
                 );
                 write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
@@ -222,21 +244,11 @@ impl<'a> WriterOptions<'a> {
         &self,
         data: &ArrayBase<T, D>,
         datatype: NiftiType,
-    ) -> Result<(NiftiHeader, PathBuf)>
+    ) -> Result<(NiftiHeader, PathBuf, PathBuf)>
     where
         T: Data,
         D: Dimension,
     {
-        // If no reference header is given, use the default.
-        let reference = match self.reference {
-            Some(r) => r.clone(),
-            None => {
-                let mut header = NiftiHeader::default();
-                header.sform_code = 2;
-                header
-            }
-        };
-
         let mut header = NiftiHeader {
             dim: *Dim::from_slice(data.shape())?.raw(),
             sizeof_hdr: 348,
@@ -246,29 +258,30 @@ impl<'a> WriterOptions<'a> {
             scl_inter: 0.0,
             scl_slope: 1.0,
             magic: *MAGIC_CODE_NIP1,
-            // All other fields are copied from reference header
-            ..reference
+            // All other fields are copied from the requested reference header
+            ..self.header_reference.to_header()?
         };
 
         // The only acceptable length is 80. If different, try to set it.
         header.validate_description()?;
 
-        let mut path_buf = self.header_path.clone();
-        let data_path = if self.header_file {
-            header.vox_offset = 0.0;
-            header.magic = *MAGIC_CODE_NI1;
-            let data_path = if self.compress {
-                let _ = path_buf.set_extension("");
-                path_buf.with_extension("img.gz")
-            } else {
-                path_buf.with_extension("img")
-            };
-            data_path
-        } else {
-            path_buf
+        // Fix the header path extension in case a change in `write_header_file` or `compression`
+        // broke it.
+        let mut path = self.path.clone();
+        let _ = path.set_extension("");
+        let (header_path, data_path) = match (self.write_header_file, self.compression.is_some()) {
+            (false, false) => (path.with_extension("nii"), path.with_extension("nii")),
+            (false, true) => (path.with_extension("nii.gz"), path.with_extension("nii.gz")),
+            (true, false) => (path.with_extension("hdr"), path.with_extension("img")),
+            (true, true) => (path.with_extension("hdr.gz"), path.with_extension("img.gz")),
         };
 
-        Ok((header, data_path))
+        if self.write_header_file {
+            header.vox_offset = 0.0;
+            header.magic = *MAGIC_CODE_NI1;
+        }
+
+        Ok((header, header_path, data_path))
     }
 }
 
@@ -391,40 +404,4 @@ where
     let bytes = adapt_bytes::<B, _>(&bytes, endianness);
     writer.write_all(&*bytes)?;
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_writer_path() {
-        let w = WriterOptions::new("~/image");
-        assert_eq!(w.header_path, PathBuf::from("~/image.nii"));
-
-        for (p, nii, niigz) in &[
-            ("~/image", "~/image.nii", "~/image.nii.gz"),
-            ("~/image.nii", "~/image.nii", "~/image.nii.gz"),
-            ("~/image.nii.gz", "~/image.nii", "~/image.nii.gz"),
-            ("~/image.hdr", "~/image.hdr", "~/image.hdr.gz"),
-            ("~/image.hdr.gz", "~/image.hdr", "~/image.hdr.gz"),
-        ] {
-            let nii = PathBuf::from(nii);
-            let niigz = PathBuf::from(niigz);
-
-            let w = WriterOptions::new(p).compress(true);
-            assert_eq!(w.header_path, niigz);
-            let w = WriterOptions::new(p).compress(true).compress(true);
-            assert_eq!(w.header_path, niigz);
-            let w = WriterOptions::new(p).compress(true).compress(false);
-            assert_eq!(w.header_path, nii);
-
-            let w = WriterOptions::new(p).compress(false);
-            assert_eq!(w.header_path, nii);
-            let w = WriterOptions::new(p).compress(false).compress(false);
-            assert_eq!(w.header_path, nii);
-            let w = WriterOptions::new(p).compress(false).compress(true);
-            assert_eq!(w.header_path, niigz);
-        }
-    }
 }

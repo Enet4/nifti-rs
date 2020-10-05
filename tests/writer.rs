@@ -92,7 +92,7 @@ mod tests {
         let dim = *Dim::from_slice(arr.shape()).unwrap().raw();
         let header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
         WriterOptions::new(&path)
-            .reference(&header)
+            .reference_header(&header)
             .write_nifti(&arr)
             .unwrap();
 
@@ -160,7 +160,7 @@ mod tests {
         let header = generate_nifti_header(dim, slope, inter, NiftiType::Float32);
         let transformed_data = arr.mul(slope).add(inter);
         WriterOptions::new(&path)
-            .reference(&header)
+            .reference_header(&header)
             .write_nifti(&transformed_data)
             .unwrap();
 
@@ -182,7 +182,7 @@ mod tests {
 
         let path = get_temporary_path("test_slope_inter.nii");
         WriterOptions::new(&path)
-            .reference(&header)
+            .reference_header(&header)
             .write_nifti(&data)
             .unwrap();
 
@@ -238,7 +238,7 @@ mod tests {
         let v = "äbcdé".as_bytes();
         header.descrip = v.to_vec();
         WriterOptions::new(&path)
-            .reference(&header)
+            .reference_header(&header)
             .write_nifti(&data)
             .unwrap();
         let (new_header, new_data) = read_as_ndarray::<_, f32, _>(&path);
@@ -249,7 +249,7 @@ mod tests {
         // set_description
         header.set_description("ひらがな".as_bytes()).unwrap();
         WriterOptions::new(&path)
-            .reference(&header)
+            .reference_header(&header)
             .write_nifti(&data)
             .unwrap();
         let (new_header, new_data) = read_as_ndarray::<_, f32, _>(&path);
@@ -259,7 +259,7 @@ mod tests {
         // set_description_str
         header.set_description_str("русский").unwrap();
         WriterOptions::new(&path)
-            .reference(&header)
+            .reference_header(&header)
             .write_nifti(&data)
             .unwrap();
         let (new_header, new_data) = read_as_ndarray::<_, f32, _>(&path);
@@ -275,7 +275,7 @@ mod tests {
         let path = get_temporary_path("error_description.nii");
         let data = Array::from_elem((3, 4, 5), 1.5);
         assert!(WriterOptions::new(&path)
-            .reference(&header)
+            .reference_header(&header)
             .write_nifti(&data)
             .is_err());
     }
@@ -353,7 +353,7 @@ mod tests {
         let data_path = header_path.with_extension("img");
         let header = rgb_header_gt();
         WriterOptions::new(&header_path)
-            .reference(&header)
+            .reference_header(&header)
             .write_rgb_nifti(&data)
             .unwrap();
 
@@ -382,7 +382,7 @@ mod tests {
         let path = get_temporary_path("rgb.nii");
         let header = rgb_header_gt();
         WriterOptions::new(&path)
-            .reference(&header)
+            .reference_header(&header)
             .write_rgb_nifti(&data)
             .unwrap();
 
@@ -407,7 +407,7 @@ mod tests {
         let path = get_temporary_path("rgb.nii");
         let header = rgb_header_gt();
         WriterOptions::new(&path)
-            .reference(&header)
+            .reference_header(&header)
             .write_rgb_nifti(&data)
             .unwrap();
 
