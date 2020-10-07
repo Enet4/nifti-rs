@@ -55,6 +55,9 @@ pub struct WriterOptions<'a> {
     /// `compress` method. If enabled, the volume will be compressed using the specified compression
     /// level. Default to `Compression::fast()`.
     compression: Option<Compression>,
+    /// The header file will only be compressed if the caller specifically asked for a path ending
+    /// with "hdr.gz". Otherwise, only the volume will be compressed (if requested).
+    force_header_compression: bool,
 }
 
 impl<'a> WriterOptions<'a> {
@@ -78,6 +81,7 @@ impl<'a> WriterOptions<'a> {
             header_reference: HeaderReference::None,
             write_header_file,
             compression,
+            force_header_compression: write_header_file && compression.is_some(),
         }
     }
 
@@ -132,7 +136,8 @@ impl<'a> WriterOptions<'a> {
         A: TriviallyTransmutable,
         D: Dimension + RemoveAxis,
     {
-        let (header, header_path, data_path) = self.prepare_header_and_paths(data, A::DATA_TYPE)?;
+        let header = self.prepare_header(data, A::DATA_TYPE)?;
+        let (header_path, data_path) = self.output_paths();
 
         // Need the transpose for fortran ordering used in nifti file format.
         let data = data.t();
@@ -188,8 +193,8 @@ impl<'a> WriterOptions<'a> {
         S: Data<Elem = [u8; 3]>,
         D: Dimension + RemoveAxis,
     {
-        let (header, header_path, data_path) =
-            self.prepare_header_and_paths(data, NiftiType::Rgb24)?;
+        let header = self.prepare_header(data, NiftiType::Rgb24)?;
+        let (header_path, data_path) = self.output_paths();
 
         // Need the transpose for fortran used in nifti file format.
         let data = data.t();
@@ -240,11 +245,11 @@ impl<'a> WriterOptions<'a> {
         Ok(())
     }
 
-    fn prepare_header_and_paths<T, D>(
+    fn prepare_header<T, D>(
         &self,
         data: &ArrayBase<T, D>,
         datatype: NiftiType,
-    ) -> Result<(NiftiHeader, PathBuf, PathBuf)>
+    ) -> Result<NiftiHeader>
     where
         T: Data,
         D: Dimension,
@@ -262,26 +267,34 @@ impl<'a> WriterOptions<'a> {
             ..self.header_reference.to_header()?
         };
 
-        // The only acceptable length is 80. If different, try to set it.
-        header.validate_description()?;
-
-        // Fix the header path extension in case a change in `write_header_file` or `compression`
-        // broke it.
-        let mut path = self.path.clone();
-        let _ = path.set_extension("");
-        let (header_path, data_path) = match (self.write_header_file, self.compression.is_some()) {
-            (false, false) => (path.with_extension("nii"), path.with_extension("nii")),
-            (false, true) => (path.with_extension("nii.gz"), path.with_extension("nii.gz")),
-            (true, false) => (path.with_extension("hdr"), path.with_extension("img")),
-            (true, true) => (path.with_extension("hdr.gz"), path.with_extension("img.gz")),
-        };
-
         if self.write_header_file {
             header.vox_offset = 0.0;
             header.magic = *MAGIC_CODE_NI1;
         }
 
-        Ok((header, header_path, data_path))
+        // The only acceptable length is 80. If different, try to set it.
+        header.validate_description()?;
+
+        Ok(header)
+    }
+
+    /// Fix the header path extension in case a change in `write_header_file` or `compression`
+    /// broke it.
+    fn output_paths(&self) -> (PathBuf, PathBuf) {
+        let mut path = self.path.clone();
+        let _ = path.set_extension("");
+        match (self.write_header_file, self.compression.is_some()) {
+            (false, false) => (path.with_extension("nii"), path.with_extension("nii")),
+            (false, true) => (path.with_extension("nii.gz"), path.with_extension("nii.gz")),
+            (true, false) => (path.with_extension("hdr"), path.with_extension("img")),
+            (true, true) => {
+                if self.force_header_compression {
+                    (path.with_extension("hdr.gz"), path.with_extension("img.gz"))
+                } else {
+                    (path.with_extension("hdr"), path.with_extension("img.gz"))
+                }
+            }
+        }
     }
 }
 
