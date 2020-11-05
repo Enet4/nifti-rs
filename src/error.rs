@@ -1,7 +1,7 @@
 //! Types for error handling go here.
+use crate::typedef::NiftiType;
 use quick_error::quick_error;
 use std::io::Error as IOError;
-use crate::typedef::NiftiType;
 
 quick_error! {
     /// Error type for all error variants originated by this crate.
@@ -22,7 +22,6 @@ quick_error! {
                 _ => "must be positive"
             })
         }
-        
         /// Attempted to read volume outside boundaries.
         OutOfBounds(coords: Vec<u16>) {
             display("Out of bounds access to volume: {:?}", &coords[..])
@@ -33,7 +32,7 @@ quick_error! {
         }
         /// Could not retrieve a volume file based on the given header file.
         MissingVolumeFile(err: IOError) {
-            cause(err)
+            source(err)
             display("Volume file not found")
         }
         /// An attempt to read a complete NIFTI-1 object from a header file
@@ -59,7 +58,7 @@ quick_error! {
         /// I/O Error
         Io(err: IOError) {
             from()
-            cause(err)
+            source(err)
         }
         /// Raw data buffer length and volume dimensions are incompatible
         IncompatibleLength(got: usize, expected: usize) {
