@@ -27,14 +27,13 @@ byteordered = "0.5"
 flate2 = "1.0"
 num-derive = "0.3"
 num-traits = "0.2"
-quick-error = "1.2"
+quick-error = "2.0"
 safe-transmute = "0.11"
-either = "1.5"
+either = "1.6"
 
 [dependencies.nalgebra]
-default-features = false
 optional = true
-version = "0.21"
+version = "0.23"
 
 [dependencies.ndarray]
 optional = true
@@ -44,7 +43,7 @@ features = ["approx"]
 [dependencies.simba]
 default-features = false
 optional = true
-version = "0.1"
+version = "0.3"
 
 [dev-dependencies]
 pretty_assertions = "0.6"
