@@ -52,7 +52,6 @@ mod ndarray_volumes {
         DataElement, InMemNiftiVolume, IntoNdArray, NiftiObject, NiftiType, NiftiVolume,
         ReaderOptions, ReaderStreamedOptions,
     };
-    use num_traits::AsPrimitive;
     use std::fmt;
     use std::ops::{Add, Mul};
 
@@ -262,17 +261,6 @@ mod ndarray_volumes {
         T: Mul<Output = T>,
         T: DataElement,
         T: PartialEq<T>,
-        u8: AsPrimitive<T>,
-        i8: AsPrimitive<T>,
-        u16: AsPrimitive<T>,
-        i16: AsPrimitive<T>,
-        u32: AsPrimitive<T>,
-        i32: AsPrimitive<T>,
-        u64: AsPrimitive<T>,
-        i64: AsPrimitive<T>,
-        f32: AsPrimitive<T>,
-        f64: AsPrimitive<T>,
-        usize: AsPrimitive<T>,
     {
         let volume = ReaderOptions::new()
             .read_file(path)
@@ -282,7 +270,7 @@ mod ndarray_volumes {
 
         let data = volume.into_ndarray::<T>().unwrap();
         for (idx, val) in data.iter().enumerate() {
-            assert_eq!(idx.as_(), *val);
+            assert_eq!(T::from_u64(idx as u64), *val);
         }
     }
 }
