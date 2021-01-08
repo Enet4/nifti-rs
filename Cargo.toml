@@ -22,7 +22,7 @@ branch = "master"
 repository = "Enet4/nifti-rs"
 
 [dependencies]
-approx = "0.3"
+approx = "0.4"
 byteordered = "0.5"
 flate2 = "1.0"
 num-derive = "0.3"
@@ -33,11 +33,11 @@ either = "1.6"
 
 [dependencies.nalgebra]
 optional = true
-version = "0.23"
+version = "0.24"
 
 [dependencies.ndarray]
 optional = true
-version = "0.13"
+version = "0.14"
 features = ["approx"]
 
 [dependencies.simba]
