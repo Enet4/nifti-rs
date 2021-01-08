@@ -33,7 +33,7 @@ either = "1.6"
 
 [dependencies.nalgebra]
 optional = true
-version = "0.23"
+version = "0.24"
 
 [dependencies.ndarray]
 optional = true
