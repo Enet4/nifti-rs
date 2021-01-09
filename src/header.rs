@@ -100,7 +100,7 @@ pub struct NiftiHeader {
     pub slice_end: i16,
     /// Slice timing order
     pub slice_code: u8,
-    /// Units of pixdim[1..4]
+    /// Units of `pixdim[1..4]`
     pub xyzt_units: u8,
     /// Max display intensity
     pub cal_max: f32,
