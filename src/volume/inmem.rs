@@ -1,14 +1,14 @@
 //! Module holding an in-memory implementation of a NIfTI volume.
 
-use byteordered::{Endianness};
+use super::shape::Dim;
+use super::util::coords_to_index;
 use crate::error::{NiftiError, Result};
 use crate::header::NiftiHeader;
 use crate::typedef::NiftiType;
 use crate::util::{nb_bytes_for_data, nb_bytes_for_dim_datatype};
 use crate::volume::element::DataElement;
 use crate::volume::{FromSource, FromSourceOptions, NiftiVolume, RandomAccessNiftiVolume};
-use super::shape::Dim;
-use super::util::coords_to_index;
+use byteordered::Endianness;
 use flate2::bufread::GzDecoder;
 use num_traits::Num;
 use std::fs::File;
@@ -17,9 +17,9 @@ use std::ops::{Add, Mul};
 use std::path::Path;
 
 #[cfg(feature = "ndarray_volumes")]
-use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
-#[cfg(feature = "ndarray_volumes")]
 use super::ndarray::IntoNdArray;
+#[cfg(feature = "ndarray_volumes")]
+use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
 
 /// The maximum size in bytes to reserve before the volume voxel data is read.
 const PREALLOC_MAX_SIZE: usize = 1 << 28; // 256M
@@ -27,7 +27,7 @@ const PREALLOC_MAX_SIZE: usize = 1 << 28; // 256M
 macro_rules! fn_convert_and_cast {
     ($fname: ident, $typ: ty, $converter: expr) => {
         #[cfg(feature = "ndarray_volumes")]
-        fn $fname <O> (self) -> Result<Array<O, IxDyn>>
+        fn $fname<O>(self) -> Result<Array<O, IxDyn>>
         where
             O: DataElement,
         {
@@ -45,7 +45,7 @@ macro_rules! fn_convert_and_cast {
                 self.scl_slope,
                 self.scl_inter,
             );
-    
+
             Ok(Array::from_shape_vec(IxDyn(&dim).f(), data).expect("Inconsistent raw data size"))
         }
     };
@@ -109,7 +109,8 @@ impl InMemNiftiVolume {
         if nbytes != Some(raw_data.len()) {
             return Err(NiftiError::IncompatibleLength(
                 raw_data.len(),
-                nbytes.unwrap_or(usize::max_value())));
+                nbytes.unwrap_or(usize::max_value()),
+            ));
         }
 
         Ok(InMemNiftiVolume {
@@ -132,7 +133,8 @@ impl InMemNiftiVolume {
         // sequentially, to prevent some trivial OOM attacks
         let nb_bytes = nb_bytes_for_data(header)?;
         let mut raw_data = Vec::with_capacity(nb_bytes.min(PREALLOC_MAX_SIZE));
-        let nb_bytes_written = std::io::copy(&mut source.take(nb_bytes as u64), &mut raw_data)? as usize;
+        let nb_bytes_written =
+            std::io::copy(&mut source.take(nb_bytes as u64), &mut raw_data)? as usize;
 
         if nb_bytes_written != nb_bytes {
             return Err(NiftiError::IncompatibleLength(nb_bytes_written, nb_bytes));
@@ -194,7 +196,6 @@ impl InMemNiftiVolume {
         self.datatype
             .read_primitive_value(range, self.endianness, self.scl_slope, self.scl_inter)
     }
-
 
     fn_convert_and_cast!(convert_and_cast_u8, u8, DataElement::from_u8);
     fn_convert_and_cast!(convert_and_cast_i8, i8, DataElement::from_i8);
@@ -378,10 +379,10 @@ impl<'a> RandomAccessNiftiVolume for &'a InMemNiftiVolume {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use byteordered::Endianness;
     use crate::typedef::NiftiType;
     use crate::volume::shape::Dim;
     use crate::volume::Sliceable;
+    use byteordered::Endianness;
 
     #[test]
     fn test_u8_inmem_volume() {
