@@ -1,10 +1,10 @@
 //! This module defines the data element API, which enables NIfTI
 //! volume API implementations to read, write and convert data
 //! elements.
-use byteordered::{ByteOrdered, Endian};
-use crate::NiftiType;
 use crate::error::Result;
 use crate::util::convert_bytes_to;
+use crate::NiftiType;
+use byteordered::{ByteOrdered, Endian};
 use num_traits::cast::AsPrimitive;
 use safe_transmute::transmute_vec;
 use std::io::Read;
