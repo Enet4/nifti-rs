@@ -10,11 +10,13 @@ rust:
 matrix:
   include:
     - rust: stable
-      env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes""
+      env: CARGO_FEATURES="--no-default-features"
+    - rust: stable
+      env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes"
     - rust: beta
-      env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes""
+      env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes"
     - rust: nightly
-      env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes""
+      env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes"
     - rust: stable
       env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes"
       os: windows

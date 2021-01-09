@@ -54,5 +54,6 @@ name = "niftidump"
 path = "examples/niftidump/main.rs"
 
 [features]
+default = ["ndarray_volumes"]
 nalgebra_affine = ["nalgebra", "simba"]
 ndarray_volumes = ["ndarray"]
