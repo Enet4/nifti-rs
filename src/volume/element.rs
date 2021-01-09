@@ -158,6 +158,51 @@ pub trait DataElement:
     }
 }
 
+/// Mass-implement primitive conversions from scalar types
+macro_rules! fn_from_scalar {
+    ($typ: ty) => {
+        fn from_u8(value: u8) -> Self {
+            value as $typ
+        }
+
+        fn from_i8(value: i8) -> Self {
+            value as $typ
+        }
+
+        fn from_u16(value: u16) -> Self {
+            value as $typ
+        }
+
+        fn from_i16(value: i16) -> Self {
+            value as $typ
+        }
+
+        fn from_u32(value: u32) -> Self {
+            value as $typ
+        }
+
+        fn from_i32(value: i32) -> Self {
+            value as $typ
+        }
+
+        fn from_u64(value: u64) -> Self {
+            value as $typ
+        }
+
+        fn from_i64(value: i64) -> Self {
+            value as $typ
+        }
+
+        fn from_f32(value: f32) -> Self {
+            value as $typ
+        }
+
+        fn from_f64(value: f64) -> Self {
+            value as $typ
+        }
+    };
+}
+
 impl DataElement for u8 {
     const DATA_TYPE: NiftiType = NiftiType::Uint8;
     type Transform = LinearTransformViaF32;
@@ -175,45 +220,7 @@ impl DataElement for u8 {
         ByteOrdered::native(src).read_u8().map_err(From::from)
     }
 
-    fn from_u8(value: u8) -> Self {
-        value
-    }
-
-    fn from_i8(value: i8) -> Self {
-        value as u8
-    }
-
-    fn from_u16(value: u16) -> Self {
-        value as u8
-    }
-
-    fn from_i16(value: i16) -> Self {
-        value as u8
-    }
-
-    fn from_u32(value: u32) -> Self {
-        value as u8
-    }
-
-    fn from_i32(value: i32) -> Self {
-        value as u8
-    }
-
-    fn from_u64(value: u64) -> Self {
-        value as u8
-    }
-
-    fn from_i64(value: i64) -> Self {
-        value as u8
-    }
-
-    fn from_f32(value: f32) -> Self {
-        value as u8
-    }
-
-    fn from_f64(value: f64) -> Self {
-        value as u8
-    }
+    fn_from_scalar!(u8);
 }
 
 impl DataElement for i8 {
@@ -233,45 +240,7 @@ impl DataElement for i8 {
         ByteOrdered::native(src).read_i8().map_err(From::from)
     }
 
-    fn from_u8(value: u8) -> Self {
-        value as i8
-    }
-
-    fn from_i8(value: i8) -> Self {
-        value
-    }
-
-    fn from_u16(value: u16) -> Self {
-        value as i8
-    }
-
-    fn from_i16(value: i16) -> Self {
-        value as i8
-    }
-
-    fn from_u32(value: u32) -> Self {
-        value as i8
-    }
-
-    fn from_i32(value: i32) -> Self {
-        value as i8
-    }
-
-    fn from_u64(value: u64) -> Self {
-        value as i8
-    }
-
-    fn from_i64(value: i64) -> Self {
-        value as i8
-    }
-
-    fn from_f32(value: f32) -> Self {
-        value as i8
-    }
-
-    fn from_f64(value: f64) -> Self {
-        value as i8
-    }
+    fn_from_scalar!(i8);
 }
 
 impl DataElement for u16 {
@@ -291,45 +260,7 @@ impl DataElement for u16 {
         e.read_u16(src).map_err(From::from)
     }
 
-    fn from_u8(value: u8) -> Self {
-        value as u16
-    }
-
-    fn from_i8(value: i8) -> Self {
-        value as u16
-    }
-
-    fn from_u16(value: u16) -> Self {
-        value
-    }
-
-    fn from_i16(value: i16) -> Self {
-        value as u16
-    }
-
-    fn from_u32(value: u32) -> Self {
-        value as u16
-    }
-
-    fn from_i32(value: i32) -> Self {
-        value as u16
-    }
-
-    fn from_u64(value: u64) -> Self {
-        value as u16
-    }
-
-    fn from_i64(value: i64) -> Self {
-        value as u16
-    }
-
-    fn from_f32(value: f32) -> Self {
-        value as u16
-    }
-
-    fn from_f64(value: f64) -> Self {
-        value as u16
-    }
+    fn_from_scalar!(u16);
 }
 
 impl DataElement for i16 {
@@ -349,45 +280,7 @@ impl DataElement for i16 {
         e.read_i16(src).map_err(From::from)
     }
 
-    fn from_u8(value: u8) -> Self {
-        value as i16
-    }
-
-    fn from_i8(value: i8) -> Self {
-        value as i16
-    }
-
-    fn from_u16(value: u16) -> Self {
-        value as i16
-    }
-
-    fn from_i16(value: i16) -> Self {
-        value
-    }
-
-    fn from_u32(value: u32) -> Self {
-        value as i16
-    }
-
-    fn from_i32(value: i32) -> Self {
-        value as i16
-    }
-
-    fn from_u64(value: u64) -> Self {
-        value as i16
-    }
-
-    fn from_i64(value: i64) -> Self {
-        value as i16
-    }
-
-    fn from_f32(value: f32) -> Self {
-        value as i16
-    }
-
-    fn from_f64(value: f64) -> Self {
-        value as i16
-    }
+    fn_from_scalar!(i16);
 }
 
 impl DataElement for u32 {
@@ -407,46 +300,9 @@ impl DataElement for u32 {
         e.read_u32(src).map_err(From::from)
     }
 
-    fn from_u8(value: u8) -> Self {
-        value as u32
-    }
-
-    fn from_i8(value: i8) -> Self {
-        value as u32
-    }
-
-    fn from_u16(value: u16) -> Self {
-        value as u32
-    }
-
-    fn from_i16(value: i16) -> Self {
-        value as u32
-    }
-
-    fn from_u32(value: u32) -> Self {
-        value
-    }
-
-    fn from_i32(value: i32) -> Self {
-        value as u32
-    }
-
-    fn from_u64(value: u64) -> Self {
-        value as u32
-    }
-
-    fn from_i64(value: i64) -> Self {
-        value as u32
-    }
-
-    fn from_f32(value: f32) -> Self {
-        value as u32
-    }
-
-    fn from_f64(value: f64) -> Self {
-        value as u32
-    }
+    fn_from_scalar!(u32);
 }
+
 impl DataElement for i32 {
     const DATA_TYPE: NiftiType = NiftiType::Int32;
     type Transform = LinearTransformViaF32;
@@ -464,45 +320,7 @@ impl DataElement for i32 {
         e.read_i32(src).map_err(From::from)
     }
 
-    fn from_u8(value: u8) -> Self {
-        value as i32
-    }
-
-    fn from_i8(value: i8) -> Self {
-        value as i32
-    }
-
-    fn from_u16(value: u16) -> Self {
-        value as i32
-    }
-
-    fn from_i16(value: i16) -> Self {
-        value as i32
-    }
-
-    fn from_u32(value: u32) -> Self {
-        value as i32
-    }
-
-    fn from_i32(value: i32) -> Self {
-        value
-    }
-
-    fn from_u64(value: u64) -> Self {
-        value as i32
-    }
-
-    fn from_i64(value: i64) -> Self {
-        value as i32
-    }
-
-    fn from_f32(value: f32) -> Self {
-        value as i32
-    }
-
-    fn from_f64(value: f64) -> Self {
-        value as i32
-    }
+    fn_from_scalar!(i32);
 }
 
 impl DataElement for u64 {
@@ -522,45 +340,7 @@ impl DataElement for u64 {
         e.read_u64(src).map_err(From::from)
     }
 
-    fn from_u8(value: u8) -> Self {
-        value as u64
-    }
-
-    fn from_i8(value: i8) -> Self {
-        value as u64
-    }
-
-    fn from_u16(value: u16) -> Self {
-        value as u64
-    }
-
-    fn from_i16(value: i16) -> Self {
-        value as u64
-    }
-
-    fn from_u32(value: u32) -> Self {
-        value as u64
-    }
-
-    fn from_i32(value: i32) -> Self {
-        value as u64
-    }
-
-    fn from_u64(value: u64) -> Self {
-        value
-    }
-
-    fn from_i64(value: i64) -> Self {
-        value as u64
-    }
-
-    fn from_f32(value: f32) -> Self {
-        value as u64
-    }
-
-    fn from_f64(value: f64) -> Self {
-        value as u64
-    }
+    fn_from_scalar!(u64);
 }
 
 impl DataElement for i64 {
@@ -580,47 +360,9 @@ impl DataElement for i64 {
         e.read_i64(src).map_err(From::from)
     }
 
-
-    fn from_u8(value: u8) -> Self {
-        value as i64
-    }
-
-    fn from_i8(value: i8) -> Self {
-        value as i64
-    }
-
-    fn from_u16(value: u16) -> Self {
-        value as i64
-    }
-
-    fn from_i16(value: i16) -> Self {
-        value as i64
-    }
-
-    fn from_u32(value: u32) -> Self {
-        value as i64
-    }
-
-    fn from_i32(value: i32) -> Self {
-        value as i64
-    }
-
-    fn from_u64(value: u64) -> Self {
-        value as i64
-    }
-
-    fn from_i64(value: i64) -> Self {
-        value
-    }
-
-    fn from_f32(value: f32) -> Self {
-        value as i64
-    }
-
-    fn from_f64(value: f64) -> Self {
-        value as i64
-    }
+    fn_from_scalar!(i64);
 }
+
 impl DataElement for f32 {
     const DATA_TYPE: NiftiType = NiftiType::Float32;
     type Transform = LinearTransformViaOriginal;
@@ -638,46 +380,9 @@ impl DataElement for f32 {
         e.read_f32(src).map_err(From::from)
     }
 
-    fn from_u8(value: u8) -> Self {
-        value as f32
-    }
-
-    fn from_i8(value: i8) -> Self {
-        value as f32
-    }
-
-    fn from_u16(value: u16) -> Self {
-        value as f32
-    }
-
-    fn from_i16(value: i16) -> Self {
-        value as f32
-    }
-
-    fn from_u32(value: u32) -> Self {
-        value as f32
-    }
-
-    fn from_i32(value: i32) -> Self {
-        value as f32
-    }
-
-    fn from_u64(value: u64) -> Self {
-        value as f32
-    }
-
-    fn from_i64(value: i64) -> Self {
-        value as f32
-    }
-
-    fn from_f32(value: f32) -> Self {
-        value
-    }
-
-    fn from_f64(value: f64) -> Self {
-        value as f32
-    }
+    fn_from_scalar!(f32);
 }
+
 impl DataElement for f64 {
     const DATA_TYPE: NiftiType = NiftiType::Float64;
     type Transform = LinearTransformViaOriginal;
@@ -695,43 +400,5 @@ impl DataElement for f64 {
         e.read_f64(src).map_err(From::from)
     }
 
-    fn from_u8(value: u8) -> Self {
-        value as f64
-    }
-
-    fn from_i8(value: i8) -> Self {
-        value as f64
-    }
-
-    fn from_u16(value: u16) -> Self {
-        value as f64
-    }
-
-    fn from_i16(value: i16) -> Self {
-        value as f64
-    }
-
-    fn from_u32(value: u32) -> Self {
-        value as f64
-    }
-
-    fn from_i32(value: i32) -> Self {
-        value as f64
-    }
-
-    fn from_u64(value: u64) -> Self {
-        value as f64
-    }
-
-    fn from_i64(value: i64) -> Self {
-        value as f64
-    }
-
-    fn from_f32(value: f32) -> Self {
-        value as f64
-    }
-
-    fn from_f64(value: f64) -> Self {
-        value
-    }
+    fn_from_scalar!(f64);
 }
