@@ -7,9 +7,9 @@ This library is a pure Rust implementation for reading files in the [NIfTI](http
 Please see [the documentation](https://docs.rs/nifti) for more.
 
 ```rust
-use nifti::{NiftiObject, InMemNiftiObject, NiftiVolume};
+use nifti::{NiftiObject, ReaderOptions, NiftiVolume};
 
-let obj = InMemNiftiObject::from_file("myvolume.nii.gz")?;
+let obj = ReaderOptions::new().read_file("myvolume.nii.gz")?;
 // use obj
 let header = obj.header();
 let volume = obj.volume();
@@ -20,9 +20,9 @@ The library will automatically look for the respective volume when
 specifying just the header file:
 
 ```rust
-use nifti::{NiftiObject, InMemNiftiObject};
+use nifti::{NiftiObject, ReaderOptions};
 
-let obj = InMemNiftiObject::from_file("myvolume.hdr.gz")?;
+let obj = ReaderOptions::new().read_file("myvolume.hdr.gz")?;
 ```
 
 With the `ndarray_volumes` feature enabled, you can also convert a volume to an [`ndarray::Array`](https://docs.rs/ndarray/0.12.0/ndarray/index.html) and work from there:
