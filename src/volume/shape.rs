@@ -17,7 +17,7 @@ use crate::util::{validate_dim, validate_dimensionality};
 #[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
 #[repr(transparent)]
 pub struct Idx(
-    /// dimensions starting at 1, dim[0] is the dimensionality
+    /// dimensions starting at 1, `dim[0]` is the dimensionality
     [u16; 8],
 );
 

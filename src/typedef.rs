@@ -189,7 +189,7 @@ impl NiftiType {
                     inter,
                 ))
             }
-            // TODO add support for more data types
+            // TODO(#3) add support for more data types
             _ => Err(NiftiError::UnsupportedDataType(self)),
         }
     }
@@ -232,125 +232,125 @@ pub enum Intent {
     None = 0,
     /// nifti1 intent codes, to describe intended meaning of dataset contents
     Correl = 2,
-    /// [C2, chap 28] Student t statistic (1 param): p1 = DOF.
+    /// \[C2, chap 28] Student t statistic (1 param): p1 = DOF.
     Ttest = 3,
-    /// [C2, chap 27] Fisher F statistic (2 params):
+    /// \[C2, chap 27] Fisher F statistic (2 params):
     /// p1 = numerator DOF, p2 = denominator DOF.
     Ftest = 4,
-    /// [C1, chap 13] Standard normal (0 params): Density = N(0,1).
+    /// \[C1, chap 13] Standard normal (0 params): Density = N(0,1).
     Zscore = 5,
-    /// [C1, chap 18] Chi-squared (1 param): p1 = DOF.
-    /// Density(x) proportional to exp(-x/2) * x^(p1/2-1).
+    /// \[C1, chap 18] Chi-squared (1 param): p1 = DOF.
+    /// Density(x) proportional to `exp(-x/2) * x^(p1/2-1)`.
     Chisq = 6,
-    /// [C2, chap 25] Beta distribution (2 params): p1=a, p2=b.
-    /// Density(x) proportional to x^(a-1) * (1-x)^(b-1).
+    /// \[C2, chap 25] Beta distribution (2 params): p1=a, p2=b.
+    /// Density(x) proportional to `x^(a-1) * (1-x)^(b-1)`.
     Beta = 7,
-    /// [U, chap 3] Binomial distribution (2 params):
+    /// \[U, chap 3] Binomial distribution (2 params):
     /// p1 = number of trials, p2 = probability per trial.
-    /// Prob(x) = (p1 choose x) * p2^x * (1-p2)^(p1-x), for x=0,1,...,p1.
+    /// Prob(x) = `(p1 choose x) * p2^x * (1-p2)^(p1-x)`, for `x=0,1,...,p1`.
     Binom = 8,
-    /// [C1, chap 17] Gamma distribution (2 params):
+    /// \[C1, chap 17] Gamma distribution (2 params):
     /// p1 = shape, p2 = scale.
-    /// Density(x) proportional to x^(p1-1) * exp(-p2*x).
+    /// Density(x) proportional to `x^(p1-1) * exp(-p2*x)`.
     Gamma = 9,
-    /// [U, chap 4] Poisson distribution (1 param): p1 = mean.
-    /// Prob(x) = exp(-p1) * p1^x / x! , for x=0,1,2,....
+    /// \[U, chap 4] Poisson distribution (1 param): p1 = mean.
+    /// Prob(x) = `exp(-p1) * p1^x / x!` , for `x=0,1,2,...`.
     Poisson = 10,
-    /// [C1, chap 13] Normal distribution (2 params):
+    /// \[C1, chap 13] Normal distribution (2 params):
     /// p1 = mean, p2 = standard deviation.
     Normal = 11,
-    /// [C2, chap 30] Noncentral F statistic (3 params):
+    /// \[C2, chap 30] Noncentral F statistic (3 params):
     /// p1 = numerator DOF, p2 = denominator DOF,
     /// p3 = numerator noncentrality parameter.
     FtestNonc = 12,
-    /// [C2, chap 29] Noncentral chi-squared statistic (2 params):
+    /// \[C2, chap 29] Noncentral chi-squared statistic (2 params):
     /// p1 = DOF, p2 = noncentrality parameter.
     ChisqNonc = 13,
-    /// [C2, chap 23] Logistic distribution (2 params):
+    /// \[C2, chap 23] Logistic distribution (2 params):
     /// p1 = location, p2 = scale.
-    /// Density(x) proportional to sech^2((x-p1)/(2*p2)).
+    /// Density(x) proportional to `sech^2((x-p1)/(2*p2))`.
     Logistic = 14,
-    /// [C2, chap 24] Laplace distribution (2 params):
+    /// \[C2, chap 24] Laplace distribution (2 params):
     /// p1 = location, p2 = scale.
-    /// Density(x) proportional to exp(-abs(x-p1)/p2).
+    /// Density(x) proportional to `exp(-abs(x-p1)/p2)`.
     Laplace = 15,
-    /// [C2, chap 26] Uniform distribution: p1 = lower end, p2 = upper end.
+    /// \[C2, chap 26] Uniform distribution: p1 = lower end, p2 = upper end.
     Uniform = 16,
-    /// [C2, chap 31] Noncentral t statistic (2 params):
+    /// \[C2, chap 31] Noncentral t statistic (2 params):
     /// p1 = DOF, p2 = noncentrality parameter.
     TtestNonc = 17,
-    /// [C1, chap 21] Weibull distribution (3 params):
+    /// \[C1, chap 21] Weibull distribution (3 params):
     /// p1 = location, p2 = scale, p3 = power.
     /// Density(x) proportional to
-    /// ((x-p1)/p2)^(p3-1) * exp(-((x-p1)/p2)^p3) for x > p1.
+    /// `((x-p1)/p2)^(p3-1) * exp(-((x-p1)/p2)^p3)` for `x > p1`.
     Weibull = 18,
-    /// [C1, chap 18] Chi distribution (1 param): p1 = DOF.
-    /// Density(x) proportional to x^(p1-1) * exp(-x^2/2) for x > 0.
+    /// \[C1, chap 18] Chi distribution (1 param): p1 = DOF.
+    /// Density(x) proportional to `x^(p1-1) * exp(-x^2/2)` for `x > 0`.
     /// p1 = 1 = 'half normal' distribution
     /// p1 = 2 = Rayleigh distribution
     /// p1 = 3 = Maxwell-Boltzmann distribution.
     Chi = 19,
-    /// [C1, chap 15] Inverse Gaussian (2 params):
+    /// \[C1, chap 15] Inverse Gaussian (2 params):
     /// p1 = mu, p2 = lambda
     /// Density(x) proportional to
-    /// exp(-p2*(x-p1)^2/(2*p1^2*x)) / x^3  for x > 0.
+    /// `exp(-p2*(x-p1)^2/(2*p1^2*x)) / x^3`  for `x > 0`.
     Invgauss = 20,
-    /// [C2, chap 22] Extreme value type I (2 params):
+    /// \[C2, chap 22] Extreme value type I (2 params):
     /// p1 = location, p2 = scale
-    /// cdf(x) = exp(-exp(-(x-p1)/p2)).
+    /// `cdf(x) = exp(-exp(-(x-p1)/p2))`.
     Extval = 21,
     /// Data is a 'p-value' (no params).
     Pval = 22,
-    /// Data is ln(p-value) (no params).
-    /// To be safe, a program should compute p = exp(-abs(this_value)).
+    /// Data is `ln(p-value)` (no params).
+    /// To be safe, a program should compute `p = exp(-abs(this_value))`.
     /// The nifti_stats.c library returns this_value
-    /// as positive, so that this_value = -log(p).
+    /// as positive, so that `this_value = -log(p)`.
     Logpval = 23,
     /// Data is log10(p-value) (no params).
-    /// To be safe, a program should compute p = pow(10.,-abs(this_value)).
-    /// The nifti_stats.c library returns this_value
-    /// as positive, so that this_value = -log10(p).
+    /// To be safe, a program should compute `p = pow(10.,-abs(this_value))`.
+    /// The nifti_stats.c library returns `this_value`
+    /// as positive, so that `this_value = -log10(p)`.
     Log10pval = 24,
     /* --- these values aren't for statistics --- */
     /// To signify that the value at each voxel is an estimate
-    /// of some parameter, set intent_code = `NIFTI_INTENT_ESTIMATE`.
-    /// The name of the parameter may be stored in intent_name.
+    /// of some parameter, set `intent_code` = `NIFTI_INTENT_ESTIMATE`.
+    /// The name of the parameter may be stored in `intent_name`.
     Estimate = 1001,
     /// To signify that the value at each voxel is an index into
-    /// some set of labels, set intent_code = `NIFTI_INTENT_LABEL`.
-    /// The filename with the labels may stored in aux_file.
+    /// some set of labels, set `intent_code` = `NIFTI_INTENT_LABEL`.
+    /// The filename with the labels may stored in `aux_file`.
     Label = 1002,
     /// To signify that the value at each voxel is an index into the
-    /// NeuroNames labels set, set intent_code = `NIFTI_INTENT_NEURONAME`.
+    /// NeuroNames labels set, set `intent_code` = `NIFTI_INTENT_NEURONAME`.
     Neuroname = 1003,
     /// To store an M x N matrix at each voxel:
-    ///    - dataset must have a 5th dimension (dim[0]=5 and dim[5]>1)
-    ///    - intent_code must be `NIFTI_INTENT_GENMATRIX`
-    ///    - dim[5] must be M*N
-    ///    - intent_p1 must be M (in float format)
-    ///    - intent_p2 must be N (ditto)
-    ///    - the matrix values A[i][[j] are stored in row-order:
-    ///       - A[0][0] A[0][1] ... A[0][N-1]
-    ///       - A[1][0] A[1][1] ... A[1][N-1]
+    ///    - dataset must have a 5th dimension (`dim[0]=5` and `dim[5]>1`)
+    ///    - `intent_code` must be `NIFTI_INTENT_GENMATRIX`
+    ///    - `dim[5]` must be `M*N`
+    ///    - `intent_p1` must be `M` (in float format)
+    ///    - `intent_p2` must be `N` (ditto)
+    ///    - the matrix values `A[i][j]` are stored in row-order:
+    ///       - `A[0][0] A[0][1] ... A[0][N-1]`
+    ///       - `A[1][0] A[1][1] ... A[1][N-1]`
     ///       - etc., until
-    ///       - A[M-1][0] A[M-1][1] ... A[M-1][N-1]
+    ///       - `A[M-1][0] A[M-1][1] ... A[M-1][N-1]`
     Genmatrix = 1004,
-    /// To store an NxN symmetric matrix at each voxel:
+    /// To store an `NxN` symmetric matrix at each voxel:
     ///    - dataset must have a 5th dimension
-    ///    - intent_code must be `NIFTI_INTENT_SYMMATRIX`
-    ///    - dim[5] must be N*(N+1)/2
-    ///    - intent_p1 must be N (in float format)
-    ///    - the matrix values A[i][[j] are stored in row-order:
-    ///       - A[0][0]
-    ///       - A[1][0] A[1][1]
-    ///       - A[2][0] A[2][1] A[2][2]
+    ///    - `intent_code` must be `NIFTI_INTENT_SYMMATRIX`
+    ///    - `dim[5]` must be `N*(N+1)/2`
+    ///    - `intent_p1` must be `N` (in float format)
+    ///    - the matrix values `A[i][j]` are stored in row-order:
+    ///       - `A[0][0]`
+    ///       - `A[1][0] A[1][1]`
+    ///       - `A[2][0] A[2][1] A[2][2]`
     ///       - etc.: row-by-row
     Symmatrix = 1005,
     /// To signify that the vector value at each voxel is to be taken
     /// as a displacement field or vector:
     ///   - dataset must have a 5th dimension
-    ///   - intent_code must be `NIFTI_INTENT_DISPVECT`
-    ///   - dim[5] must be the dimensionality of the displacment
+    ///   - `intent_code` must be `NIFTI_INTENT_DISPVECT`
+    ///   - `dim[5]` must be the dimensionality of the displacment
     ///     vector (e.g., 3 for spatial displacement, 2 for in-plane)
     ///
     /// (specifically for displacements)
@@ -360,34 +360,34 @@ pub enum Intent {
     /// To signify that the vector value at each voxel is really a
     /// spatial coordinate (e.g., the vertices or nodes of a surface mesh):
     ///    - dataset must have a 5th dimension
-    ///    - intent_code must be `NIFTI_INTENT_POINTSET`
-    ///    - dim[0] = 5
-    ///    - dim[1] = number of points
-    ///    - dim[2] = dim[3] = dim[4] = 1
-    ///    - dim[5] must be the dimensionality of space (e.g., 3 => 3D space).
-    ///    - intent_name may describe the object these points come from
+    ///    - `intent_code` must be `NIFTI_INTENT_POINTSET`
+    ///    - `dim[0]` = 5
+    ///    - `dim[1]` = number of points
+    ///    - `dim[2]` = `dim[3]` = `dim[4]` = 1
+    ///    - `dim[5]` must be the dimensionality of space (e.g., 3 => 3D space).
+    ///    - `intent_name` may describe the object these points come from
     ///      (e.g., "pial", "gray/white" , "EEG", "MEG").
     Pointset = 1008,
     /// To signify that the vector value at each voxel is really a triple
     /// of indexes (e.g., forming a triangle) from a pointset dataset:
     ///    - dataset must have a 5th dimension
-    ///    - intent_code must be `NIFTI_INTENT_TRIANGLE`
-    ///    - dim[0] = 5
-    ///    - dim[1] = number of triangles
-    ///    - dim[2] = dim[3] = dim[4] = 1
-    ///    - dim[5] = 3
-    ///    - datatype should be an integer type (preferably `NiftiType::Int32`)
+    ///    - `intent_code` must be `NIFTI_INTENT_TRIANGLE`
+    ///    - `dim[0]` = 5
+    ///    - `dim[1]` = number of triangles
+    ///    - `dim[2]` = `dim[3]` = `dim[4]` = 1
+    ///    - `dim[5]` = 3
+    ///    - `datatype` should be an integer type (preferably `NiftiType::Int32`)
     ///    - the data values are indexes (0,1,...) into a pointset dataset.
     Triangle = 1009,
     /// To signify that the vector value at each voxel is a quaternion:
     ///    - dataset must have a 5th dimension
-    ///    - intent_code must be `NIFTI_INTENT_QUATERNION`
-    ///    - dim[0] = 5
-    ///    - dim[5] = 4
-    ///    - datatype should be a floating point type
+    ///    - `intent_code` must be `NIFTI_INTENT_QUATERNION`
+    ///    - `dim[0]` = 5
+    ///    - `dim[5]` = 4
+    ///    - `datatype` should be a floating point type
     Quaternion = 1010,
     /// Dimensionless value - no params - although, as in `_ESTIMATE`
-    /// the name of the parameter may be stored in intent_name.
+    /// the name of the parameter may be stored in `intent_name`.
     Dimless = 1011,
     /* --- these values apply to GIFTI datasets --- */
     /// To signify that the value at each location is from a time series.
@@ -398,18 +398,18 @@ pub enum Intent {
     /// To signify that the vector value at each location is an RGB triplet,
     /// of whatever type.
     ///    - dataset must have a 5th dimension
-    ///    - dim[0] = 5
-    ///    - dim[1] = number of nodes
-    ///    - dim[2] = dim[3] = dim[4] = 1
-    ///    - dim[5] = 3
+    ///    - `dim[0]` = 5
+    ///    - `dim[1]` = number of nodes
+    ///    - `dim[2]` = `dim[3]` = `dim[4]` = 1
+    ///    - `dim[5]` = 3
     RgbVector = 2003,
     /// To signify that the vector value at each location is a 4 valued RGBA
     /// vector, of whatever type.
     ///   - dataset must have a 5th dimension
-    ///   - dim[0] = 5
-    ///   - dim[1] = number of nodes
-    ///   - dim[2] = dim[3] = dim[4] = 1
-    ///   - dim[5] = 4
+    ///   - `dim[0]` = 5
+    ///   - `dim[1]` = number of nodes
+    ///   - `dim[2]` = `dim[3]` = `dim[4]` = 1
+    ///   - `dim[5]` = 4
     RgbaVector = 2004,
     /// To signify that the value at each location is a shape value, such
     /// as the curvature.
