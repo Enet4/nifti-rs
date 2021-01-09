@@ -34,11 +34,12 @@ macro_rules! fn_convert_and_cast {
             use crate::volume::element::LinearTransform;
 
             let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
-    
+
+            // cast raw data from file) to the corresponding DataElement
             let data: Vec<_> = <$typ as DataElement>::from_raw_vec(self.raw_data, self.endianness)?;
-            let mut data: Vec<O> = data.into_iter()
-                .map($converter)
-                .collect();
+            // cast elements to the requested output type
+            let mut data: Vec<O> = data.into_iter().map($converter).collect();
+            // apply slope and inter before creating the final ndarray
             <O as DataElement>::Transform::linear_transform_many_inline(
                 &mut data,
                 self.scl_slope,
