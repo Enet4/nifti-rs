@@ -29,7 +29,6 @@ use crate::error::Result;
 use crate::volume::element::DataElement;
 use crate::volume::NiftiVolume;
 use ndarray::{Array, Axis, Ix, IxDyn};
-use num_traits::AsPrimitive;
 use std::ops::{Add, Mul};
 
 /// Trait for volumes which can be converted to an ndarray.
@@ -43,17 +42,7 @@ pub trait IntoNdArray {
     where
         T: Mul<Output = T>,
         T: Add<Output = T>,
-        T: DataElement,
-        u8: AsPrimitive<T>,
-        i8: AsPrimitive<T>,
-        u16: AsPrimitive<T>,
-        i16: AsPrimitive<T>,
-        u32: AsPrimitive<T>,
-        i32: AsPrimitive<T>,
-        u64: AsPrimitive<T>,
-        i64: AsPrimitive<T>,
-        f32: AsPrimitive<T>,
-        f64: AsPrimitive<T>;
+        T: DataElement;
 }
 
 impl<V> IntoNdArray for super::SliceView<V>
@@ -65,16 +54,6 @@ where
         T: Mul<Output = T>,
         T: Add<Output = T>,
         T: DataElement,
-        u8: AsPrimitive<T>,
-        i8: AsPrimitive<T>,
-        u16: AsPrimitive<T>,
-        i16: AsPrimitive<T>,
-        u32: AsPrimitive<T>,
-        i32: AsPrimitive<T>,
-        u64: AsPrimitive<T>,
-        i64: AsPrimitive<T>,
-        f32: AsPrimitive<T>,
-        f64: AsPrimitive<T>,
     {
         // TODO optimize this implementation (we don't need the whole volume)
         let volume = self.volume.into_ndarray()?;

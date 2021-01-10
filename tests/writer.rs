@@ -21,7 +21,6 @@ mod tests {
     use ndarray::{
         s, Array, Array1, Array2, Array3, Array4, Array5, Axis, Dimension, Ix2, IxDyn, ShapeBuilder,
     };
-    use num_traits::AsPrimitive;
     use tempfile::tempdir;
 
     use nifti::{
@@ -67,16 +66,6 @@ mod tests {
         T: Add<Output = T>,
         T: DataElement,
         D: Dimension,
-        u8: AsPrimitive<T>,
-        i8: AsPrimitive<T>,
-        u16: AsPrimitive<T>,
-        i16: AsPrimitive<T>,
-        u32: AsPrimitive<T>,
-        i32: AsPrimitive<T>,
-        u64: AsPrimitive<T>,
-        i64: AsPrimitive<T>,
-        f32: AsPrimitive<T>,
-        f64: AsPrimitive<T>,
     {
         let nifti_object = ReaderOptions::new()
             .read_file(path)

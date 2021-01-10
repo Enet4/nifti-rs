@@ -1,28 +1,56 @@
 //! Module holding an in-memory implementation of a NIfTI volume.
 
-use byteordered::{Endianness};
+use super::shape::Dim;
+use super::util::coords_to_index;
 use crate::error::{NiftiError, Result};
 use crate::header::NiftiHeader;
 use crate::typedef::NiftiType;
 use crate::util::{nb_bytes_for_data, nb_bytes_for_dim_datatype};
 use crate::volume::element::DataElement;
 use crate::volume::{FromSource, FromSourceOptions, NiftiVolume, RandomAccessNiftiVolume};
-use super::shape::Dim;
-use super::util::coords_to_index;
+use byteordered::Endianness;
 use flate2::bufread::GzDecoder;
-use num_traits::{AsPrimitive, Num};
+use num_traits::Num;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ops::{Add, Mul};
 use std::path::Path;
 
 #[cfg(feature = "ndarray_volumes")]
-use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
-#[cfg(feature = "ndarray_volumes")]
 use super::ndarray::IntoNdArray;
+#[cfg(feature = "ndarray_volumes")]
+use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
 
 /// The maximum size in bytes to reserve before the volume voxel data is read.
 const PREALLOC_MAX_SIZE: usize = 1 << 28; // 256M
+
+macro_rules! fn_convert_and_cast {
+    ($fname: ident, $typ: ty, $converter: expr) => {
+        #[cfg(feature = "ndarray_volumes")]
+        fn $fname<O>(self) -> Result<Array<O, IxDyn>>
+        where
+            O: DataElement,
+        {
+            use crate::volume::element::LinearTransform;
+
+            let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
+
+            // cast the raw data buffer to the DataElement
+            // corresponding to the declared datatype
+            let data: Vec<_> = <$typ as DataElement>::from_raw_vec(self.raw_data, self.endianness)?;
+            // cast elements to the requested output type
+            let mut data: Vec<O> = data.into_iter().map($converter).collect();
+            // apply slope and inter before creating the final ndarray
+            <O as DataElement>::Transform::linear_transform_many_inline(
+                &mut data,
+                self.scl_slope,
+                self.scl_inter,
+            );
+
+            Ok(Array::from_shape_vec(IxDyn(&dim).f(), data).expect("Inconsistent raw data size"))
+        }
+    };
+}
 
 /// A data type for a NIFTI-1 volume contained in memory. Objects of this type
 /// contain raw image data, which is converted automatically when using reading
@@ -82,7 +110,8 @@ impl InMemNiftiVolume {
         if nbytes != Some(raw_data.len()) {
             return Err(NiftiError::IncompatibleLength(
                 raw_data.len(),
-                nbytes.unwrap_or(usize::max_value())));
+                nbytes.unwrap_or(usize::max_value()),
+            ));
         }
 
         Ok(InMemNiftiVolume {
@@ -105,7 +134,8 @@ impl InMemNiftiVolume {
         // sequentially, to prevent some trivial OOM attacks
         let nb_bytes = nb_bytes_for_data(header)?;
         let mut raw_data = Vec::with_capacity(nb_bytes.min(PREALLOC_MAX_SIZE));
-        let nb_bytes_written = std::io::copy(&mut source.take(nb_bytes as u64), &mut raw_data)? as usize;
+        let nb_bytes_written =
+            std::io::copy(&mut source.take(nb_bytes as u64), &mut raw_data)? as usize;
 
         if nb_bytes_written != nb_bytes {
             return Err(NiftiError::IncompatibleLength(nb_bytes_written, nb_bytes));
@@ -161,20 +191,6 @@ impl InMemNiftiVolume {
         T: Copy,
         T: Mul<Output = T>,
         T: Add<Output = T>,
-        T: AsPrimitive<u8>,
-        T: AsPrimitive<f32>,
-        T: AsPrimitive<f64>,
-        T: AsPrimitive<u16>,
-        u8: AsPrimitive<T>,
-        i8: AsPrimitive<T>,
-        u16: AsPrimitive<T>,
-        i16: AsPrimitive<T>,
-        u32: AsPrimitive<T>,
-        i32: AsPrimitive<T>,
-        u64: AsPrimitive<T>,
-        i64: AsPrimitive<T>,
-        f32: AsPrimitive<T>,
-        f64: AsPrimitive<T>,
     {
         let index = coords_to_index(coords, self.dim())?;
         let range = &self.raw_data[index * self.datatype.size_of()..];
@@ -182,28 +198,16 @@ impl InMemNiftiVolume {
             .read_primitive_value(range, self.endianness, self.scl_slope, self.scl_inter)
     }
 
-    // Shortcut to avoid repeating the call for all types
-    #[cfg(feature = "ndarray_volumes")]
-    fn convert_bytes_and_cast_to<I, O>(self) -> Result<Array<O, IxDyn>>
-    where
-        I: DataElement,
-        I: AsPrimitive<O>,
-        O: DataElement,
-    {
-        use crate::volume::element::LinearTransform;
-
-        let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
-
-        let data: Vec<_> = <I as DataElement>::from_raw_vec(self.raw_data, self.endianness)?;
-        let mut data: Vec<O> = data.into_iter().map(AsPrimitive::as_).collect();
-        <O as DataElement>::Transform::linear_transform_many_inline(
-            &mut data,
-            self.scl_slope,
-            self.scl_inter,
-        );
-
-        Ok(Array::from_shape_vec(IxDyn(&dim).f(), data).expect("Inconsistent raw data size"))
-    }
+    fn_convert_and_cast!(convert_and_cast_u8, u8, DataElement::from_u8);
+    fn_convert_and_cast!(convert_and_cast_i8, i8, DataElement::from_i8);
+    fn_convert_and_cast!(convert_and_cast_u16, u16, DataElement::from_u16);
+    fn_convert_and_cast!(convert_and_cast_i16, i16, DataElement::from_i16);
+    fn_convert_and_cast!(convert_and_cast_u32, u32, DataElement::from_u32);
+    fn_convert_and_cast!(convert_and_cast_i32, i32, DataElement::from_i32);
+    fn_convert_and_cast!(convert_and_cast_u64, u64, DataElement::from_u64);
+    fn_convert_and_cast!(convert_and_cast_i64, i64, DataElement::from_i64);
+    fn_convert_and_cast!(convert_and_cast_f32, f32, DataElement::from_f32);
+    fn_convert_and_cast!(convert_and_cast_f64, f64, DataElement::from_f64);
 }
 
 impl FromSourceOptions for InMemNiftiVolume {
@@ -225,28 +229,18 @@ impl IntoNdArray for InMemNiftiVolume {
     fn into_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
         T: DataElement,
-        u8: AsPrimitive<T>,
-        i8: AsPrimitive<T>,
-        u16: AsPrimitive<T>,
-        i16: AsPrimitive<T>,
-        u32: AsPrimitive<T>,
-        i32: AsPrimitive<T>,
-        u64: AsPrimitive<T>,
-        i64: AsPrimitive<T>,
-        f32: AsPrimitive<T>,
-        f64: AsPrimitive<T>,
     {
         match self.datatype {
-            NiftiType::Uint8 => self.convert_bytes_and_cast_to::<u8, T>(),
-            NiftiType::Int8 => self.convert_bytes_and_cast_to::<i8, T>(),
-            NiftiType::Uint16 => self.convert_bytes_and_cast_to::<u16, T>(),
-            NiftiType::Int16 => self.convert_bytes_and_cast_to::<i16, T>(),
-            NiftiType::Uint32 => self.convert_bytes_and_cast_to::<u32, T>(),
-            NiftiType::Int32 => self.convert_bytes_and_cast_to::<i32, T>(),
-            NiftiType::Uint64 => self.convert_bytes_and_cast_to::<u64, T>(),
-            NiftiType::Int64 => self.convert_bytes_and_cast_to::<i64, T>(),
-            NiftiType::Float32 => self.convert_bytes_and_cast_to::<f32, T>(),
-            NiftiType::Float64 => self.convert_bytes_and_cast_to::<f64, T>(),
+            NiftiType::Uint8 => self.convert_and_cast_u8::<T>(),
+            NiftiType::Int8 => self.convert_and_cast_i8::<T>(),
+            NiftiType::Uint16 => self.convert_and_cast_u16::<T>(),
+            NiftiType::Int16 => self.convert_and_cast_i16::<T>(),
+            NiftiType::Uint32 => self.convert_and_cast_u32::<T>(),
+            NiftiType::Int32 => self.convert_and_cast_i32::<T>(),
+            NiftiType::Uint64 => self.convert_and_cast_u64::<T>(),
+            NiftiType::Int64 => self.convert_and_cast_i64::<T>(),
+            NiftiType::Float32 => self.convert_and_cast_f32::<T>(),
+            NiftiType::Float64 => self.convert_and_cast_f64::<T>(),
             //NiftiType::Float128 => {}
             //NiftiType::Complex64 => {}
             //NiftiType::Complex128 => {}
@@ -266,16 +260,6 @@ impl<'a> IntoNdArray for &'a InMemNiftiVolume {
         T: Mul<Output = T>,
         T: Add<Output = T>,
         T: DataElement,
-        u8: AsPrimitive<T>,
-        i8: AsPrimitive<T>,
-        u16: AsPrimitive<T>,
-        i16: AsPrimitive<T>,
-        u32: AsPrimitive<T>,
-        i32: AsPrimitive<T>,
-        u64: AsPrimitive<T>,
-        i64: AsPrimitive<T>,
-        f32: AsPrimitive<T>,
-        f64: AsPrimitive<T>,
     {
         self.clone().into_ndarray()
     }
@@ -396,10 +380,10 @@ impl<'a> RandomAccessNiftiVolume for &'a InMemNiftiVolume {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use byteordered::Endianness;
     use crate::typedef::NiftiType;
     use crate::volume::shape::Dim;
     use crate::volume::Sliceable;
+    use byteordered::Endianness;
 
     #[test]
     fn test_u8_inmem_volume() {

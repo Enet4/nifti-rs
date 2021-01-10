@@ -1,10 +1,10 @@
 //! This module defines the data element API, which enables NIfTI
 //! volume API implementations to read, write and convert data
 //! elements.
-use byteordered::{ByteOrdered, Endian};
-use crate::NiftiType;
 use crate::error::Result;
 use crate::util::convert_bytes_to;
+use crate::NiftiType;
+use byteordered::{ByteOrdered, Endian};
 use num_traits::cast::AsPrimitive;
 use safe_transmute::transmute_vec;
 use std::io::Read;
@@ -46,14 +46,13 @@ pub struct LinearTransformViaF32;
 
 impl<T> LinearTransform<T> for LinearTransformViaF32
 where
-    T: AsPrimitive<f32>,
-    f32: AsPrimitive<T>,
+    T: 'static + Copy + DataElement,
 {
     fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
         if slope == 0. {
             return value;
         }
-        (value.as_() * slope + intercept).as_()
+        T::from_f32(AsPrimitive::<f32>::as_(value) * slope + intercept)
     }
 }
 
@@ -65,8 +64,7 @@ pub struct LinearTransformViaF64;
 
 impl<T> LinearTransform<T> for LinearTransformViaF64
 where
-    T: 'static + Copy + AsPrimitive<f64>,
-    f64: AsPrimitive<T>,
+    T: 'static + Copy + DataElement,
 {
     fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
         if slope == 0. {
@@ -74,7 +72,7 @@ where
         }
         let slope: f64 = slope.as_();
         let intercept: f64 = intercept.as_();
-        (value.as_() * slope + intercept).as_()
+        T::from_f64(AsPrimitive::<f64>::as_(value) * slope + intercept)
     }
 }
 
@@ -86,15 +84,14 @@ pub struct LinearTransformViaOriginal;
 
 impl<T> LinearTransform<T> for LinearTransformViaOriginal
 where
-    T: 'static + DataElement + Mul<Output = T> + Add<Output = T> + Copy,
-    f32: AsPrimitive<T>,
+    T: 'static + Copy + DataElement + Mul<Output = T> + Add<Output = T>,
 {
     fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
         if slope == 0. {
             return value;
         }
-        let slope: T = slope.as_();
-        let intercept: T = intercept.as_();
+        let slope = T::from_f32(slope);
+        let intercept = T::from_f32(intercept);
         value * slope + intercept
     }
 }
@@ -117,6 +114,36 @@ pub trait DataElement:
         R: Read,
         E: Endian;
 
+    /// Create a single element by converting a scalar value.
+    fn from_u8(value: u8) -> Self;
+
+    /// Create a single element by converting a scalar value.
+    fn from_i8(value: i8) -> Self;
+
+    /// Create a single element by converting a scalar value.
+    fn from_u16(value: u16) -> Self;
+
+    /// Create a single element by converting a scalar value.
+    fn from_i16(value: i16) -> Self;
+
+    /// Create a single element by converting a scalar value.
+    fn from_u32(value: u32) -> Self;
+
+    /// Create a single element by converting a scalar value.
+    fn from_i32(value: i32) -> Self;
+
+    /// Create a single element by converting a scalar value.
+    fn from_u64(value: u64) -> Self;
+
+    /// Create a single element by converting a scalar value.
+    fn from_i64(value: i64) -> Self;
+
+    /// Create a single element by converting a scalar value.
+    fn from_f32(value: f32) -> Self;
+
+    /// Create a single element by converting a scalar value.
+    fn from_f64(value: f64) -> Self;
+
     /// Transform the given data vector into a vector of data elements.
     fn from_raw_vec<E>(vec: Vec<u8>, endianness: E) -> Result<Vec<Self>>
     where
@@ -129,6 +156,51 @@ pub trait DataElement:
             .map(|_| Self::from_raw(&mut cursor, endianness.clone()))
             .collect()
     }
+}
+
+/// Mass-implement primitive conversions from scalar types
+macro_rules! fn_from_scalar {
+    ($typ: ty) => {
+        fn from_u8(value: u8) -> Self {
+            value as $typ
+        }
+
+        fn from_i8(value: i8) -> Self {
+            value as $typ
+        }
+
+        fn from_u16(value: u16) -> Self {
+            value as $typ
+        }
+
+        fn from_i16(value: i16) -> Self {
+            value as $typ
+        }
+
+        fn from_u32(value: u32) -> Self {
+            value as $typ
+        }
+
+        fn from_i32(value: i32) -> Self {
+            value as $typ
+        }
+
+        fn from_u64(value: u64) -> Self {
+            value as $typ
+        }
+
+        fn from_i64(value: i64) -> Self {
+            value as $typ
+        }
+
+        fn from_f32(value: f32) -> Self {
+            value as $typ
+        }
+
+        fn from_f64(value: f64) -> Self {
+            value as $typ
+        }
+    };
 }
 
 impl DataElement for u8 {
@@ -147,7 +219,10 @@ impl DataElement for u8 {
     {
         ByteOrdered::native(src).read_u8().map_err(From::from)
     }
+
+    fn_from_scalar!(u8);
 }
+
 impl DataElement for i8 {
     const DATA_TYPE: NiftiType = NiftiType::Int8;
     type Transform = LinearTransformViaF32;
@@ -164,7 +239,10 @@ impl DataElement for i8 {
     {
         ByteOrdered::native(src).read_i8().map_err(From::from)
     }
+
+    fn_from_scalar!(i8);
 }
+
 impl DataElement for u16 {
     const DATA_TYPE: NiftiType = NiftiType::Uint16;
     type Transform = LinearTransformViaF32;
@@ -181,7 +259,10 @@ impl DataElement for u16 {
     {
         e.read_u16(src).map_err(From::from)
     }
+
+    fn_from_scalar!(u16);
 }
+
 impl DataElement for i16 {
     const DATA_TYPE: NiftiType = NiftiType::Int16;
     type Transform = LinearTransformViaF32;
@@ -198,7 +279,10 @@ impl DataElement for i16 {
     {
         e.read_i16(src).map_err(From::from)
     }
+
+    fn_from_scalar!(i16);
 }
+
 impl DataElement for u32 {
     const DATA_TYPE: NiftiType = NiftiType::Uint32;
     type Transform = LinearTransformViaF32;
@@ -215,7 +299,10 @@ impl DataElement for u32 {
     {
         e.read_u32(src).map_err(From::from)
     }
+
+    fn_from_scalar!(u32);
 }
+
 impl DataElement for i32 {
     const DATA_TYPE: NiftiType = NiftiType::Int32;
     type Transform = LinearTransformViaF32;
@@ -232,7 +319,10 @@ impl DataElement for i32 {
     {
         e.read_i32(src).map_err(From::from)
     }
+
+    fn_from_scalar!(i32);
 }
+
 impl DataElement for u64 {
     const DATA_TYPE: NiftiType = NiftiType::Uint64;
     type Transform = LinearTransformViaF64;
@@ -249,7 +339,10 @@ impl DataElement for u64 {
     {
         e.read_u64(src).map_err(From::from)
     }
+
+    fn_from_scalar!(u64);
 }
+
 impl DataElement for i64 {
     const DATA_TYPE: NiftiType = NiftiType::Int64;
     type Transform = LinearTransformViaF64;
@@ -266,7 +359,10 @@ impl DataElement for i64 {
     {
         e.read_i64(src).map_err(From::from)
     }
+
+    fn_from_scalar!(i64);
 }
+
 impl DataElement for f32 {
     const DATA_TYPE: NiftiType = NiftiType::Float32;
     type Transform = LinearTransformViaOriginal;
@@ -283,7 +379,10 @@ impl DataElement for f32 {
     {
         e.read_f32(src).map_err(From::from)
     }
+
+    fn_from_scalar!(f32);
 }
+
 impl DataElement for f64 {
     const DATA_TYPE: NiftiType = NiftiType::Float64;
     type Transform = LinearTransformViaOriginal;
@@ -300,4 +399,6 @@ impl DataElement for f64 {
     {
         e.read_f64(src).map_err(From::from)
     }
+
+    fn_from_scalar!(f64);
 }
