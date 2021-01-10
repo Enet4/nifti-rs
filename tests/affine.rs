@@ -19,6 +19,7 @@ mod nalgebra_affine {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn sform() {
         let mut header = NiftiHeader::default();
         header.sform_code = 1;
@@ -37,6 +38,7 @@ mod nalgebra_affine {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn qform() {
         let mut header = NiftiHeader::default();
         header.sform_code = 0;
@@ -59,6 +61,7 @@ mod nalgebra_affine {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn both_valid() {
         let mut header = NiftiHeader::default();
         header.sform_code = 1;
@@ -86,6 +89,7 @@ mod nalgebra_affine {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn none_valid() {
         let mut header = NiftiHeader::default();
         header.dim = [3, 100, 100, 100, 0, 0, 0, 0];

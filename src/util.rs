@@ -1,17 +1,17 @@
 //! Private utility module
+use super::error::NiftiError;
+use super::typedef::NiftiType;
+use crate::error::Result;
+use crate::NiftiHeader;
+use byteordered::Endian;
+use either::Either;
+use flate2::bufread::GzDecoder;
+use safe_transmute::{transmute_vec, TriviallyTransmutable};
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufReader, Read, Result as IoResult, Seek};
 use std::mem;
 use std::path::{Path, PathBuf};
-use byteordered::Endian;
-use either::Either;
-use flate2::bufread::GzDecoder;
-use safe_transmute::{transmute_vec, TriviallyTransmutable};
-use super::typedef::NiftiType;
-use super::error::NiftiError;
-use crate::error::Result;
-use crate::NiftiHeader;
 
 /// A trait that is both Read and Seek.
 pub trait ReadSeek: Read + Seek {}
@@ -100,13 +100,13 @@ pub fn validate_dimensionality(raw_dim: &[u16; 8]) -> Result<usize> {
 
 pub fn nb_bytes_for_data(header: &NiftiHeader) -> Result<usize> {
     let resolution = nb_values_for_dims(header.dim()?);
-    resolution.and_then(|r| r.checked_mul(header.bitpix as usize / 8))
+    resolution
+        .and_then(|r| r.checked_mul(header.bitpix as usize / 8))
         .ok_or(NiftiError::BadVolumeSize)
 }
 
 pub fn nb_values_for_dims(dim: &[u16]) -> Option<usize> {
-    dim
-        .iter()
+    dim.iter()
         .cloned()
         .map(usize::from)
         .fold(Some(1), |acc, v| acc.and_then(|x| x.checked_mul(v)))
@@ -182,9 +182,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{into_img_file_gz, is_gz_file, nb_bytes_for_dim_datatype};
     #[cfg(feature = "ndarray_volumes")]
     use super::is_hdr_file;
+    use super::{into_img_file_gz, is_gz_file, nb_bytes_for_dim_datatype};
     use crate::typedef::NiftiType;
     use std::path::PathBuf;
 
@@ -253,8 +253,8 @@ mod tests {
 #[cfg(feature = "ndarray_volumes")]
 #[cfg(test)]
 mod test_nd_array {
-    use byteordered::Endianness;
     use super::convert_bytes_to;
+    use byteordered::Endianness;
 
     #[test]
     fn test_convert_vec_i8() {
@@ -287,7 +287,10 @@ mod test_nd_array {
             vec![1, 256, -2]
         );
         assert_eq!(
-            convert_bytes_to::<i16, _>(vec![0x01, 0x00, 0x00, 0x01, 0xfe, 0xff], Endianness::Little),
+            convert_bytes_to::<i16, _>(
+                vec![0x01, 0x00, 0x00, 0x01, 0xfe, 0xff],
+                Endianness::Little
+            ),
             vec![1, 256, -2]
         );
     }
@@ -299,7 +302,10 @@ mod test_nd_array {
             vec![1, 256, 65534]
         );
         assert_eq!(
-            convert_bytes_to::<u16, _>(vec![0x01, 0x00, 0x00, 0x01, 0xfe, 0xff], Endianness::Little),
+            convert_bytes_to::<u16, _>(
+                vec![0x01, 0x00, 0x00, 0x01, 0xfe, 0xff],
+                Endianness::Little
+            ),
             vec![1, 256, 65534]
         );
     }
@@ -308,18 +314,14 @@ mod test_nd_array {
     fn test_convert_vec_i32() {
         assert_eq!(
             convert_bytes_to::<i32, _>(
-                vec![
-                    0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0xf0, 0xf1, 0xf2, 0xf3
-                ],
+                vec![0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0xf0, 0xf1, 0xf2, 0xf3],
                 Endianness::Big
             ),
             vec![1, 16777216, -252_579_085]
         );
         assert_eq!(
             convert_bytes_to::<i32, _>(
-                vec![
-                    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xf3, 0xf2, 0xf1, 0xf0
-                ],
+                vec![0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xf3, 0xf2, 0xf1, 0xf0],
                 Endianness::Little
             ),
             vec![1, 16777216, -252_579_085]
@@ -330,18 +332,14 @@ mod test_nd_array {
     fn test_convert_vec_u32() {
         assert_eq!(
             convert_bytes_to::<u32, _>(
-                vec![
-                    0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0xf0, 0xf1, 0xf2, 0xf3
-                ],
+                vec![0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0xf0, 0xf1, 0xf2, 0xf3],
                 Endianness::Big
             ),
             vec![1, 0x01000000, 4_042_388_211]
         );
         assert_eq!(
             convert_bytes_to::<u32, _>(
-                vec![
-                    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xf3, 0xf2, 0xf1, 0xf0
-                ],
+                vec![0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xf3, 0xf2, 0xf1, 0xf0],
                 Endianness::Little
             ),
             vec![1, 0x01000000, 4_042_388_211]

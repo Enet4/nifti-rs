@@ -35,7 +35,6 @@ use std::ops::{Add, Mul};
 ///
 /// Please see the [module-level documentation](index.html) for more details.
 pub trait IntoNdArray {
-
     /// Consume the volume into an ndarray with the same number of dimensions
     /// and the given target element type `T`.
     fn into_ndarray<T>(self) -> Result<Array<T, IxDyn>>

@@ -4,8 +4,8 @@
 //! end of the NIFTI-1 header, with the first byte set to something
 //! other than 0.
 
-use byteordered::{ByteOrdered, Endian};
 use crate::error::{NiftiError, Result};
+use byteordered::{ByteOrdered, Endian};
 use std::io::{ErrorKind as IoErrorKind, Read};
 
 /// The maximum size in bytes to reserve before the extension data is read.
@@ -155,7 +155,8 @@ impl ExtensionSequence {
                 // pre-allocate up to a more reliable amount and feed the
                 // vector sequentially, to prevent some trivial OOM attacks
                 let mut edata = Vec::with_capacity(data_size.min(PREALLOC_MAX_SIZE));
-                let nb_bytes_written = std::io::copy(&mut (&mut source).take(data_size as u64), &mut edata)? as usize;
+                let nb_bytes_written =
+                    std::io::copy(&mut (&mut source).take(data_size as u64), &mut edata)? as usize;
 
                 if nb_bytes_written != data_size {
                     return Err(NiftiError::IncompatibleLength(nb_bytes_written, data_size));
