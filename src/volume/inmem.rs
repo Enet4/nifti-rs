@@ -35,7 +35,8 @@ macro_rules! fn_convert_and_cast {
 
             let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
 
-            // cast raw data from file) to the corresponding DataElement
+            // cast the raw data buffer to the DataElement
+            // corresponding to the declared datatype
             let data: Vec<_> = <$typ as DataElement>::from_raw_vec(self.raw_data, self.endianness)?;
             // cast elements to the requested output type
             let mut data: Vec<O> = data.into_iter().map($converter).collect();
