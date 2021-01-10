@@ -1,0 +1,56 @@
+on: [push, pull_request]
+
+name: Continuous integration
+
+jobs:
+  # all Cargo feature combinations
+  ci-all:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+         - stable
+        features:
+          - "--no-default-features"
+          - "--features ndarray_volumes,nalgebra_affine"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: ${{ matrix.features }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: ${{ matrix.features }}
+
+  # one Cargo feature combination (all)
+  ci-minimal:
+    runs-on:
+     - ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - beta
+        features:
+          - "--features ndarray_volumes,nalgebra_affine"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: ${{ matrix.features }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: ${{ matrix.features }}
