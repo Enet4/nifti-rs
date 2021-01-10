@@ -277,7 +277,7 @@ impl<R> NiftiVolume for StreamedNiftiVolume<R> {
  * [`read_slice`] on `next` unless all slices have already been read from the
  * volume.
  *
- * [`read_slice`](./struct.StreamedNiftiVolume.html#method.read_slice)
+ * [`read_slice`]: StreamedNiftiVolume::read_slice
  */
 impl<R> std::iter::Iterator for StreamedNiftiVolume<R>
 where
