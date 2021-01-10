@@ -1,29 +1,18 @@
 language: rust
 
-os: linux
-
-rust:
- - stable
- - beta
- - nightly
+env:
+  CARGO_FEATURES: "--features nalgebra_affine,ndarray_volumes"
 
 matrix:
   include:
-    - rust: stable
-      env: CARGO_FEATURES="--no-default-features"
-    - rust: stable
-      env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes"
-    - rust: beta
-      env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes"
     - rust: nightly
-      env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes"
+      os: linux
     - rust: stable
-      env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes"
       os: windows
     - rust: stable
-      env: CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes"
       os: osx
-    - env: CROSS_TARGET=mips64-unknown-linux-gnuabi64 CARGO_FEATURES="--features nalgebra_affine,ndarray_volumes"
+    - env:
+        CROSS_TARGET: mips64-unknown-linux-gnuabi64
       rust: stable
       services: docker
       sudo: required
