@@ -29,7 +29,6 @@ use crate::error::Result;
 use crate::volume::element::DataElement;
 use crate::volume::NiftiVolume;
 use ndarray::{Array, Axis, Ix, IxDyn};
-use std::ops::{Add, Mul};
 
 /// Trait for volumes which can be converted to an ndarray.
 ///
@@ -39,8 +38,6 @@ pub trait IntoNdArray {
     /// and the given target element type `T`.
     fn into_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
-        T: Mul<Output = T>,
-        T: Add<Output = T>,
         T: DataElement;
 }
 
@@ -50,8 +47,6 @@ where
 {
     fn into_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
-        T: Mul<Output = T>,
-        T: Add<Output = T>,
         T: DataElement,
     {
         // TODO optimize this implementation (we don't need the whole volume)

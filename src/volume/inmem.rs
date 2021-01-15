@@ -257,8 +257,6 @@ impl<'a> IntoNdArray for &'a InMemNiftiVolume {
     /// Create an ndarray from the given volume.
     fn into_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
-        T: Mul<Output = T>,
-        T: Add<Output = T>,
         T: DataElement,
     {
         self.clone().into_ndarray()
