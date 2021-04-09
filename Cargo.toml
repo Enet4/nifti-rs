@@ -37,7 +37,7 @@ version = "0.24"
 
 [dependencies.ndarray]
 optional = true
-version = "0.14"
+version = "0.15"
 features = ["approx"]
 
 [dependencies.simba]
