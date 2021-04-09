@@ -46,7 +46,7 @@ optional = true
 version = "0.4"
 
 [dev-dependencies]
-pretty_assertions = "0.6"
+pretty_assertions = "0.7"
 tempfile = "3.1"
 
 [[example]]
