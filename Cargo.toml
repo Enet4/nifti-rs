@@ -33,20 +33,20 @@ either = "1.6"
 
 [dependencies.nalgebra]
 optional = true
-version = "0.24"
+version = "0.25"
 
 [dependencies.ndarray]
 optional = true
-version = "0.14"
+version = "0.15"
 features = ["approx"]
 
 [dependencies.simba]
 default-features = false
 optional = true
-version = "0.3"
+version = "0.4"
 
 [dev-dependencies]
-pretty_assertions = "0.6"
+pretty_assertions = "0.7"
 tempfile = "3.1"
 
 [[example]]
