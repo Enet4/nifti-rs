@@ -1,4 +1,4 @@
-# NIFTI-rs &emsp; [![Latest Version](https://img.shields.io/crates/v/nifti.svg)](https://crates.io/crates/nifti) [![Build Status](https://travis-ci.org/Enet4/nifti-rs.svg?branch=master)](https://travis-ci.org/Enet4/nifti-rs) [![dependency status](https://deps.rs/repo/github/Enet4/nifti-rs/status.svg)](https://deps.rs/repo/github/Enet4/nifti-rs)
+# NIFTI-rs &emsp; [![Latest Version](https://img.shields.io/crates/v/nifti.svg)](https://crates.io/crates/nifti) [![Continuous integration status](https://github.com/Enet4/nifti-rs/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/Enet4/nifti-rs/actions/workflows/rust.yml) [![dependency status](https://deps.rs/repo/github/Enet4/nifti-rs/status.svg)](https://deps.rs/repo/github/Enet4/nifti-rs)
 
 This library is a pure Rust implementation for reading files in the [NIfTI](https://nifti.nimh.nih.gov/nifti-1/) format (more specifically NIfTI-1.1).
 
@@ -35,19 +35,17 @@ let volume = obj.into_volume().into_ndarray::<f32>();
 In addition, the `nalgebra_affine` feature unlocks the `affine` module,
 for useful affine transformations.
 
-[`ndarray::Array`]: https://docs.rs/ndarray/0.14.0/ndarray/index.html
+[`ndarray::Array`]: https://docs.rs/ndarray/0.15.1/ndarray/index.html
 
 ## Roadmap
 
-This library should hopefully fulfil a good number of use cases. However, some gaps
-are yet to be filled fill. In particular, future versions should be able to:
-
-- Write NIFTI files;
-- Provide a more elegant volume API;
-- Handle more kinds of volumes;
-- Provide a real spatial-temporal interpretation of the volume (rather than just voxel-indexed);
-
-There are no deadlines for these features, so your help is much appreciated. Consider filing an [issue](https://github.com/Enet4/nifti-rs/issues) in case something is missing for your use case to work. Pull requests are also welcome.
+This library should hopefully fulfil a good number of use cases.
+However, not all features of the format are fully available.
+There are no deadlines for these features, so your help is much appreciated.
+Please visit the [issue tracker](https://github.com/Enet4/nifti-rs/issues) and [tracker for version 1.0](https://github.com/Enet4/nifti-rs/issues/62).
+In case something is missing for your use case to work,
+please find an equivalent issue of file a new one.
+Pull requests are also welcome.
 
 ## License
 
