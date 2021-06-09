@@ -1,6 +1,6 @@
 //! This module defines some affine-related utilities.
 
-use nalgebra::{Matrix3, Matrix4, Quaternion, RowVector4, Scalar, SymmetricEigen, Vector3, U1, U3};
+use nalgebra::{Matrix3, Matrix4, Quaternion, RowVector4, Scalar, SymmetricEigen, Vector3};
 
 /// 3x3 affine transformation matrix.
 pub type Affine3 = Matrix3<f32>;
@@ -15,7 +15,7 @@ where
     T: Copy + Scalar,
 {
     let translation = Vector3::new(affine[12], affine[13], affine[14]);
-    let affine = affine.fixed_slice::<U3, U3>(0, 0).into_owned();
+    let affine = affine.fixed_slice::<3, 3>(0, 0).into_owned();
     (affine, translation)
 }
 
@@ -109,7 +109,7 @@ pub(crate) fn affine_to_quaternion(affine: &Matrix3<f64>) -> RowVector4<f64> {
         .enumerate()
         .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
         .unwrap();
-    let max_vector = vectors.fixed_columns::<U1>(max_idx);
+    let max_vector = vectors.fixed_columns::<1>(max_idx);
     let quaternion = RowVector4::new(max_vector[3], max_vector[0], max_vector[1], max_vector[2]);
 
     // Prefer quaternion with positive `w`.
