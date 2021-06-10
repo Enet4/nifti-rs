@@ -237,7 +237,7 @@ impl NiftiHeader {
     /// Currently, only the following problems are fixed:
     /// - If `pixdim[0]` isn't equal to -1.0 or 1.0, it will be set to 1.0
     pub fn fix(&mut self) {
-        if (self.pixdim[0].abs() - 1.).abs() > 1e-11 {
+        if !self.is_pixdim_0_valid() {
             self.pixdim[0] = 1.0;
         }
     }
@@ -358,6 +358,12 @@ impl NiftiHeader {
     {
         self.set_description(description.into().as_bytes())
     }
+
+    /// Check whether `pixdim[0]` is either -1 or 1.
+    #[inline]
+    fn is_pixdim_0_valid(&self) -> bool {
+        (self.pixdim[0].abs() - 1.).abs() < 1e-11
+    }
 }
 
 #[cfg(feature = "nalgebra_affine")]
@@ -408,7 +414,7 @@ impl NiftiHeader {
         if self.pixdim[1] < 0.0 || self.pixdim[2] < 0.0 || self.pixdim[3] < 0.0 {
             panic!("All spacings (pixdim) should be positive");
         }
-        if (self.pixdim[0].abs() - 1.).abs() > 1e-11 {
+        if !self.is_pixdim_0_valid() {
             panic!("qfac (pixdim[0]) should be 1 or -1");
         }
 
