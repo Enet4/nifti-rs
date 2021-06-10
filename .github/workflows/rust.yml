@@ -1,6 +1,10 @@
-on: [push, pull_request]
-
 name: Continuous integration
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
   # all Cargo feature combinations
