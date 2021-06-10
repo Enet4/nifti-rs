@@ -27,12 +27,13 @@ enum HeaderReference<'a> {
 impl<'a> HeaderReference<'a> {
     fn to_header(&self) -> Result<NiftiHeader> {
         match self {
-            HeaderReference::FromHeader(h) => Ok(h.clone().to_owned()),
+            HeaderReference::FromHeader(h) => Ok((*h).to_owned()),
             HeaderReference::FromFile(path) => NiftiHeader::from_file(path),
             HeaderReference::None => {
-                let mut header = NiftiHeader::default();
-                header.sform_code = 2;
-                Ok(header)
+                Ok(NiftiHeader {
+                    sform_code: 2,
+                    .. NiftiHeader::default()
+                })
             }
         }
     }

@@ -24,12 +24,18 @@ pub struct ReaderOptions {
     fix_header: bool,
 }
 
+impl Default for ReaderOptions {
+    fn default() -> Self {
+        ReaderOptions { fix_header: false }
+    }
+}
+
 impl ReaderOptions {
     /// Creates a blank new set of options ready for configuration.
     ///
     /// All options are initially set to `false`.
-    pub fn new() -> ReaderOptions {
-        ReaderOptions { fix_header: false }
+    pub fn new() -> Self {
+        Default::default()
     }
 
     /// Sets the options to fix some known header problems.
@@ -100,12 +106,18 @@ pub struct ReaderStreamedOptions {
     fix_header: bool,
 }
 
+impl Default for ReaderStreamedOptions {
+    fn default() -> Self {
+        ReaderStreamedOptions { fix_header: false }
+    }
+}
+
 impl ReaderStreamedOptions {
     /// Creates a blank new set of options ready for configuration.
     ///
     /// All options are initially set to `false`.
-    pub fn new() -> ReaderStreamedOptions {
-        ReaderStreamedOptions { fix_header: false }
+    pub fn new() -> Self {
+        Default::default()
     }
 
     /// Sets the options to fix some known header problems.

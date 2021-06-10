@@ -21,9 +21,9 @@ use std::ops::Deref;
 use std::path::Path;
 
 /// Magic code for NIFTI-1 header files (extention ".hdr[.gz]").
-pub const MAGIC_CODE_NI1: &'static [u8; 4] = b"ni1\0";
+pub const MAGIC_CODE_NI1: &[u8; 4] = b"ni1\0";
 /// Magic code for full NIFTI-1 files (extention ".nii[.gz]").
-pub const MAGIC_CODE_NIP1: &'static [u8; 4] = b"n+1\0";
+pub const MAGIC_CODE_NIP1: &[u8; 4] = b"n+1\0";
 
 /// The NIFTI-1 header data type.
 /// All fields are public and named after the specification's header file.
@@ -237,7 +237,7 @@ impl NiftiHeader {
     /// Currently, only the following problems are fixed:
     /// - If `pixdim[0]` isn't equal to -1.0 or 1.0, it will be set to 1.0
     pub fn fix(&mut self) {
-        if self.pixdim[0].abs() != 1.0 {
+        if !self.is_pixdim_0_valid() {
             self.pixdim[0] = 1.0;
         }
     }
@@ -268,21 +268,21 @@ impl NiftiHeader {
     /// Get the data type as a validated enum.
     pub fn data_type(&self) -> Result<NiftiType> {
         FromPrimitive::from_i16(self.datatype)
-            .ok_or_else(|| NiftiError::InvalidCode("datatype", self.datatype))
+            .ok_or(NiftiError::InvalidCode("datatype", self.datatype))
     }
 
     /// Get the spatial units type as a validated unit enum.
     pub fn xyzt_to_space(&self) -> Result<Unit> {
         let space_code = self.xyzt_units & 0o0007;
         FromPrimitive::from_u8(space_code)
-            .ok_or_else(|| NiftiError::InvalidCode("xyzt units (space)", space_code as i16))
+            .ok_or(NiftiError::InvalidCode("xyzt units (space)", space_code as i16))
     }
 
     /// Get the time units type as a validated unit enum.
     pub fn xyzt_to_time(&self) -> Result<Unit> {
         let time_code = self.xyzt_units & 0o0070;
         FromPrimitive::from_u8(time_code)
-            .ok_or_else(|| NiftiError::InvalidCode("xyzt units (time)", time_code as i16))
+            .ok_or(NiftiError::InvalidCode("xyzt units (time)", time_code as i16))
     }
 
     /// Get the xyzt units type as a validated pair of space and time unit enum.
@@ -293,25 +293,25 @@ impl NiftiHeader {
     /// Get the slice order as a validated enum.
     pub fn slice_order(&self) -> Result<SliceOrder> {
         FromPrimitive::from_u8(self.slice_code)
-            .ok_or_else(|| NiftiError::InvalidCode("slice order", self.slice_code as i16))
+            .ok_or(NiftiError::InvalidCode("slice order", self.slice_code as i16))
     }
 
     /// Get the intent as a validated enum.
     pub fn intent(&self) -> Result<Intent> {
         FromPrimitive::from_i16(self.intent_code)
-            .ok_or_else(|| NiftiError::InvalidCode("intent", self.intent_code))
+            .ok_or(NiftiError::InvalidCode("intent", self.intent_code))
     }
 
     /// Get the qform coordinate mapping method as a validated enum.
     pub fn qform(&self) -> Result<XForm> {
         FromPrimitive::from_i16(self.qform_code)
-            .ok_or_else(|| NiftiError::InvalidCode("qform", self.qform_code as i16))
+            .ok_or(NiftiError::InvalidCode("qform", self.qform_code as i16))
     }
 
     /// Get the sform coordinate mapping method as a validated enum.
     pub fn sform(&self) -> Result<XForm> {
         FromPrimitive::from_i16(self.sform_code)
-            .ok_or_else(|| NiftiError::InvalidCode("sform", self.sform_code as i16))
+            .ok_or(NiftiError::InvalidCode("sform", self.sform_code as i16))
     }
 
     /// Ensure that the current `descrip` field is valid and is exactly equal to 80 bytes.
@@ -336,16 +336,18 @@ impl NiftiHeader {
         D: Deref<Target = [u8]>,
     {
         let len = description.len();
-        if len < 80 {
-            let mut descrip = vec![0; 80];
-            descrip[..len].copy_from_slice(&description);
-            self.descrip = descrip;
-            Ok(())
-        } else if len == 80 {
-            self.descrip = description.into();
-            Ok(())
-        } else {
-            Err(NiftiError::IncorrectDescriptionLength(len))
+        match len.cmp(&80) {
+            std::cmp::Ordering::Less => {
+                let mut descrip = vec![0; 80];
+                descrip[..len].copy_from_slice(&description);
+                self.descrip = descrip;
+                Ok(())
+            }
+            std::cmp::Ordering::Equal => {
+                self.descrip = description.into();
+                Ok(())
+            }
+            _ => Err(NiftiError::IncorrectDescriptionLength(len)),
         }
     }
 
@@ -355,6 +357,12 @@ impl NiftiHeader {
         T: Into<String>,
     {
         self.set_description(description.into().as_bytes())
+    }
+
+    /// Check whether `pixdim[0]` is either -1 or 1.
+    #[inline]
+    fn is_pixdim_0_valid(&self) -> bool {
+        (self.pixdim[0].abs() - 1.).abs() < 1e-11
     }
 }
 
@@ -406,7 +414,7 @@ impl NiftiHeader {
         if self.pixdim[1] < 0.0 || self.pixdim[2] < 0.0 || self.pixdim[3] < 0.0 {
             panic!("All spacings (pixdim) should be positive");
         }
-        if self.pixdim[0].abs() != 1.0 {
+        if !self.is_pixdim_0_valid() {
             panic!("qfac (pixdim[0]) should be 1 or -1");
         }
 

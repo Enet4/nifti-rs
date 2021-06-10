@@ -63,6 +63,7 @@
 //!
 #![deny(missing_debug_implementations)]
 #![warn(missing_docs, unused_extern_crates, trivial_casts, unused_results)]
+#![allow(clippy::unit_arg)]
 #![recursion_limit = "128"]
 
 #[cfg(all(test, feature = "nalgebra_affine"))]

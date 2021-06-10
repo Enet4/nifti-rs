@@ -61,7 +61,7 @@ impl Idx {
     /// # Ok::<(), nifti::NiftiError>(())
     /// ```
     pub fn from_slice(idx: &[u16]) -> Result<Self> {
-        if idx.len() == 0 || idx.len() > 7 {
+        if idx.is_empty() || idx.len() > 7 {
             return Err(NiftiError::InconsistentDim(0, idx.len() as u16));
         }
         let mut raw = [0; 8];
@@ -143,7 +143,7 @@ impl Dim {
     where
         T: 'static + Copy + AsPrimitive<u16>,
     {
-        if dim.len() == 0 || dim.len() > 7 {
+        if dim.is_empty() || dim.len() > 7 {
             return Err(NiftiError::InconsistentDim(0, dim.len() as u16));
         }
         let mut raw = [1; 8];
