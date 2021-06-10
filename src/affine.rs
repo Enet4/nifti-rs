@@ -127,6 +127,7 @@ pub(crate) fn affine_to_quaternion(affine: &Matrix3<f64>) -> RowVector4<f64> {
 ///
 /// Algorithm from https://en.wikipedia.org/wiki/Rotation_matrix#Quaternion
 #[rustfmt::skip]
+#[allow(clippy::many_single_char_names)]
 pub(crate) fn quaternion_to_affine(q: Quaternion<f64>) -> Matrix3<f64> {
     let nq = q.w * q.w + q.i * q.i + q.j * q.j + q.k * q.k;
     if nq < ::std::f64::EPSILON {

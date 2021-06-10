@@ -220,7 +220,7 @@ where
     /// }
     /// # Ok::<(), nifti::NiftiError>(())
     /// ```
-    pub fn indexed<'a>(&'a mut self) -> impl Iterator<Item = Result<(Idx, InMemNiftiVolume)>> + 'a {
+    pub fn indexed(&mut self) -> impl Iterator<Item = Result<(Idx, InMemNiftiVolume)>> + '_ {
         let (_, r) = self.dim.split(self.slice_dim.rank() as u16);
         self.zip(r.index_iter())
             .map(|(vol_result, idx)| vol_result.map(|v| (idx, v)))

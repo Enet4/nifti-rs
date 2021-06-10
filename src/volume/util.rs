@@ -24,7 +24,7 @@ pub fn coords_to_index(coords: &[u16], dim: &[u16]) -> Result<usize> {
         return Err(NiftiError::OutOfBounds(Vec::from(coords)));
     }
 
-    let mut crds = coords.into_iter();
+    let mut crds = coords.iter();
     let start = *crds.next_back().unwrap() as usize;
     let index = crds
         .zip(dim)
