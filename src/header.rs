@@ -1477,11 +1477,11 @@ impl NiftiHeader {
     pub fn affine<T>(&self) -> Matrix4<T>
     where
         T: RealField,
-        f32: SubsetOf<T>,
+        f64: SubsetOf<T>,
     {
-        if self.sform_code != 0 {
+        if self.get_sform_code() != 0 {
             self.sform_affine::<T>()
-        } else if self.qform_code != 0 {
+        } else if self.get_qform_code() != 0 {
             self.qform_affine::<T>()
         } else {
             self.base_affine::<T>()
@@ -1492,13 +1492,16 @@ impl NiftiHeader {
     pub fn sform_affine<T>(&self) -> Matrix4<T>
     where
         T: RealField,
-        f32: SubsetOf<T>,
+        f64: SubsetOf<T>,
     {
+        let srow_x = self.get_srow_x();
+        let srow_y = self.get_srow_y();
+        let srow_z = self.get_srow_z();
         #[rustfmt::skip]
         let affine = Matrix4::new(
-            self.srow_x[0], self.srow_x[1], self.srow_x[2], self.srow_x[3],
-            self.srow_y[0], self.srow_y[1], self.srow_y[2], self.srow_y[3],
-            self.srow_z[0], self.srow_z[1], self.srow_z[2], self.srow_z[3],
+            srow_x[0], srow_x[1], srow_x[2], srow_x[3],
+            srow_y[0], srow_y[1], srow_y[2], srow_y[3],
+            srow_z[0], srow_z[1], srow_z[2], srow_z[3],
             0.0, 0.0, 0.0, 1.0,
         );
         nalgebra::convert(affine)
@@ -1509,7 +1512,8 @@ impl NiftiHeader {
     where
         T: RealField,
     {
-        if self.pixdim[1] < 0.0 || self.pixdim[2] < 0.0 || self.pixdim[3] < 0.0 {
+        let pixdim = self.get_pixdim();
+        if pixdim[1] < 0.0 || pixdim[2] < 0.0 || pixdim[3] < 0.0 {
             panic!("All spacings (pixdim) should be positive");
         }
         if !self.is_pixdim_0_valid() {
@@ -1519,16 +1523,16 @@ impl NiftiHeader {
         let quaternion = self.qform_quaternion();
         let r = quaternion_to_affine(quaternion);
         let s = Matrix3::from_diagonal(&Vector3::new(
-            self.pixdim[1] as f64,
-            self.pixdim[2] as f64,
-            self.pixdim[3] as f64 * self.pixdim[0] as f64,
+            pixdim[1],
+            pixdim[2],
+            pixdim[3] * pixdim[0],
         ));
         let m = r * s;
         #[rustfmt::skip]
         let affine = Matrix4::new(
-            m[0], m[3], m[6], self.quatern_x as f64,
-            m[1], m[4], m[7], self.quatern_y as f64,
-            m[2], m[5], m[8], self.quatern_z as f64,
+            m[0], m[3], m[6], self.get_quatern_x(),
+            m[1], m[4], m[7], self.get_quatern_y(),
+            m[2], m[5], m[8], self.get_quatern_z(),
             0.0, 0.0, 0.0, 1.0,
         );
         nalgebra::convert(affine)
@@ -1541,8 +1545,9 @@ impl NiftiHeader {
     where
         T: RealField,
     {
-        let d = self.dim[0] as usize;
-        let affine = shape_zoom_affine(&self.dim[1..d + 1], &self.pixdim[1..d + 1]);
+        let dim = self.get_dim();
+        let d = dim[0] as usize;
+        let affine = shape_zoom_affine(&dim[1..d + 1], &self.get_pixdim()[1..d + 1]);
         nalgebra::convert(affine)
     }
 
@@ -1551,9 +1556,9 @@ impl NiftiHeader {
     /// Fills a value by assuming this is a unit quaternion.
     fn qform_quaternion(&self) -> Quaternion<f64> {
         let xyz = Vector3::new(
-            self.quatern_b as f64,
-            self.quatern_c as f64,
-            self.quatern_d as f64,
+            self.get_quatern_b(),
+            self.get_quatern_c(),
+            self.get_quatern_d(),
         );
         fill_positive(xyz)
     }
@@ -1584,19 +1589,29 @@ impl NiftiHeader {
         T: RealField,
         T: ToPrimitive,
     {
-        self.sform_code = code as i16;
-        self.srow_x[0] = affine[0].to_f32().unwrap();
-        self.srow_x[1] = affine[4].to_f32().unwrap();
-        self.srow_x[2] = affine[8].to_f32().unwrap();
-        self.srow_x[3] = affine[12].to_f32().unwrap();
-        self.srow_y[0] = affine[1].to_f32().unwrap();
-        self.srow_y[1] = affine[5].to_f32().unwrap();
-        self.srow_y[2] = affine[9].to_f32().unwrap();
-        self.srow_y[3] = affine[13].to_f32().unwrap();
-        self.srow_z[0] = affine[2].to_f32().unwrap();
-        self.srow_z[1] = affine[6].to_f32().unwrap();
-        self.srow_z[2] = affine[10].to_f32().unwrap();
-        self.srow_z[3] = affine[14].to_f32().unwrap();
+        self.set_sform_code(code as i32).unwrap();
+        let mut srow = [0.; 4];
+
+        // srow_x
+        srow[0] = affine[0].to_f64().unwrap();
+        srow[1] = affine[4].to_f64().unwrap();
+        srow[2] = affine[8].to_f64().unwrap();
+        srow[3] = affine[12].to_f64().unwrap();
+        self.set_srow_x(&srow);
+
+        // srow_y
+        srow[0] = affine[1].to_f64().unwrap();
+        srow[1] = affine[5].to_f64().unwrap();
+        srow[2] = affine[9].to_f64().unwrap();
+        srow[3] = affine[13].to_f64().unwrap();
+        self.set_srow_y(&srow);
+
+        // srow_z
+        srow[0] = affine[2].to_f64().unwrap();
+        srow[1] = affine[6].to_f64().unwrap();
+        srow[2] = affine[10].to_f64().unwrap();
+        srow[3] = affine[14].to_f64().unwrap();
+        self.set_srow_z(&srow);
     }
 
     /// Set affine transformation in qform-related fields.
@@ -1644,17 +1659,19 @@ impl NiftiHeader {
         let pr = svd.u.unwrap() * svd.v_t.unwrap();
         let quaternion = affine_to_quaternion(&pr);
 
-        self.qform_code = code as i16;
-        self.pixdim[0] = qfac;
-        self.pixdim[1] = spacing.0 as f32;
-        self.pixdim[2] = spacing.1 as f32;
-        self.pixdim[3] = spacing.2 as f32;
-        self.quatern_b = quaternion[1] as f32;
-        self.quatern_c = quaternion[2] as f32;
-        self.quatern_d = quaternion[3] as f32;
-        self.quatern_x = translation[0] as f32;
-        self.quatern_y = translation[1] as f32;
-        self.quatern_z = translation[2] as f32;
+        self.set_qform_code(code as i32).unwrap();
+        let mut pixdim = self.get_pixdim();
+        pixdim[0] = qfac;
+        pixdim[1] = spacing.0;
+        pixdim[2] = spacing.1;
+        pixdim[3] = spacing.2;
+        self.set_pixdim(&pixdim);
+        self.set_quatern_b(quaternion[1]);
+        self.set_quatern_c(quaternion[2]);
+        self.set_quatern_d(quaternion[3]);
+        self.set_quatern_x(translation[0]);
+        self.set_quatern_y(translation[1]);
+        self.set_quatern_z(translation[2]);
     }
 }
 
