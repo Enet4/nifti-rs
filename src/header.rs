@@ -817,6 +817,50 @@ impl NiftiHeader {
         }
     }
 
+    // Additional methods.
+
+    /// Retrieve a NIFTI header, along with its byte order, from a file in the
+    /// file system. If the file's name ends with ".gz", the file is assumed to
+    /// need GZip decoding.
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<NiftiHeader> {
+        let gz = is_gz_file(&path);
+        let file = BufReader::new(File::open(path)?);
+        if gz {
+            NiftiHeader::from_reader(GzDecoder::new(file))
+        } else {
+            NiftiHeader::from_reader(file)
+        }
+    }
+
+    /// Read a NIfTI header, along with its byte order, from the given byte
+    /// stream. It is assumed that the input is currently at the start of the
+    /// NIFTI header.
+    pub fn from_reader<S>(input: S) -> Result<NiftiHeader>
+    where
+        S: Read,
+    {
+        // Read 1st 4 bytes of header using system's native endianness.
+        // This should correspond to the size of the header.
+        let mut input = ByteOrdered::native(input);
+        let sizeof_hdr: i32 = input.read_i32()?;
+
+        // Size of header should be 540 for NIfTI-2 or 348 for NIfTI-1.
+        // If header endianness is opposite system native's endianness then
+        // 469893120 for NIfTI-2 or 1543569408 for NIfTI-2.
+        match sizeof_hdr {
+            // NIfTI-2 native endian
+            540 => Ok(parse_nifti2_header(input, 540)?.into_nifti()),
+            // NIfTI-2 swap endian
+            469893120 => Ok(parse_nifti2_header(input.into_opposite(), 348)?.into_nifti()),
+            // NIfTI-1 native endian
+            348 => Ok(parse_nifti1_header(input, 348)?.into_nifti()),
+            // NIfTI-1 swap endian
+            1543569408 => Ok(parse_nifti1_header(input.into_opposite(), 348)?.into_nifti()),
+            // Invalid header size
+            _ => Err(NiftiError::InvalidHeaderSize(sizeof_hdr)),
+        }
+    }
+
     /// Convert this header into a NIFTI-2 header.
     /// Does nothing if the header is already NIFTI-2.
     /// Promotes NIFTI-1 fields to larger types and removes unused fields.
@@ -950,6 +994,130 @@ impl NiftiHeader {
             },
         } )
     }
+
+    /// Fix some commonly invalid fields.
+    ///
+    /// Currently, only the following problems are fixed:
+    /// - If `pixdim[0]` isn't equal to -1.0 or 1.0, it will be set to 1.0
+    pub fn fix(&mut self) {
+        let mut pixdim = self.get_pixdim();
+        if !Self::is_pixdim_0_valid(pixdim[0]) {
+            pixdim[0] = 1.;
+            self.set_pixdim(pixdim);
+        }
+    }
+
+    /// Retrieve and validate the dimensions of the volume. Unlike how NIfTI-1
+    /// stores dimensions, the returned slice does not include `dim[0]` and is
+    /// clipped to the effective number of dimensions.
+    ///
+    /// # Error
+    ///
+    /// `NiftiError::InconsistentDim` if `dim[0]` does not represent a valid
+    /// dimensionality, or any of the real dimensions are zero.
+    pub fn dim(&self) -> Result<Vec<u64>> {
+        Ok(validate_dim(&self.get_dim())?.to_vec())
+    }
+
+    /// Retrieve and validate the number of dimensions of the volume. This is
+    /// `dim[0]` after the necessary byte order conversions.
+    ///
+    /// # Error
+    ///
+    /// `NiftiError::` if `dim[0]` does not represent a valid dimensionality
+    /// (it must be positive and not higher than 7).
+    pub fn dimensionality(&self) -> Result<usize> {
+        validate_dimensionality(&self.get_dim())
+    }
+
+    /// Get the data type as a validated enum.
+    pub fn data_type(&self) -> Result<NiftiType> {
+        FromPrimitive::from_i16(self.get_datatype())
+            .ok_or(NiftiError::InvalidCode("datatype", self.get_datatype().into()))
+    }
+
+    /// Get the spatial units type as a validated unit enum.
+    pub fn xyzt_to_space(&self) -> Result<Unit> {
+        let space_code = self.get_xyzt_units() & 0o0007;
+        FromPrimitive::from_i32(space_code)
+            .ok_or(NiftiError::InvalidCode("xyzt units (space)", space_code))
+    }
+
+    /// Get the time units type as a validated unit enum.
+    pub fn xyzt_to_time(&self) -> Result<Unit> {
+        let time_code = self.get_xyzt_units() & 0o0070;
+        FromPrimitive::from_i32(time_code)
+            .ok_or(NiftiError::InvalidCode("xyzt units (time)", time_code))
+    }
+
+    /// Get the xyzt units type as a validated pair of space and time unit enum.
+    pub fn xyzt_units(&self) -> Result<(Unit, Unit)> {
+        Ok((self.xyzt_to_space()?, self.xyzt_to_time()?))
+    }
+
+    /// Get the slice order as a validated enum.
+    pub fn slice_order(&self) -> Result<SliceOrder> {
+        FromPrimitive::from_i32(self.get_slice_code())
+            .ok_or(NiftiError::InvalidCode("slice order", self.get_slice_code()))
+    }
+
+    /// Get the intent as a validated enum.
+    pub fn intent(&self) -> Result<Intent> {
+        FromPrimitive::from_i32(self.get_intent_code())
+            .ok_or(NiftiError::InvalidCode("intent", self.get_intent_code()))
+    }
+
+    /// Get the qform coordinate mapping method as a validated enum.
+    pub fn qform(&self) -> Result<XForm> {
+        FromPrimitive::from_i32(self.get_qform_code())
+            .ok_or(NiftiError::InvalidCode("qform", self.get_qform_code()))
+    }
+
+    /// Get the sform coordinate mapping method as a validated enum.
+    pub fn sform(&self) -> Result<XForm> {
+        FromPrimitive::from_i32(self.get_sform_code())
+            .ok_or(NiftiError::InvalidCode("sform", self.get_sform_code()))
+    }
+
+    /// Safely set the `descrip` field using a buffer.
+    pub fn set_description<D>(&mut self, description: D) -> Result<()>
+    where
+        D: Deref<Target = [u8]>,
+    {
+        let descrip = match *self {
+            Self::Nifti1Header(ref mut header) => &mut header.descrip,
+            Self::Nifti2Header(ref mut header) => &mut header.descrip,
+        };
+        let len = description.len();
+        match len.cmp(&80) {
+            std::cmp::Ordering::Less => {
+                *descrip = [0; 80];
+                descrip[..len].copy_from_slice(&description);
+                Ok(())
+            }
+            std::cmp::Ordering::Equal => {
+                descrip.copy_from_slice(&description);
+                Ok(())
+            }
+            _ => Err(NiftiError::IncorrectDescriptionLength(len)),
+        }
+    }
+
+    /// Safely set the `descrip` field using a  &str.
+    pub fn set_description_str<T>(&mut self, description: T) -> Result<()>
+    where
+        T: AsRef<str>,
+    {
+        self.set_description(description.as_ref().as_bytes())
+    }
+
+    /// Check whether `pixdim[0]` is either -1 or 1.
+    #[inline]
+    fn is_pixdim_0_valid(pixdim0: f64) -> bool {
+        (pixdim0.abs() - 1.).abs() < 1e-11
+    }
+}
+
 /// The NIFTI-1 header data type.
 /// 
 /// All fields are public and named after the specification's header file.
