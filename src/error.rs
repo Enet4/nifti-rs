@@ -16,14 +16,14 @@ quick_error! {
         /// The field `dim` is in an invalid state, as a consequence of
         /// `dim[0]` or one of the elements in `1..dim[0] + 1` not being
         /// positive.
-        InconsistentDim(index: u8, value: u16) {
+        InconsistentDim(index: u8, value: u64) {
             display("Inconsistent value `{}` in header field dim[{}] ({})", value, index, match index {
                 0 if *value > 7 => "must not be higher than 7",
                 _ => "must be positive"
             })
         }
         /// Attempted to read volume outside boundaries.
-        OutOfBounds(coords: Vec<u16>) {
+        OutOfBounds(coords: Vec<u64>) {
             display("Out of bounds access to volume: {:?}", &coords[..])
         }
         /// Attempted to read a volume over a volume's unexistent dimension.
@@ -69,7 +69,7 @@ quick_error! {
             display("Description length ({} bytes) is greater than 80 bytes.", len)
         }
         /// Header contains a code which is not valid for the given attribute
-        InvalidCode(typename: &'static str, code: i16) {
+        InvalidCode(typename: &'static str, code: i32) {
             display("invalid code `{}` for header field {}", code, typename)
         }
         /// Integer field size is not large enough to hold assigned value

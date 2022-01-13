@@ -78,8 +78,8 @@ pub struct StreamedNiftiVolume<R> {
     dim: Dim,
     slice_dim: Dim,
     datatype: NiftiType,
-    scl_slope: f32,
-    scl_inter: f32,
+    scl_slope: f64,
+    scl_inter: f64,
     endianness: Endianness,
     slices_read: usize,
     slices_left: usize,
@@ -141,12 +141,12 @@ where
     }
 
     /// Retrieve the full volume shape.
-    pub fn dim(&self) -> &[u16] {
+    pub fn dim(&self) -> &[u64] {
         self.dim.as_ref()
     }
 
     /// Retrieve the shape of the slices.
-    pub fn slice_dim(&self) -> &[u16] {
+    pub fn slice_dim(&self) -> &[u64] {
         self.slice_dim.as_ref()
     }
 
@@ -245,7 +245,7 @@ where
 }
 
 impl<'a, R> NiftiVolume for &'a StreamedNiftiVolume<R> {
-    fn dim(&self) -> &[u16] {
+    fn dim(&self) -> &[u64] {
         (**self).dim()
     }
 
@@ -259,7 +259,7 @@ impl<'a, R> NiftiVolume for &'a StreamedNiftiVolume<R> {
 }
 
 impl<R> NiftiVolume for StreamedNiftiVolume<R> {
-    fn dim(&self) -> &[u16] {
+    fn dim(&self) -> &[u64] {
         self.dim.as_ref()
     }
 
@@ -297,7 +297,7 @@ fn calculate_slice_dims(dim: &Dim, slice_rank: u16) -> Dim {
     assert!(dim.rank() > 0);
     assert!(usize::from(slice_rank) < dim.rank());
     let mut raw_dim = *dim.raw();
-    raw_dim[0] = slice_rank;
+    raw_dim[0] = slice_rank as u64;
     Dim::new(raw_dim).unwrap()
 }
 

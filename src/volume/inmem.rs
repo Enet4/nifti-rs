@@ -66,8 +66,8 @@ macro_rules! fn_convert_and_cast {
 pub struct InMemNiftiVolume {
     dim: Dim,
     datatype: NiftiType,
-    scl_slope: f32,
-    scl_inter: f32,
+    scl_slope: f64,
+    scl_inter: f64,
     raw_data: Vec<u8>,
     endianness: Endianness,
 }
@@ -98,10 +98,10 @@ impl InMemNiftiVolume {
     /// `endianness`, as specified by the volume shape in `raw_dim` and data
     /// type in `datatype`.
     pub fn from_raw_fields(
-        raw_dim: [u16; 8],
+        raw_dim: [u64; 8],
         datatype: NiftiType,
-        scl_slope: f32,
-        scl_inter: f32,
+        scl_slope: f64,
+        scl_inter: f64,
         raw_data: Vec<u8>,
         endianness: Endianness,
     ) -> Result<Self> {
@@ -184,7 +184,7 @@ impl InMemNiftiVolume {
         &mut self.raw_data
     }
 
-    fn get_prim<T>(&self, coords: &[u16]) -> Result<T>
+    fn get_prim<T>(&self, coords: &[u64]) -> Result<T>
     where
         T: DataElement,
         T: Num,
@@ -264,7 +264,7 @@ impl<'a> IntoNdArray for &'a InMemNiftiVolume {
 }
 
 impl<'a> NiftiVolume for &'a InMemNiftiVolume {
-    fn dim(&self) -> &[u16] {
+    fn dim(&self) -> &[u64] {
         (**self).dim()
     }
 
@@ -278,7 +278,7 @@ impl<'a> NiftiVolume for &'a InMemNiftiVolume {
 }
 
 impl NiftiVolume for InMemNiftiVolume {
-    fn dim(&self) -> &[u16] {
+    fn dim(&self) -> &[u64] {
         self.dim.as_ref()
     }
 
@@ -292,85 +292,85 @@ impl NiftiVolume for InMemNiftiVolume {
 }
 
 impl RandomAccessNiftiVolume for InMemNiftiVolume {
-    fn get_f32(&self, coords: &[u16]) -> Result<f32> {
+    fn get_f32(&self, coords: &[u64]) -> Result<f32> {
         self.get_prim(coords)
     }
 
-    fn get_f64(&self, coords: &[u16]) -> Result<f64> {
+    fn get_f64(&self, coords: &[u64]) -> Result<f64> {
         self.get_prim(coords)
     }
 
-    fn get_u8(&self, coords: &[u16]) -> Result<u8> {
+    fn get_u8(&self, coords: &[u64]) -> Result<u8> {
         self.get_prim(coords)
     }
 
-    fn get_i8(&self, coords: &[u16]) -> Result<i8> {
+    fn get_i8(&self, coords: &[u64]) -> Result<i8> {
         self.get_prim(coords)
     }
 
-    fn get_u16(&self, coords: &[u16]) -> Result<u16> {
+    fn get_u16(&self, coords: &[u64]) -> Result<u16> {
         self.get_prim(coords)
     }
 
-    fn get_i16(&self, coords: &[u16]) -> Result<i16> {
+    fn get_i16(&self, coords: &[u64]) -> Result<i16> {
         self.get_prim(coords)
     }
 
-    fn get_u32(&self, coords: &[u16]) -> Result<u32> {
+    fn get_u32(&self, coords: &[u64]) -> Result<u32> {
         self.get_prim(coords)
     }
 
-    fn get_i32(&self, coords: &[u16]) -> Result<i32> {
+    fn get_i32(&self, coords: &[u64]) -> Result<i32> {
         self.get_prim(coords)
     }
 
-    fn get_u64(&self, coords: &[u16]) -> Result<u64> {
+    fn get_u64(&self, coords: &[u64]) -> Result<u64> {
         self.get_prim(coords)
     }
 
-    fn get_i64(&self, coords: &[u16]) -> Result<i64> {
+    fn get_i64(&self, coords: &[u64]) -> Result<i64> {
         self.get_prim(coords)
     }
 }
 
 impl<'a> RandomAccessNiftiVolume for &'a InMemNiftiVolume {
-    fn get_f32(&self, coords: &[u16]) -> Result<f32> {
+    fn get_f32(&self, coords: &[u64]) -> Result<f32> {
         (**self).get_f32(coords)
     }
 
-    fn get_f64(&self, coords: &[u16]) -> Result<f64> {
+    fn get_f64(&self, coords: &[u64]) -> Result<f64> {
         (**self).get_f64(coords)
     }
 
-    fn get_u8(&self, coords: &[u16]) -> Result<u8> {
+    fn get_u8(&self, coords: &[u64]) -> Result<u8> {
         (**self).get_u8(coords)
     }
 
-    fn get_i8(&self, coords: &[u16]) -> Result<i8> {
+    fn get_i8(&self, coords: &[u64]) -> Result<i8> {
         (**self).get_i8(coords)
     }
 
-    fn get_u16(&self, coords: &[u16]) -> Result<u16> {
+    fn get_u16(&self, coords: &[u64]) -> Result<u16> {
         (**self).get_u16(coords)
     }
 
-    fn get_i16(&self, coords: &[u16]) -> Result<i16> {
+    fn get_i16(&self, coords: &[u64]) -> Result<i16> {
         (**self).get_i16(coords)
     }
 
-    fn get_u32(&self, coords: &[u16]) -> Result<u32> {
+    fn get_u32(&self, coords: &[u64]) -> Result<u32> {
         (**self).get_u32(coords)
     }
 
-    fn get_i32(&self, coords: &[u16]) -> Result<i32> {
+    fn get_i32(&self, coords: &[u64]) -> Result<i32> {
         (**self).get_i32(coords)
     }
 
-    fn get_u64(&self, coords: &[u16]) -> Result<u64> {
+    fn get_u64(&self, coords: &[u64]) -> Result<u64> {
         (**self).get_u64(coords)
     }
 
-    fn get_i64(&self, coords: &[u16]) -> Result<i64> {
+    fn get_i64(&self, coords: &[u64]) -> Result<i64> {
         (**self).get_i64(coords)
     }
 }
