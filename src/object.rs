@@ -3,8 +3,7 @@
 use crate::error::NiftiError;
 use crate::error::Result;
 use crate::extension::{Extender, ExtensionSequence};
-use crate::header::NiftiHeader;
-use crate::header::MAGIC_CODE_NI1;
+use crate::header::{NiftiHeader, MAGIC_CODE_NI1, MAGIC_CODE_NI2};
 use crate::util::{into_img_file_gz, is_gz_file, open_file_maybe_gz};
 use crate::volume::inmem::InMemNiftiVolume;
 use crate::volume::streamed::StreamedNiftiVolume;
@@ -467,7 +466,9 @@ impl<V> GenericNiftiObject<V> {
         V: FromSource<R>,
     {
         let header = NiftiHeader::from_reader(&mut source)?;
-        if &header.magic == MAGIC_CODE_NI1 {
+        if &header.get_magic() == MAGIC_CODE_NI1 || &header.get_magic() == MAGIC_CODE_NI2 {
+            // Magic code tells us reader is the .hdr file in an .hdr/.img
+            // combination.  Extensions and volume are in another file/reader.
             return Err(NiftiError::NoVolumeData);
         }
         let extender = Extender::from_reader(&mut source)?;
@@ -524,8 +525,9 @@ impl<V> GenericNiftiObject<V> {
         V: FromSource<MaybeGzDecodedFile>,
     {
         let header = NiftiHeader::from_reader(&mut stream)?;
-        let (volume, ext) = if &header.magic == MAGIC_CODE_NI1 {
-            // extensions and volume are in another file
+        let (volume, ext) = if &header.get_magic() == MAGIC_CODE_NI1 || &header.get_magic() == MAGIC_CODE_NI2 {
+            // Magic code tells us reader is the .hdr file in an .hdr/.img
+            // combination.  Extensions and volume are in another file/reader.
 
             // extender is optional
             let extender = Extender::from_reader_optional(&mut stream)?.unwrap_or_default();

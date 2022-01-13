@@ -85,7 +85,7 @@ pub mod writer;
 pub use byteordered::Endianness;
 pub use error::{NiftiError, Result};
 pub use extension::{Extender, Extension, ExtensionSequence};
-pub use header::NiftiHeader;
+pub use header::{NiftiHeader, Nifti1Header, Nifti2Header};
 pub use object::{
     InMemNiftiObject, NiftiObject, ReaderOptions, ReaderStreamedOptions, StreamedNiftiObject,
 };

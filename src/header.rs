@@ -24,6 +24,10 @@ use std::path::Path;
 pub const MAGIC_CODE_NI1: &[u8; 4] = b"ni1\0";
 /// Magic code for full NIFTI-1 files (extention ".nii[.gz]").
 pub const MAGIC_CODE_NIP1: &[u8; 4] = b"n+1\0";
+/// Magic code for NIFTI-2 header files (extention ".hdr[.gz]").
+pub const MAGIC_CODE_NI2: &[u8; 8] = b"ni2\0\r\n\x1A\n";
+/// Magic code for full NIFTI-1 files (extention ".nii[.gz]").
+pub const MAGIC_CODE_NIP2: &[u8; 8] = b"n+2\0\r\n\x1A\n";
 
 /// The NIFTI-1 header data type.
 /// All fields are public and named after the specification's header file.
@@ -43,21 +47,30 @@ pub const MAGIC_CODE_NIP1: &[u8; 4] = b"n+1\0";
 /// # Ok(())
 /// # }
 /// ```
-///
-/// Or to build one yourself:
+/// The NIFTI-1 header data type.
+/// 
+/// All fields are public and named after the specification's header file.
+/// The type of each field was adjusted according to their use and
+/// array limitations.
+/// 
+/// See also `NiftiHeader` for a high-level abstraction over NIFTI-1 and NIFTI-2
+/// headers.
+/// 
+/// # Examples
 ///
 /// ```
-/// # use nifti::{NiftiHeader, NiftiType};
-/// let mut hdr = NiftiHeader::default();
+/// use nifti::{NiftiHeader, Nifti1Header, NiftiType};
+/// let mut hdr = Nifti1Header::default();
 /// hdr.cal_min = 0.;
 /// hdr.cal_max = 128.;
 /// hdr.datatype = 4;
 /// assert_eq!(hdr.cal_min, 0.);
 /// assert_eq!(hdr.cal_max, 128.);
+/// let hdr: NiftiHeader = hdr.into_nifti();
 /// assert_eq!(hdr.data_type().unwrap(), NiftiType::Int16);
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct NiftiHeader {
+pub struct Nifti1Header {
     /// Header size, must be 348
     pub sizeof_hdr: u32,
     /// Unused in NIFTI-1
@@ -157,9 +170,117 @@ pub struct NiftiHeader {
     pub endianness: Endianness,
 }
 
-impl Default for NiftiHeader {
-    fn default() -> NiftiHeader {
-        NiftiHeader {
+/// The NIFTI-2 header data type.
+/// 
+/// All fields are public and named after the specification's header file.
+/// The type of each field was adjusted according to their use and
+/// array limitations.
+/// 
+/// See also `NiftiHeader` for a high-level abstraction over NIFTI-1 and NIFTI-2
+/// headers.
+/// 
+/// # Examples
+///
+/// ```
+/// use nifti::{NiftiHeader, Nifti2Header, NiftiType};
+/// let mut hdr = Nifti2Header::default();
+/// hdr.cal_min = 0.;
+/// hdr.cal_max = 128.;
+/// hdr.datatype = 4;
+/// assert_eq!(hdr.cal_min, 0.);
+/// assert_eq!(hdr.cal_max, 128.);
+/// let hdr: NiftiHeader = hdr.into_nifti();
+/// assert_eq!(hdr.data_type().unwrap(), NiftiType::Int16);
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub struct Nifti2Header {
+    /// Header size, must be 540
+    pub sizeof_hdr: u32,
+    /// Magic code.
+    /// First 4 bytes must be `b"ni2\0"` or `b"n+2\0"`.
+    /// Last 4 bytes must be `b"\r\n\032\n"` (0D 0A 1A 0A).
+    pub magic: [u8; 8],
+    /// Defines the data type!
+    pub datatype: i16,
+    /// Number of bits per voxel
+    /// Note in the NIFTI-2 specification this is actually i16.
+    pub bitpix: u16,
+    /// Data array dimensions
+    /// Note in the NIFTI-2 specification this is actually i64.
+    pub dim: [u64; 8],
+    /// 1st intent parameter
+    pub intent_p1: f64,
+    /// 2nd intent parameter
+    pub intent_p2: f64,
+    /// 3rd intent parameter
+    pub intent_p3: f64,
+    /// Grid spacings
+    pub pixdim: [f64; 8],
+    /// Offset into .nii file to reach the volume
+    /// Note in the NIFTI-2 specification this is actually i64.
+    pub vox_offset: u64,
+    /// Data scaling: slope
+    pub scl_slope: f64,
+    /// Data scaling: offset
+    pub scl_inter: f64,
+    /// Max display intensity
+    pub cal_max: f64,
+    /// Min display intensity
+    pub cal_min: f64,
+    /// Time for 1 slice
+    pub slice_duration: f64,
+    /// Time axis shift
+    pub toffset: f64,
+    /// First slice index
+    /// Note in the NIFTI-2 specification this is actually i64.
+    pub slice_start: u64,
+    /// Last slice index
+    /// Note in the NIFTI-2 specification this is actually i64.
+    pub slice_end: u64,
+    /// Any text you like
+    pub descrip: [u8; 80],
+    /// Auxiliary filename
+    pub aux_file: [u8; 24],
+    /// NIFTI_XFORM_* code
+    pub qform_code: i32,
+    /// NIFTI_XFORM_* code
+    pub sform_code: i32,
+    /// Quaternion b param
+    pub quatern_b: f64,
+    /// Quaternion c param
+    pub quatern_c: f64,
+    /// Quaternion d param
+    pub quatern_d: f64,
+    /// Quaternion x shift
+    pub quatern_x: f64,
+    /// Quaternion y shift
+    pub quatern_y: f64,
+    /// Quaternion z shift
+    pub quatern_z: f64,
+    /// 1st row affine transform
+    pub srow_x: [f64; 4],
+    /// 2nd row affine transform
+    pub srow_y: [f64; 4],
+    /// 3rd row affine transform
+    pub srow_z: [f64; 4],
+    /// Slice timing order
+    pub slice_code: i32,
+    /// Units of `pixdim[1..4]`
+    pub xyzt_units: i32,
+    /// NIFTI_INTENT_* code
+    pub intent_code: i32,
+    /// 'name' or meaning of data
+    pub intent_name: [u8; 16],
+    /// MRI slice ordering
+    pub dim_info: u8,
+
+    /// Original data Endianness
+    pub endianness: Endianness,
+}
+
+impl Default for Nifti1Header {
+    fn default() -> Nifti1Header {
+        Nifti1Header {
             sizeof_hdr: 348,
             data_type: [0; 10],
             db_name: [0; 18],
@@ -213,50 +334,50 @@ impl Default for NiftiHeader {
     }
 }
 
-impl NiftiHeader {
-    /// Retrieve a NIFTI header, along with its byte order, from a file in the file system.
-    /// If the file's name ends with ".gz", the file is assumed to need GZip decoding.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<NiftiHeader> {
-        let gz = is_gz_file(&path);
-        let file = BufReader::new(File::open(path)?);
-        if gz {
-            NiftiHeader::from_reader(GzDecoder::new(file))
-        } else {
-            NiftiHeader::from_reader(file)
+impl Default for Nifti2Header {
+    fn default() -> Nifti2Header {
+        Nifti2Header {
+            sizeof_hdr: 540,
+            magic: *MAGIC_CODE_NIP2,
+            datatype: 0,
+            bitpix: 0,
+            dim: [1, 0, 0, 0, 0, 0, 0, 0],
+            intent_p1: 0.,
+            intent_p2: 0.,
+            intent_p3: 0.,
+            pixdim: [1.; 8],
+            vox_offset: 544,
+            scl_slope: 0.,
+            scl_inter: 0.,
+            cal_max: 0.,
+            cal_min: 0.,
+            slice_duration: 0.,
+            toffset: 0.,
+            slice_start: 0,
+            slice_end: 0,
+            descrip: [0; 80],
+            aux_file: [0; 24],
+            qform_code: 1,
+            sform_code: 1,
+            quatern_b: 0.,
+            quatern_c: 0.,
+            quatern_d: 0.,
+            quatern_x: 0.,
+            quatern_y: 0.,
+            quatern_z: 0.,
+            srow_x: [1., 0., 0., 0.],
+            srow_y: [0., 1., 0., 0.],
+            srow_z: [0., 0., 1., 0.],
+            slice_code: 0,
+            xyzt_units: 0,
+            intent_code: 0,
+            intent_name: [0; 16],
+            dim_info: 0,
+
+            endianness: Endianness::native(),
         }
     }
-
-    /// Read a NIfTI-1 header, along with its byte order, from the given byte stream.
-    /// It is assumed that the input is currently at the start of the
-    /// NIFTI header.
-    pub fn from_reader<S>(input: S) -> Result<NiftiHeader>
-    where
-        S: Read,
-    {
-        parse_header_1(input)
-    }
-
-    /// Fix some commonly invalid fields.
-    ///
-    /// Currently, only the following problems are fixed:
-    /// - If `pixdim[0]` isn't equal to -1.0 or 1.0, it will be set to 1.0
-    pub fn fix(&mut self) {
-        if !self.is_pixdim_0_valid() {
-            self.pixdim[0] = 1.0;
-        }
-    }
-
-    /// Retrieve and validate the dimensions of the volume. Unlike how NIfTI-1
-    /// stores dimensions, the returned slice does not include `dim[0]` and is
-    /// clipped to the effective number of dimensions.
-    ///
-    /// # Error
-    ///
-    /// `NiftiError::InconsistentDim` if `dim[0]` does not represent a valid
-    /// dimensionality, or any of the real dimensions are zero.
-    pub fn dim(&self) -> Result<&[u16]> {
-        validate_dim(&self.dim)
-    }
+}
 
     /// Retrieve and validate the number of dimensions of the volume. This is
     /// `dim[0]` after the necessary byte order conversions.
@@ -268,100 +389,7 @@ impl NiftiHeader {
     pub fn dimensionality(&self) -> Result<usize> {
         validate_dimensionality(&self.dim)
     }
-
-    /// Get the data type as a validated enum.
-    pub fn data_type(&self) -> Result<NiftiType> {
-        FromPrimitive::from_i16(self.datatype)
-            .ok_or(NiftiError::InvalidCode("datatype", self.datatype))
-    }
-
-    /// Get the spatial units type as a validated unit enum.
-    pub fn xyzt_to_space(&self) -> Result<Unit> {
-        let space_code = self.xyzt_units & 0o0007;
-        FromPrimitive::from_u8(space_code)
-            .ok_or(NiftiError::InvalidCode("xyzt units (space)", space_code as i16))
-    }
-
-    /// Get the time units type as a validated unit enum.
-    pub fn xyzt_to_time(&self) -> Result<Unit> {
-        let time_code = self.xyzt_units & 0o0070;
-        FromPrimitive::from_u8(time_code)
-            .ok_or(NiftiError::InvalidCode("xyzt units (time)", time_code as i16))
-    }
-
-    /// Get the xyzt units type as a validated pair of space and time unit enum.
-    pub fn xyzt_units(&self) -> Result<(Unit, Unit)> {
-        Ok((self.xyzt_to_space()?, self.xyzt_to_time()?))
-    }
-
-    /// Get the slice order as a validated enum.
-    pub fn slice_order(&self) -> Result<SliceOrder> {
-        FromPrimitive::from_u8(self.slice_code)
-            .ok_or(NiftiError::InvalidCode("slice order", self.slice_code as i16))
-    }
-
-    /// Get the intent as a validated enum.
-    pub fn intent(&self) -> Result<Intent> {
-        FromPrimitive::from_i16(self.intent_code)
-            .ok_or(NiftiError::InvalidCode("intent", self.intent_code))
-    }
-
-    /// Get the qform coordinate mapping method as a validated enum.
-    pub fn qform(&self) -> Result<XForm> {
-        FromPrimitive::from_i16(self.qform_code)
-            .ok_or(NiftiError::InvalidCode("qform", self.qform_code as i16))
-    }
-
-    /// Get the sform coordinate mapping method as a validated enum.
-    pub fn sform(&self) -> Result<XForm> {
-        FromPrimitive::from_i16(self.sform_code)
-            .ok_or(NiftiError::InvalidCode("sform", self.sform_code as i16))
-    }
-
-    /// Ensure that the current `descrip` field is valid and is exactly equal to 80 bytes.
-    ///
-    /// Descriptions shorter than 80 bytes will be extended with trailing zeros.
-    pub fn validate_description(&mut self) -> Result<()> {
-        let len = self.descrip.len();
-        if len > 80 {
-            Err(NiftiError::IncorrectDescriptionLength(len))
-        } else {
-            if len < 80 {
-                self.descrip.extend((len..80).map(|_| 0));
-            }
-            Ok(())
-        }
-    }
-
-    /// Safely set the `descrip` field using a buffer.
-    pub fn set_description<D>(&mut self, description: D) -> Result<()>
-    where
-        D: Into<Vec<u8>>,
-        D: Deref<Target = [u8]>,
-    {
-        let len = description.len();
-        match len.cmp(&80) {
-            std::cmp::Ordering::Less => {
-                let mut descrip = vec![0; 80];
-                descrip[..len].copy_from_slice(&description);
-                self.descrip = descrip;
-                Ok(())
-            }
-            std::cmp::Ordering::Equal => {
-                self.descrip = description.into();
-                Ok(())
-            }
-            _ => Err(NiftiError::IncorrectDescriptionLength(len)),
-        }
-    }
-
-    /// Safely set the `descrip` field using a  &str.
-    pub fn set_description_str<T>(&mut self, description: T) -> Result<()>
-    where
-        T: Into<String>,
-    {
-        self.set_description(description.into().as_bytes())
-    }
+}
 
     /// Check whether `pixdim[0]` is either -1 or 1.
     #[inline]

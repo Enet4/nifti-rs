@@ -11,10 +11,10 @@ use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis};
 use safe_transmute::{transmute_to_bytes, TriviallyTransmutable};
 
 use crate::{
-    header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
+    header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1, MAGIC_CODE_NI2, MAGIC_CODE_NIP2},
     util::{adapt_bytes, is_gz_file, is_hdr_file},
     volume::shape::Dim,
-    DataElement, NiftiHeader, NiftiType, Result,
+    DataElement, NiftiHeader, Nifti1Header, Nifti2Header, NiftiType, Result,
 };
 
 #[derive(Debug, Clone, PartialEq)]
