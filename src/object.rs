@@ -505,7 +505,7 @@ impl<V> GenericNiftiObject<V> {
         let len = if len < 352 { 0 } else { len - 352 };
 
         let ext = {
-            let source = ByteOrdered::runtime(&mut source, header.endianness);
+            let source = ByteOrdered::runtime(&mut source, header.get_endianness());
             ExtensionSequence::from_reader(extender, source, len)?
         };
 
@@ -563,7 +563,7 @@ impl<V> GenericNiftiObject<V> {
             let len = if len < 352 { 0 } else { len - 352 };
 
             let ext = {
-                let stream = ByteOrdered::runtime(&mut stream, header.endianness);
+                let stream = ByteOrdered::runtime(&mut stream, header.get_endianness());
                 ExtensionSequence::from_reader(extender, stream, len)?
             };
 

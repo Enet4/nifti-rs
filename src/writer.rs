@@ -30,10 +30,9 @@ impl<'a> HeaderReference<'a> {
             HeaderReference::FromHeader(h) => Ok((*h).to_owned()),
             HeaderReference::FromFile(path) => NiftiHeader::from_file(path),
             HeaderReference::None => {
-                Ok(NiftiHeader {
-                    sform_code: 2,
-                    .. NiftiHeader::default()
-                })
+                let mut new_header = NiftiHeader::default();
+                new_header.set_sform_code(2)?; // TODO unclear why this is needed
+                Ok(new_header)
             }
         }
     }
@@ -141,21 +140,23 @@ impl<'a> WriterOptions<'a> {
         let (header_path, data_path) = self.output_paths();
 
         // Need the transpose for fortran ordering used in nifti file format.
+        // TODO actually check whether ndarray data is stored in row or column
+        // major format.
         let data = data.t();
 
         let header_file = File::create(header_path)?;
-        if header.vox_offset > 0.0 {
+        if header.get_vox_offset()? > 0 {
             if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(header_file, compression_level),
-                    header.endianness,
+                    header.get_endianness(),
                 );
                 write_header(writer.as_mut(), &header)?;
                 write_data::<_, A, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let mut writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
+                    ByteOrdered::runtime(BufWriter::new(header_file), header.get_endianness());
                 write_header(writer.as_mut(), &header)?;
                 write_data::<_, A, _, _, _, _>(writer, data)?;
             }
@@ -164,23 +165,23 @@ impl<'a> WriterOptions<'a> {
             if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(header_file, compression_level),
-                    header.endianness,
+                    header.get_endianness(),
                 );
                 write_header(writer.as_mut(), &header)?;
                 let _ = writer.into_inner().finish()?;
 
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(data_file, compression_level),
-                    header.endianness,
+                    header.get_endianness(),
                 );
                 write_data::<_, A, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let header_writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
+                    ByteOrdered::runtime(BufWriter::new(header_file), header.get_endianness());
                 write_header(header_writer, &header)?;
                 let data_writer =
-                    ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
+                    ByteOrdered::runtime(BufWriter::new(data_file), header.get_endianness());
                 write_data::<_, A, _, _, _, _>(data_writer, data)?;
             }
         }
@@ -201,18 +202,18 @@ impl<'a> WriterOptions<'a> {
         let data = data.t();
 
         let header_file = File::create(header_path)?;
-        if header.vox_offset > 0.0 {
+        if header.get_vox_offset()? > 0 {
             if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(header_file, compression_level),
-                    header.endianness,
+                    header.get_endianness(),
                 );
                 write_header(writer.as_mut(), &header)?;
                 write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let mut writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
+                    ByteOrdered::runtime(BufWriter::new(header_file), header.get_endianness());
                 write_header(writer.as_mut(), &header)?;
                 write_data::<_, u8, _, _, _, _>(writer, data)?;
             }
@@ -221,24 +222,24 @@ impl<'a> WriterOptions<'a> {
             if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(header_file, compression_level),
-                    header.endianness,
+                    header.get_endianness(),
                 );
                 write_header(writer.as_mut(), &header)?;
                 let _ = writer.into_inner().finish()?;
 
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(data_file, compression_level),
-                    header.endianness,
+                    header.get_endianness(),
                 );
                 write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let header_writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
+                    ByteOrdered::runtime(BufWriter::new(header_file), header.get_endianness());
                 write_header(header_writer, &header)?;
 
                 let data_writer =
-                    ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
+                    ByteOrdered::runtime(BufWriter::new(data_file), header.get_endianness());
                 write_data::<_, u8, _, _, _, _>(data_writer, data)?;
             }
         }
@@ -268,6 +269,27 @@ impl<'a> WriterOptions<'a> {
             ..self.header_reference.to_header()?
         };
 
+        // Set dimensions, slice, and data type from ndarray.
+        header.set_dim(Dim::from_slice(data.shape())?.raw())?;
+        header.set_datatype(datatype as i16);
+        header.set_bitpix((datatype.size_of() * 8) as u16)?;
+
+        // Override the existing header slope and intercept to disable data
+        // shifting/scaling by setting intercept to 0 and slope to 1.
+        header.set_scl_inter(0.);
+        header.set_scl_slope(1.);
+
+        // Override the existing header size.
+        match header {
+            NiftiHeader::Nifti1Header(ref mut header) => {
+                header.sizeof_hdr = 348;
+            },
+            NiftiHeader::Nifti2Header(ref mut header) => {
+                header.sizeof_hdr = 540;
+            },
+        }
+
+        // Override the existing header voxel offset.
         if self.write_header_file {
             header.vox_offset = 0.0;
             header.magic = *MAGIC_CODE_NI1;

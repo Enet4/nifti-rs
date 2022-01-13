@@ -1001,9 +1001,9 @@ impl NiftiHeader {
     /// - If `pixdim[0]` isn't equal to -1.0 or 1.0, it will be set to 1.0
     pub fn fix(&mut self) {
         let mut pixdim = self.get_pixdim();
-        if !Self::is_pixdim_0_valid(pixdim[0]) {
+        if !self.is_pixdim_0_valid() {
             pixdim[0] = 1.;
-            self.set_pixdim(pixdim);
+            self.set_pixdim(&pixdim);
         }
     }
 
@@ -1113,8 +1113,8 @@ impl NiftiHeader {
 
     /// Check whether `pixdim[0]` is either -1 or 1.
     #[inline]
-    fn is_pixdim_0_valid(pixdim0: f64) -> bool {
-        (pixdim0.abs() - 1.).abs() < 1e-11
+    fn is_pixdim_0_valid(&self) -> bool {
+        (self.get_pixdim()[0].abs() - 1.).abs() < 1e-11
     }
 }
 
