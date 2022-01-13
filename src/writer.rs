@@ -304,7 +304,7 @@ where
     W: Write,
     E: Endian,
 {
-    writer.write_i32(header.sizeof_hdr)?;
+    writer.write_i32(header.sizeof_hdr as i32)?;
     writer.write_all(&header.data_type)?;
     writer.write_all(&header.db_name)?;
     writer.write_i32(header.extents)?;
@@ -319,17 +319,17 @@ where
     writer.write_f32(header.intent_p3)?;
     writer.write_i16(header.intent_code)?;
     writer.write_i16(header.datatype)?;
-    writer.write_i16(header.bitpix)?;
-    writer.write_i16(header.slice_start)?;
+    writer.write_i16(header.bitpix.try_into()?)?;
+    writer.write_i16(header.slice_start.try_into()?)?;
     for f in &header.pixdim {
         writer.write_f32(*f)?;
     }
     writer.write_f32(header.vox_offset)?;
     writer.write_f32(header.scl_slope)?;
     writer.write_f32(header.scl_inter)?;
-    writer.write_i16(header.slice_end)?;
-    writer.write_u8(header.slice_code)?;
-    writer.write_u8(header.xyzt_units)?;
+    writer.write_i16(header.slice_end.try_into()?)?;
+    writer.write_i8(header.slice_code)?;
+    writer.write_i8(header.xyzt_units)?;
     writer.write_f32(header.cal_max)?;
     writer.write_f32(header.cal_min)?;
     writer.write_f32(header.slice_duration)?;

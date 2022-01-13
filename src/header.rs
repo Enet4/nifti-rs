@@ -59,7 +59,7 @@ pub const MAGIC_CODE_NIP1: &[u8; 4] = b"n+1\0";
 #[derive(Debug, Clone, PartialEq)]
 pub struct NiftiHeader {
     /// Header size, must be 348
-    pub sizeof_hdr: i32,
+    pub sizeof_hdr: u32,
     /// Unused in NIFTI-1
     pub data_type: [u8; 10],
     /// Unused in NIFTI-1
@@ -73,6 +73,7 @@ pub struct NiftiHeader {
     /// MRI slice ordering
     pub dim_info: u8,
     /// Data array dimensions
+    /// Note in the NIFTI-1 specification this is actually [i16; 8].
     pub dim: [u16; 8],
     /// 1st intent parameter
     pub intent_p1: f32,
@@ -85,9 +86,11 @@ pub struct NiftiHeader {
     /// Defines the data type!
     pub datatype: i16,
     /// Number of bits per voxel
-    pub bitpix: i16,
+    /// Note in the NIFTI-1 specification this is actually i16.
+    pub bitpix: u16,
     /// First slice index
-    pub slice_start: i16,
+    /// Note in the NIFTI-1 specification this is actually i16.
+    pub slice_start: u16,
     /// Grid spacings
     pub pixdim: [f32; 8],
     /// Offset into .nii file to reach the volume
@@ -97,11 +100,12 @@ pub struct NiftiHeader {
     /// Data scaling: offset
     pub scl_inter: f32,
     /// Last slice index
-    pub slice_end: i16,
+    /// Note in the NIFTI-1 specification this is actually i16.
+    pub slice_end: u16,
     /// Slice timing order
-    pub slice_code: u8,
+    pub slice_code: i8,
     /// Units of `pixdim[1..4]`
-    pub xyzt_units: u8,
+    pub xyzt_units: i8,
     /// Max display intensity
     pub cal_max: f32,
     /// Min display intensity
@@ -116,7 +120,7 @@ pub struct NiftiHeader {
     pub glmin: i32,
 
     /// Any text you like
-    pub descrip: Vec<u8>,
+    pub descrip: [u8; 80],
     /// Auxiliary filename
     pub aux_file: [u8; 24],
     /// NIFTI_XFORM_* code
@@ -146,7 +150,7 @@ pub struct NiftiHeader {
     /// 'name' or meaning of data
     pub intent_name: [u8; 16],
 
-    /// Magic code. Must be `b"ni1\0"` or `b"ni+\0"`
+    /// Magic code. Must be `b"ni1\0"` or `b"n+1\0"`
     pub magic: [u8; 4],
 
     /// Original data Endianness
@@ -185,7 +189,7 @@ impl Default for NiftiHeader {
             glmax: 0,
             glmin: 0,
 
-            descrip: vec![0; 80],
+            descrip: [0; 80],
             aux_file: [0; 24],
             qform_code: 1,
             sform_code: 1,
@@ -608,17 +612,17 @@ where
     h.intent_p3 = input.read_f32()?;
     h.intent_code = input.read_i16()?;
     h.datatype = input.read_i16()?;
-    h.bitpix = input.read_i16()?;
-    h.slice_start = input.read_i16()?;
+    h.bitpix = input.read_i16()? as u16;
+    h.slice_start = input.read_i16()? as u16;
     for v in &mut h.pixdim {
         *v = input.read_f32()?;
     }
     h.vox_offset = input.read_f32()?;
     h.scl_slope = input.read_f32()?;
     h.scl_inter = input.read_f32()?;
-    h.slice_end = input.read_i16()?;
-    h.slice_code = input.read_u8()?;
-    h.xyzt_units = input.read_u8()?;
+    h.slice_end = input.read_i16()? as u16;
+    h.slice_code = input.read_i8()?;
+    h.xyzt_units = input.read_i8()?;
     h.cal_max = input.read_f32()?;
     h.cal_min = input.read_f32()?;
     h.slice_duration = input.read_f32()?;
@@ -627,7 +631,7 @@ where
     h.glmin = input.read_i32()?;
 
     // descrip is 80-elem vec already
-    input.read_exact(h.descrip.as_mut_slice())?;
+    input.read_exact(&mut h.descrip)?;
     input.read_exact(&mut h.aux_file)?;
     h.qform_code = input.read_i16()?;
     h.sform_code = input.read_i16()?;
