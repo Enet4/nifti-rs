@@ -1,5 +1,6 @@
 //! Utility functions to write nifti images.
 
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -247,6 +248,8 @@ impl<'a> WriterOptions<'a> {
         Ok(())
     }
 
+    // TODO document/understand whether everything in this method is necessary
+    // and how to communicate its side effects to users of this crate
     fn prepare_header<T, D>(
         &self,
         data: &ArrayBase<T, D>,
@@ -256,18 +259,8 @@ impl<'a> WriterOptions<'a> {
         T: Data,
         D: Dimension,
     {
-        let mut header = NiftiHeader {
-            dim: *Dim::from_slice(data.shape())?.raw(),
-            sizeof_hdr: 348,
-            datatype: datatype as i16,
-            bitpix: (datatype.size_of() * 8) as i16,
-            vox_offset: 352.0,
-            scl_inter: 0.0,
-            scl_slope: 1.0,
-            magic: *MAGIC_CODE_NIP1,
-            // All other fields are copied from the requested reference header
-            ..self.header_reference.to_header()?
-        };
+        // Read in or clone the "reference" header.
+        let mut header = self.header_reference.to_header()?;
 
         // Set dimensions, slice, and data type from ndarray.
         header.set_dim(Dim::from_slice(data.shape())?.raw())?;
@@ -286,17 +279,45 @@ impl<'a> WriterOptions<'a> {
             },
             NiftiHeader::Nifti2Header(ref mut header) => {
                 header.sizeof_hdr = 540;
-            },
+            }
         }
 
         // Override the existing header voxel offset.
         if self.write_header_file {
-            header.vox_offset = 0.0;
-            header.magic = *MAGIC_CODE_NI1;
+            // If we are writing the header and data to separate files then the
+            // data starts at the beginning of the data file.  Voxel offset
+            // should therefore be zero.
+            header.set_vox_offset(0)?;
+        } else {
+            // Voxel offsets to keep data 32 byte aligned.
+            match header {
+                NiftiHeader::Nifti1Header(ref mut header) => {
+                    header.vox_offset = 352.;
+                },
+                NiftiHeader::Nifti2Header(ref mut header) => {
+                    header.vox_offset = 544;
+                },
+            }
         }
 
-        // The only acceptable length is 80. If different, try to set it.
-        header.validate_description()?;
+        // Override the existing header magic code to reflect whether the
+        // header and data are in separate files.
+        match header {
+            NiftiHeader::Nifti1Header(ref mut header) => {
+                if self.write_header_file {
+                    header.magic = *MAGIC_CODE_NI1;
+                } else {
+                    header.magic = *MAGIC_CODE_NIP1;
+                }
+            },
+            NiftiHeader::Nifti2Header(ref mut header) => {
+                if self.write_header_file {
+                    header.magic = *MAGIC_CODE_NI2;
+                } else {
+                    header.magic = *MAGIC_CODE_NIP2;
+                }
+            }
+        }
 
         Ok(header)
     }
@@ -321,7 +342,18 @@ impl<'a> WriterOptions<'a> {
     }
 }
 
-fn write_header<W, E>(mut writer: ByteOrdered<W, E>, header: &NiftiHeader) -> Result<()>
+fn write_header<W, E>(writer: ByteOrdered<W, E>, header: &NiftiHeader) -> Result<()>
+where
+    W: Write,
+    E: Endian,
+{
+    match header {
+        NiftiHeader::Nifti1Header(ref header) => write_nifti1_header(writer, header),
+        NiftiHeader::Nifti2Header(ref header) => write_nifti2_header(writer, header),
+    }
+}
+
+fn write_nifti1_header<W, E>(mut writer: ByteOrdered<W, E>, header: &Nifti1Header) -> Result<()>
 where
     W: Write,
     E: Endian,
@@ -383,6 +415,64 @@ where
     }
     writer.write_all(&header.intent_name)?;
     writer.write_all(&header.magic)?;
+
+    // Empty 4 bytes after the header
+    // TODO Support writing extension data.
+    writer.write_u32(0)?;
+
+    Ok(())
+}
+
+fn write_nifti2_header<W, E>(mut writer: ByteOrdered<W, E>, header: &Nifti2Header) -> Result<()>
+where
+    W: Write,
+    E: Endian,
+{
+    writer.write_i32(header.sizeof_hdr as i32)?;
+    writer.write_all(&header.magic)?;
+    writer.write_i16(header.datatype)?;
+    writer.write_i16(header.bitpix as i16)?;
+    for s in &header.dim {
+        writer.write_i64(*s as i64)?;
+    }
+    writer.write_f64(header.intent_p1)?;
+    writer.write_f64(header.intent_p2)?;
+    writer.write_f64(header.intent_p3)?;
+    for f in &header.pixdim {
+        writer.write_f64(*f)?;
+    }
+    writer.write_i64(header.vox_offset as i64)?;
+    writer.write_f64(header.scl_slope)?;
+    writer.write_f64(header.scl_inter)?;
+    writer.write_f64(header.cal_max)?;
+    writer.write_f64(header.cal_min)?;
+    writer.write_f64(header.slice_duration)?;
+    writer.write_f64(header.toffset)?;
+    writer.write_i64(header.slice_start as i64)?;
+    writer.write_i64(header.slice_end as i64)?;
+    writer.write_all(&header.descrip)?;
+    writer.write_all(&header.aux_file)?;
+    writer.write_i32(header.qform_code)?;
+    writer.write_i32(header.sform_code)?;
+    writer.write_f64(header.quatern_b)?;
+    writer.write_f64(header.quatern_c)?;
+    writer.write_f64(header.quatern_d)?;
+    writer.write_f64(header.quatern_x)?;
+    writer.write_f64(header.quatern_y)?;
+    writer.write_f64(header.quatern_z)?;
+    for f in header
+        .srow_x
+        .iter()
+        .chain(&header.srow_y)
+        .chain(&header.srow_z)
+    {
+        writer.write_f64(*f)?;
+    }
+    writer.write_i32(header.slice_code)?;
+    writer.write_i32(header.xyzt_units)?;
+    writer.write_i32(header.intent_code)?;
+    writer.write_all(&header.intent_name)?;
+    writer.write_u8(header.dim_info)?;
 
     // Empty 4 bytes after the header
     // TODO Support writing extension data.
