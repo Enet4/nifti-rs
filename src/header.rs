@@ -206,7 +206,7 @@ impl Default for NiftiHeader {
 
             intent_name: [0; 16],
 
-            magic: *MAGIC_CODE_NI1,
+            magic: *MAGIC_CODE_NIP1,
 
             endianness: Endianness::native(),
         }
