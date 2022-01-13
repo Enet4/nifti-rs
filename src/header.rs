@@ -93,6 +93,730 @@ impl Default for NiftiHeader {
     }
 }
 impl NiftiHeader {
+    // Getter and setter methods.
+    // 
+    // Signatures are for the larger types of NIFTI-2 fields.
+    // When getting a smaller field from a NIFTI-1 header (e.g. intent_code) the
+    // value is promoted to the larger type (e.g. i16 -> i32).
+    // When setting a smaller integer field in a NIFTI-1 header, the setter
+    // returns std::num::TryFromIntError if the assigned value won't fit in the
+    // smaller field.
+    // When setting a smaller floating point field in a NIFTI-1 header
+    // (e.g. quatern_x f64 -> f32), the setter simply performs a saturating
+    // cast, which may result in some loss of precision.
+
+    /// Header size, must be 348 for a NIFTI-1 header and 540 for NIFTI-2.
+    /// There is no corresponding `set_sizeof_hdr()` because you should never
+    /// need to set this field manually.
+    pub fn get_sizeof_hdr(&self) -> u32 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.sizeof_hdr,
+            Self::Nifti2Header(ref header) => header.sizeof_hdr,
+        }
+    }
+    /// Get MRI slice ordering.
+    pub fn get_dim_info(&self) -> u8 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.dim_info,
+            Self::Nifti2Header(ref header) => header.dim_info,
+        }
+    }
+    /// Set MRI slice ordering.
+    pub fn set_dim_info(&mut self, dim_info: u8) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.dim_info = dim_info;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.dim_info = dim_info;
+            },
+        }
+    }
+    /// Get data array dimensions.
+    pub fn get_dim(&self) -> [u64; 8] {
+        match *self {
+            Self::Nifti1Header(ref header) => {
+                header.dim.map(|x| x as u64)
+            },
+            Self::Nifti2Header(ref header) => header.dim,
+        }
+    }
+    /// Set data array dimensions.  When the header version is NIFTI-2 returns
+    /// [`NiftiError::FieldSize`] if any of the dimensions will not fit into i64
+    /// as required by the format specification.  For NIFTI-1 requires
+    /// dimensions to fit into `i16`.
+    pub fn set_dim(&mut self, dim: &[u64; 8]) -> Result<()> {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                for (&src, dst) in dim.iter().zip(&mut header.dim) {
+                    *dst = TryInto::<i16>::try_into(src)? as u16;
+                }
+            },
+            Self::Nifti2Header(ref mut header) => {
+                for (&src, dst) in dim.iter().zip(&mut header.dim) {
+                    *dst = TryInto::<i64>::try_into(src)? as u64;
+                }
+            },
+        }
+        Ok(())
+    }
+    /// Get 1st intent parameter.
+    pub fn get_intent_p1(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.intent_p1 as f64,
+            Self::Nifti2Header(ref header) => header.intent_p1,
+        }
+    }
+    /// Set 1st intent parameter.  When the header version is NIFTI-1, precision
+    /// is reduced to `f32`.
+    pub fn set_intent_p1(&mut self, intent_p1: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.intent_p1 = intent_p1 as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.intent_p1 = intent_p1;
+            },
+        }
+    }
+    /// Get 2nd intent parameter.
+    pub fn get_intent_p2(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.intent_p2 as f64,
+            Self::Nifti2Header(ref header) => header.intent_p2,
+        }
+    }
+    /// Set 2nd intent parameter.  When the header version is NIFTI-1, precision
+    /// is reduced to `f32`.
+    pub fn set_intent_p2(&mut self, intent_p2: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.intent_p2 = intent_p2 as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.intent_p2 = intent_p2;
+            },
+        }
+    }
+    /// Get 3rd intent parameter.
+    pub fn get_intent_p3(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.intent_p3 as f64,
+            Self::Nifti2Header(ref header) => header.intent_p3,
+        }
+    }
+    /// Set 3rd intent parameter.  When the header version is NIFTI-1, precision
+    /// is reduced to `f32`.
+    pub fn set_intent_p3(&mut self, intent_p3: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.intent_p3 = intent_p3 as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.intent_p3 = intent_p3;
+            },
+        }
+    }
+    /// Get NIFTI_INTENT_* code.
+    pub fn get_intent_code(&self) -> i32 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.intent_code as i32,
+            Self::Nifti2Header(ref header) => header.intent_code,
+        }
+    }
+    /// Set NIFTI_INTENT_* code.  Always succeeds when the header version is
+    /// NIFTI-2.  When the header version is NIFTI-1, returns
+    /// [`NiftiError::FieldSize`] if the intent code will not fit into `i16`.
+    pub fn set_intent_code(&mut self, intent_code: i32) -> Result<()> {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.intent_code = intent_code.try_into()?;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.intent_code = intent_code;
+            }
+        }
+        Ok(())
+    }
+    /// Get the data type.
+    pub fn get_datatype(&self) -> i16 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.datatype,
+            Self::Nifti2Header(ref header) => header.datatype,
+        }
+    }
+    /// Set the data type.
+    pub fn set_datatype(&mut self, datatype: i16) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.datatype = datatype;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.datatype = datatype;
+            },
+        }
+    }
+    /// Get number of bits per voxel.
+    pub fn get_bitpix(&self) -> u16 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.bitpix,
+            Self::Nifti2Header(ref header) => header.bitpix,
+        }
+    }
+    /// Set number of bits per voxel.  Returns [`NiftiError::FieldSize`] if
+    /// `bitpix` will not fit into `i16`.
+    pub fn set_bitpix(&mut self, bitpix: u16) -> Result<()> {
+        let _: i16 = bitpix.try_into()?; // Check that bitpix can fit into i16.
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.bitpix = bitpix;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.bitpix = bitpix;
+            },
+        }
+        Ok(())
+    }
+    /// Get first slice index.
+    pub fn get_slice_start(&self) -> u64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.slice_start as u64,
+            Self::Nifti2Header(ref header) => header.slice_start,
+        }
+    }
+    /// Set first slice index.  Returns [`NiftiError::FieldSize`] if
+    /// `slice_start` will not fit into `i16` as required by the NIFTI-1 format
+    /// or `i64` as required by NIFTI-2.
+    pub fn set_slice_start(&mut self, slice_start: u64) -> Result<()> {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.slice_start = TryInto::<i16>::try_into(slice_start)? as u16;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.slice_start = TryInto::<i64>::try_into(slice_start)? as u64;
+            },
+        }
+        Ok(())
+    }
+    /// Get grid spacings.
+    pub fn get_pixdim(&self) -> [f64; 8] {
+        match *self {
+            Self::Nifti1Header(ref header) => header.pixdim.map(|x| x as f64),
+            Self::Nifti2Header(ref header) => header.pixdim,
+        }
+    }
+    /// Set grid spacings.
+    pub fn set_pixdim(&mut self, pixdim: &[f64; 8]) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.pixdim = pixdim.map(|x| x as f32);
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.pixdim = *pixdim;
+            },
+        }
+    }
+    /// Get offset into .nii file to reach the volume.  Note that NIFTI-1 stores
+    /// this offset as `f32`.  Floating point values will be rounded to the
+    /// nearest integer.  Returns [`NiftiError::FieldSize`] if that integer
+    /// would be negative.
+    pub fn get_vox_offset(&self) -> Result<u64> {
+        Ok(
+            match *self {
+                Self::Nifti1Header(ref header) => (header.vox_offset.round() as i64).try_into()?,
+                Self::Nifti2Header(ref header) => header.vox_offset,
+            }
+        )
+    }
+    /// Set offset into .nii file to reach the volume.  Note that NIFTI-1 stores
+    /// this offset as `f32` and NIFTI-2 stores it as `i64`.  Returns
+    /// [`NiftiError::FieldSize`] if vox_offset will not fit into the underlying
+    /// field type.
+    pub fn set_vox_offset(&mut self, vox_offset: u64) -> Result<()> {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.vox_offset = TryInto::<i32>::try_into(vox_offset)? as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.vox_offset = TryInto::<i64>::try_into(vox_offset)? as u64;
+            },
+        }
+        Ok(())
+    }
+    /// Get data scaling slope.
+    pub fn get_scl_slope(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.scl_slope as f64,
+            Self::Nifti2Header(ref header) => header.scl_slope,
+        }
+    }
+    /// Set data scaling slope.  When the header version is NIFTI-1, precision
+    /// is reduced to `f32`.
+    pub fn set_scl_slope(&mut self, scl_slope: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.scl_slope = scl_slope as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.scl_slope = scl_slope;
+            },
+        }
+    }
+    /// Get data scaling offset (intercept).  When the header version is
+    /// NIFTI-1, precision is reduced to `f32`.
+    pub fn get_scl_inter(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.scl_inter as f64,
+            Self::Nifti2Header(ref header) => header.scl_inter,
+        }
+    }
+    /// Set data scaling offset (intercept).
+    pub fn set_scl_inter(&mut self, scl_inter: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.scl_inter = scl_inter as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.scl_inter = scl_inter;
+            },
+        }
+    }
+    /// Get last slice index.
+    pub fn get_slice_end(&self) -> u64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.slice_end as u64,
+            Self::Nifti2Header(ref header) => header.slice_end,
+        }
+    }
+    /// Get last slice index.  Returns [`NiftiError::FieldSize`] if
+    /// `slice_end` will not fit into `i16` as required by the NIFTI-1 format
+    /// or `i64` as required by NIFTI-2.
+    pub fn set_slice_end(&mut self, slice_end: u64) -> Result<()> {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.slice_end = TryInto::<i16>::try_into(slice_end)? as u16;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.slice_end = TryInto::<i64>::try_into(slice_end)? as u64;
+            },
+        }
+        Ok(())
+    }
+    /// Get slice timing order.
+    pub fn get_slice_code(&self) -> i32 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.slice_code as i32,
+            Self::Nifti2Header(ref header) => header.slice_code,
+        }
+    }
+    /// Set slice timing order.  When header is NIFTI-1 returns
+    /// [`NiftiError::FieldSize`] if `slice_code` will not fit into `i8`.
+    pub fn set_slice_code(&mut self, slice_code: i32) -> Result<()> {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.slice_code = slice_code.try_into()?;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.slice_code = slice_code;
+            },
+        }
+        Ok(())
+    }
+    /// Get units of `pixdim[1..4]`.
+    pub fn get_xyzt_units(&self) -> i32 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.xyzt_units as i32,
+            Self::Nifti2Header(ref header) => header.xyzt_units,
+        }
+    }
+    /// Set units of `pixdim[1..4]`.  When header is NIFTI-1 returns
+    /// [`NiftiError::FieldSize`] if `xyzt_units` will not fit into `i8`.
+    pub fn set_xyzt_units(&mut self, xyzt_units: i32) -> Result<()> {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.xyzt_units = xyzt_units.try_into()?;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.xyzt_units = xyzt_units;
+            },
+        }
+        Ok(())
+    }
+    /// Get max display intensity.
+    pub fn get_cal_max(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.cal_max as f64,
+            Self::Nifti2Header(ref header) => header.cal_max,
+        }
+    }
+    /// Set max display intensity.  When the header version is NIFTI-1,
+    /// precision is reduced to `f32`.
+    pub fn set_cal_max(&mut self, cal_max: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.cal_max = cal_max as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.cal_max = cal_max;
+            },
+        }
+    }
+    /// Get min display intensity.
+    pub fn get_cal_min(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.cal_min as f64,
+            Self::Nifti2Header(ref header) => header.cal_min,
+        }
+    }
+    /// Set min display intensity.  When the header version is NIFTI-1,
+    /// precision is reduced to `f32`.
+    pub fn set_cal_min(&mut self, cal_min: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.cal_min = cal_min as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.cal_min = cal_min;
+            },
+        }
+    }
+    /// Get time for 1 slice (in seconds).
+    pub fn get_slice_duration(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.slice_duration as f64,
+            Self::Nifti2Header(ref header) => header.slice_duration,
+        }
+    }
+    /// Set time for 1 slice (in seconds).  When the header version is NIFTI-1,
+    /// precision is reduced to `f32`.
+    pub fn set_slice_duration(&mut self, slice_duration: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.slice_duration = slice_duration as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.slice_duration = slice_duration;
+            },
+        }
+    }
+    /// Get time axis shift.
+    pub fn get_toffset(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.toffset as f64,
+            Self::Nifti2Header(ref header) => header.toffset,
+        }
+    }
+    /// Set time axis shift.
+    pub fn set_toffset(&mut self, toffset: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.toffset = toffset as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.toffset = toffset;
+            },
+        }
+    }
+    /// Get description.
+    pub fn get_descrip(&self) -> &[u8; 80] {
+        match *self {
+            Self::Nifti1Header(ref header) => &header.descrip,
+            Self::Nifti2Header(ref header) => &header.descrip,
+        }
+    }
+    /// Set description (any text you like).
+    pub fn set_descrip(&mut self, descrip: [u8; 80]) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.descrip = descrip;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.descrip = descrip;
+            },
+        }
+    }
+    /// Get auxiliary filename.
+    pub fn get_aux_file(&self) -> &[u8; 24] {
+        match *self {
+            Self::Nifti1Header(ref header) => &header.aux_file,
+            Self::Nifti2Header(ref header) => &header.aux_file,
+        }
+    }
+    /// Set auxiliary filename.
+    pub fn set_aux_file(&mut self, aux_file: [u8; 24]) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.aux_file = aux_file;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.aux_file = aux_file;
+            },
+        }
+    }
+    /// Get NIFTI_XFORM_* code.
+    pub fn get_qform_code(&self) -> i32 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.qform_code as i32,
+            Self::Nifti2Header(ref header) => header.qform_code,
+        }
+    }
+    /// Set NIFTI_XFORM_* code.  When header is NIFTI-1 returns
+    /// [`NiftiError::FieldSize`] if `qform_code` will not fit into `i16`.
+    pub fn set_qform_code(&mut self, qform_code: i32) -> Result<()> {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.qform_code = qform_code.try_into()?;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.qform_code = qform_code;
+            },
+        }
+        Ok(())
+    }
+    /// Get NIFTI_XFORM_* code.
+    pub fn get_sform_code(&self) -> i32 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.sform_code as i32,
+            Self::Nifti2Header(ref header) => header.sform_code,
+        }
+    }
+    /// Set NIFTI_XFORM_* code.  When header is NIFTI-1 returns
+    /// [`NiftiError::FieldSize`] if `sform_code` will not fit into `i16`.
+    pub fn set_sform_code(&mut self, sform_code: i32) -> Result<()> {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.sform_code = sform_code.try_into()?;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.sform_code = sform_code;
+            },
+        }
+        Ok(())
+    }
+    /// Get quaternion b param.
+    pub fn get_quatern_b(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.quatern_b as f64,
+            Self::Nifti2Header(ref header) => header.quatern_b,
+        }
+    }
+    /// Set quaternion b param.  When the header version is NIFTI-1, precision
+    /// is reduced to `f32`.
+    pub fn set_quatern_b(&mut self, quatern_b: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.quatern_b = quatern_b as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.quatern_b = quatern_b;
+            },
+        }
+    }
+    /// Get quaternion c param.
+    pub fn get_quatern_c(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.quatern_c as f64,
+            Self::Nifti2Header(ref header) => header.quatern_c,
+        }
+    }
+    /// Set quaternion c param.  When the header version is NIFTI-1, precision
+    /// is reduced to `f32`.
+    pub fn set_quatern_c(&mut self, quatern_c: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.quatern_c = quatern_c as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.quatern_c = quatern_c;
+            },
+        }
+    }
+    /// Get quaternion d param.
+    pub fn get_quatern_d(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.quatern_d as f64,
+            Self::Nifti2Header(ref header) => header.quatern_d,
+        }
+    }
+    /// Set quaternion d param.  When the header version is NIFTI-1, precision
+    /// is reduced to `f32`.
+    pub fn set_quatern_d(&mut self, quatern_d: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.quatern_d = quatern_d as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.quatern_d = quatern_d;
+            },
+        }
+    }
+    /// Get quaternion x param, also known as qoffset_x.
+    pub fn get_quatern_x(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.quatern_x as f64,
+            Self::Nifti2Header(ref header) => header.quatern_x,
+        }
+    }
+    /// Set quaternion x param.  When the header version is NIFTI-1, precision
+    /// is reduced to `f32`.
+    pub fn set_quatern_x(&mut self, quatern_x: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.quatern_x = quatern_x as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.quatern_x = quatern_x;
+            },
+        }
+    }
+    /// Get quaternion y param, also known as qoffset_y.
+    pub fn get_quatern_y(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.quatern_y as f64,
+            Self::Nifti2Header(ref header) => header.quatern_y,
+        }
+    }
+    /// Set quaternion y param.  When the header version is NIFTI-1, precision
+    /// is reduced to `f32`.
+    pub fn set_quatern_y(&mut self, quatern_y: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.quatern_y = quatern_y as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.quatern_y = quatern_y;
+            },
+        }
+    }
+    /// Get quaternion z param, also known as qoffset_z.
+    pub fn get_quatern_z(&self) -> f64 {
+        match *self {
+            Self::Nifti1Header(ref header) => header.quatern_z as f64,
+            Self::Nifti2Header(ref header) => header.quatern_z,
+        }
+    }
+    /// Set quaternion z param.  When the header version is NIFTI-1, precision
+    /// is reduced to `f32`.
+    pub fn set_quatern_z(&mut self, quatern_z: f64) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.quatern_z = quatern_z as f32;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.quatern_z = quatern_z;
+            },
+        }
+    }
+    /// Get 1st row affine transform.
+    pub fn get_srow_x(&self) -> [f64; 4] {
+        match *self {
+            Self::Nifti1Header(ref header) => header.srow_x.map(|x| x as f64),
+            Self::Nifti2Header(ref header) => header.srow_x,
+        }
+    }
+    /// Set 1st row affine transform.  When the header version is NIFTI-1,
+    /// precision is reduced to `f32`.
+    pub fn set_srow_x(&mut self, srow_x: &[f64; 4]) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                for (&src, dst) in srow_x.iter().zip(&mut header.srow_x) {
+                    *dst = src as f32;
+                }
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.srow_x = *srow_x;
+            },
+        }
+    }
+    /// Get 2nd row affine transform.
+    pub fn get_srow_y(&self) -> [f64; 4] {
+        match *self {
+            Self::Nifti1Header(ref header) => header.srow_y.map(|x| x as f64),
+            Self::Nifti2Header(ref header) => header.srow_y,
+        }
+    }
+    /// Set 2nd row affine transform.  When the header version is NIFTI-1,
+    /// precision is reduced to `f32`.
+    pub fn set_srow_y(&mut self, srow_y: &[f64; 4]) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                for (&src, dst) in srow_y.iter().zip(&mut header.srow_y) {
+                    *dst = src as f32;
+                }
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.srow_y = *srow_y;
+            },
+        }
+    }
+    /// Get 3rd row affine transform.
+    pub fn get_srow_z(&self) -> [f64; 4] {
+        match *self {
+            Self::Nifti1Header(ref header) => header.srow_z.map(|x| x as f64),
+            Self::Nifti2Header(ref header) => header.srow_z,
+        }
+    }
+    /// Set 3rd row affine transform.  When the header version is NIFTI-1,
+    /// precision is reduced to `f32`.
+    pub fn set_srow_z(&mut self, srow_z: &[f64; 4]) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                for (&src, dst) in srow_z.iter().zip(&mut header.srow_z) {
+                    *dst = src as f32;
+                }
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.srow_z = *srow_z;
+            },
+        }
+    }
+    /// Get magic code.  This will be 4 bytes for a NIFTI-1 header and 8 bytes
+    /// for a NIFTI-2 header.  There is no corresponding `set_magic()` because
+    /// you should never need to set this field manually.
+    pub fn get_magic(&self) -> &[u8] {
+        match *self {
+            Self::Nifti1Header(ref header) => &header.magic,
+            Self::Nifti2Header(ref header) => &header.magic,
+        }
+    }
+    /// Get 'name' or meaning of data.
+    pub fn get_intent_name(&self) -> &[u8; 16] {
+        match *self {
+            Self::Nifti1Header(ref header) => &header.intent_name,
+            Self::Nifti2Header(ref header) => &header.intent_name,
+        }
+    }
+    /// Set 'name' or meaning of data.
+    pub fn set_intent_name(&mut self, intent_name: [u8; 16]) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.intent_name = intent_name;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.intent_name = intent_name;
+            },
+        }
+    }
+    /// Get original data endianness.
+    pub fn get_endianness(&self) -> Endianness {
+        match *self {
+            Self::Nifti1Header(ref header) => header.endianness,
+            Self::Nifti2Header(ref header) => header.endianness,
+        }
+    }
+    /// Set data endianness field in header
+    /// (will not change endianness of data itself).
+    pub fn set_endianness(&mut self, endianness: Endianness) {
+        match *self {
+            Self::Nifti1Header(ref mut header) => {
+                header.endianness = endianness;
+            },
+            Self::Nifti2Header(ref mut header) => {
+                header.endianness = endianness;
+            },
+        }
+    }
+
     /// Convert this header into a NIFTI-2 header.
     /// Does nothing if the header is already NIFTI-2.
     /// Promotes NIFTI-1 fields to larger types and removes unused fields.
