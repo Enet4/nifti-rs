@@ -10,6 +10,7 @@ use crate::volume::streamed::StreamedNiftiVolume;
 use crate::volume::{FromSource, FromSourceOptions, NiftiVolume};
 use byteordered::ByteOrdered;
 use flate2::bufread::GzDecoder;
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{self, BufReader, Read};
 use std::path::Path;
@@ -501,8 +502,8 @@ impl<V> GenericNiftiObject<V> {
         V: FromSource<R>,
     {
         // fetch extensions
-        let len = header.vox_offset as usize;
-        let len = if len < 352 { 0 } else { len - 352 };
+        let len: usize = header.get_vox_offset()?.try_into()?;
+        let len = if len == 0 { 0 } else { len - TryInto::<usize>::try_into(header.get_sizeof_hdr())? }; // TODO!
 
         let ext = {
             let source = ByteOrdered::runtime(&mut source, header.get_endianness());
@@ -559,8 +560,8 @@ impl<V> GenericNiftiObject<V> {
             // extensions and volume are in the same source
 
             let extender = Extender::from_reader(&mut stream)?;
-            let len = header.vox_offset as usize;
-            let len = if len < 352 { 0 } else { len - 352 };
+            let len: usize = header.get_vox_offset()?.try_into()?;
+            let len = if len == 0 { 0 } else { len - TryInto::<usize>::try_into(header.get_sizeof_hdr())? }; // TODO!    
 
             let ext = {
                 let stream = ByteOrdered::runtime(&mut stream, header.get_endianness());
