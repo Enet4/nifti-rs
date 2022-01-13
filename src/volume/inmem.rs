@@ -438,15 +438,15 @@ mod tests {
     #[test]
     fn test_false_4d() {
         let (w, h, d) = (5, 5, 5);
-        let mut header = NiftiHeader {
+        let mut header = crate::header::Nifti1Header {
             dim: [4, w, h, d, 1, 1, 1, 1],
             datatype: 2,
             bitpix: 8,
             ..Default::default()
-        };
+        }.into_nifti();
         let raw_data = vec![0; (w * h * d) as usize];
         let mut volume = InMemNiftiVolume::from_raw_data(&header, raw_data).unwrap();
-        assert_eq!(header.dim[0], 4);
+        assert_eq!(header.get_dim()[0], 4);
         assert_eq!(volume.dimensionality(), 4);
         if header.get_dim()[header.get_dim()[0] as usize] == 1 {
             let mut dim = header.get_dim();

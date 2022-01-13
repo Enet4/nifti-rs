@@ -313,20 +313,20 @@ mod tests {
     use super::super::{NiftiVolume, RandomAccessNiftiVolume};
     use super::StreamedNiftiVolume;
     use crate::typedef::NiftiType;
-    use crate::NiftiHeader;
+    use crate::Nifti1Header;
     use byteordered::Endianness;
 
     #[test]
     fn test_streamed_base() {
         let volume_data = &[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
-        let header = NiftiHeader {
+        let header = Nifti1Header {
             dim: [3, 2, 3, 2, 0, 0, 0, 0],
             datatype: NiftiType::Uint8 as i16,
             scl_slope: 1.,
             scl_inter: 0.,
             endianness: Endianness::native(),
-            ..NiftiHeader::default()
-        };
+            ..Nifti1Header::default()
+        }.into_nifti();
 
         let mut volume = StreamedNiftiVolume::from_reader(&volume_data[..], &header).unwrap();
 
@@ -360,14 +360,14 @@ mod tests {
     #[test]
     fn test_streamed_indexed() {
         let volume_data = &[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
-        let header = NiftiHeader {
+        let header = Nifti1Header {
             dim: [3, 2, 3, 2, 0, 0, 0, 0],
             datatype: NiftiType::Uint8 as i16,
             scl_slope: 1.,
             scl_inter: 0.,
             endianness: Endianness::native(),
-            ..NiftiHeader::default()
-        };
+            ..Nifti1Header::default()
+        }.into_nifti();
 
         let mut volume = StreamedNiftiVolume::from_reader(&volume_data[..], &header).unwrap();
 
@@ -404,14 +404,14 @@ mod tests {
     #[test]
     fn test_streamed_inline() {
         let volume_data = &[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
-        let header = NiftiHeader {
+        let header = Nifti1Header {
             dim: [3, 2, 3, 2, 0, 0, 0, 0],
             datatype: NiftiType::Uint8 as i16,
             scl_slope: 1.,
             scl_inter: 0.,
             endianness: Endianness::native(),
-            ..NiftiHeader::default()
-        };
+            ..Nifti1Header::default()
+        }.into_nifti();
 
         let mut volume = StreamedNiftiVolume::from_reader(&volume_data[..], &header).unwrap();
 
@@ -446,14 +446,14 @@ mod tests {
     #[test]
     fn test_streamed_ranked() {
         let volume_data = &[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
-        let header = NiftiHeader {
+        let header = Nifti1Header {
             dim: [4, 2, 3, 2, 1, 0, 0, 0],
             datatype: NiftiType::Uint8 as i16,
             scl_slope: 1.,
             scl_inter: 0.,
             endianness: Endianness::native(),
-            ..NiftiHeader::default()
-        };
+            ..Nifti1Header::default()
+        }.into_nifti();
 
         let mut volume =
             StreamedNiftiVolume::from_reader_rank(&volume_data[..], &header, 2).unwrap();
@@ -490,14 +490,14 @@ mod tests {
         let volume_data = &[
             1, 0, 3, 0, 5, 0, 7, 0, 9, 0, 11, 0, 13, 0, 15, 0, 17, 0, 19, 0, 21, 0, 23, 0,
         ];
-        let header = NiftiHeader {
+        let header = Nifti1Header {
             dim: [3, 2, 3, 2, 0, 0, 0, 0],
             datatype: NiftiType::Uint16 as i16,
             scl_slope: 1.,
             scl_inter: 0.,
             endianness: Endianness::Little,
-            ..NiftiHeader::default()
-        };
+            ..Nifti1Header::default()
+        }.into_nifti();
 
         let mut volume =
             StreamedNiftiVolume::from_reader_rank(&volume_data[..], &header, 1).unwrap();

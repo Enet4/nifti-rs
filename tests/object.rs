@@ -6,7 +6,7 @@ extern crate nifti;
 extern crate pretty_assertions;
 
 use nifti::{
-    Endianness, NiftiHeader, NiftiObject, NiftiType, NiftiVolume, RandomAccessNiftiVolume,
+    Endianness, Nifti1Header, NiftiObject, NiftiType, NiftiVolume, RandomAccessNiftiVolume,
     ReaderOptions, ReaderStreamedOptions, XForm,
 };
 
@@ -128,7 +128,7 @@ fn minimal_by_pair() {
 
 #[test]
 fn f32_nii_gz() {
-    let f32_hdr = NiftiHeader {
+    let f32_hdr = Nifti1Header {
         sizeof_hdr: 348,
         dim: [3, 11, 11, 11, 1, 1, 1, 1],
         datatype: 16,
@@ -144,7 +144,7 @@ fn f32_nii_gz() {
         magic: *b"n+1\0",
         endianness: Endianness::Little,
         ..Default::default()
-    };
+    }.into_nifti();
 
     const FILE_NAME: &str = "resources/f32.nii.gz";
     let obj = ReaderOptions::new().read_file(FILE_NAME).unwrap();
@@ -166,7 +166,7 @@ fn f32_nii_gz() {
 
 #[test]
 fn streamed_f32_nii_gz() {
-    let f32_hdr = NiftiHeader {
+    let f32_hdr = Nifti1Header {
         sizeof_hdr: 348,
         dim: [3, 11, 11, 11, 1, 1, 1, 1],
         datatype: 16,
@@ -182,7 +182,7 @@ fn streamed_f32_nii_gz() {
         magic: *b"n+1\0",
         endianness: Endianness::Little,
         ..Default::default()
-    };
+    }.into_nifti();
 
     const FILE_NAME: &str = "resources/f32.nii.gz";
     let obj = ReaderStreamedOptions::new().read_file(FILE_NAME).unwrap();
