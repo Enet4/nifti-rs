@@ -2,7 +2,7 @@ extern crate nifti;
 #[macro_use]
 extern crate pretty_assertions;
 
-use nifti::{Endianness, Intent, NiftiHeader, NiftiType, SliceOrder, Unit, XForm};
+use nifti::{Endianness, Intent, NiftiHeader, Nifti1Header, NiftiType, SliceOrder, Unit, XForm};
 use std::fs::File;
 
 mod util;
@@ -52,7 +52,7 @@ fn minimal_nii() {
     let header = NiftiHeader::from_reader(file).unwrap();
 
     assert_eq!(header, minimal_hdr);
-    assert_eq!(header.endianness, Endianness::Big);
+    assert_eq!(header.get_endianness(), Endianness::Big);
 
     assert_eq!(header.intent().unwrap(), Intent::None);
     assert_eq!(header.data_type().unwrap(), NiftiType::Uint8);
@@ -65,10 +65,9 @@ fn minimal_nii() {
 #[test]
 #[allow(non_snake_case)]
 fn avg152T1_LR_hdr_gz() {
-    let mut descrip = Vec::with_capacity(80);
-    descrip.extend(b"FSL3.2beta");
-    descrip.resize(80, 0);
-    let avg152t1_lr_hdr = NiftiHeader {
+    let mut descrip = [0; 80];
+    descrip[..10].copy_from_slice(b"FSL3.2beta");
+    let avg152t1_lr_hdr = Nifti1Header {
         sizeof_hdr: 348,
         regular: b'r',
         dim: [3, 91, 109, 91, 1, 1, 1, 1],
@@ -91,13 +90,13 @@ fn avg152T1_LR_hdr_gz() {
         magic: *b"ni1\0",
         endianness: Endianness::Big,
         ..Default::default()
-    };
+    }.into_nifti();
 
     const FILE_NAME: &str = "resources/avg152T1_LR_nifti.hdr.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
 
     assert_eq!(header, avg152t1_lr_hdr);
-    assert_eq!(header.endianness, Endianness::Big);
+    assert_eq!(header.get_endianness(), Endianness::Big);
 
     assert_eq!(header.intent().unwrap(), Intent::None);
     assert_eq!(header.data_type().unwrap(), NiftiType::Uint8);
@@ -110,10 +109,9 @@ fn avg152T1_LR_hdr_gz() {
 #[test]
 #[allow(non_snake_case)]
 fn avg152T1_LR_nii_gz() {
-    let mut descrip = Vec::with_capacity(80);
-    descrip.extend(b"FSL3.2beta");
-    descrip.resize(80, 0);
-    let avg152t1_lr_hdr = NiftiHeader {
+    let mut descrip = [0; 80];
+    descrip[..10].copy_from_slice(b"FSL3.2beta");
+    let avg152t1_lr_hdr = Nifti1Header {
         sizeof_hdr: 348,
         regular: b'r',
         dim: [3, 91, 109, 91, 1, 1, 1, 1],
@@ -136,7 +134,7 @@ fn avg152T1_LR_nii_gz() {
         magic: *b"n+1\0",
         endianness: Endianness::Big,
         ..Default::default()
-    };
+    }.into_nifti();
 
     const FILE_NAME: &str = "resources/avg152T1_LR_nifti.nii.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
@@ -153,10 +151,9 @@ fn avg152T1_LR_nii_gz() {
 
 #[test]
 fn zstat1_nii_gz() {
-    let mut descrip = Vec::with_capacity(80);
-    descrip.extend(b"FSL3.2beta");
-    descrip.resize(80, 0);
-    let zstat1_hdr = NiftiHeader {
+    let mut descrip = [0; 80];
+    descrip[..10].copy_from_slice(b"FSL3.2beta");
+    let zstat1_hdr = Nifti1Header {
         sizeof_hdr: 348,
         regular: b'r',
         dim: [3, 64, 64, 21, 1, 1, 1, 1],
@@ -181,7 +178,7 @@ fn zstat1_nii_gz() {
         magic: *b"n+1\0",
         endianness: Endianness::Big,
         ..Default::default()
-    };
+    }.into_nifti();
 
     const FILE_NAME: &str = "resources/zstat1.nii.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();

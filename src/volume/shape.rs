@@ -18,7 +18,7 @@ use crate::util::{validate_dim, validate_dimensionality};
 #[repr(transparent)]
 pub struct Idx(
     /// dimensions starting at 1, `dim[0]` is the dimensionality
-    [u16; 8],
+    [u64; 8],
 );
 
 impl Idx {
@@ -32,7 +32,7 @@ impl Idx {
     /// assert_eq!(idx.as_ref(), &[1, 2, 5]);
     /// # Ok::<(), nifti::NiftiError>(())
     /// ```
-    pub fn new(idx: [u16; 8]) -> Result<Self> {
+    pub fn new(idx: [u64; 8]) -> Result<Self> {
         let _ = validate_dimensionality(&idx)?;
         Ok(Idx(idx))
     }
@@ -44,7 +44,7 @@ impl Idx {
     /// The program may misbehave severely if the raw `idx` field is not
     /// consistent. The first element, `idx[0]`, must be a valid rank between 1
     /// and 7.
-    pub unsafe fn new_unchecked(idx: [u16; 8]) -> Self {
+    pub unsafe fn new_unchecked(idx: [u64; 8]) -> Self {
         Idx(idx)
     }
 
@@ -60,12 +60,12 @@ impl Idx {
     /// assert_eq!(idx.as_ref(), &[1, 2, 5]);
     /// # Ok::<(), nifti::NiftiError>(())
     /// ```
-    pub fn from_slice(idx: &[u16]) -> Result<Self> {
+    pub fn from_slice(idx: &[u64]) -> Result<Self> {
         if idx.is_empty() || idx.len() > 7 {
-            return Err(NiftiError::InconsistentDim(0, idx.len() as u16));
+            return Err(NiftiError::InconsistentDim(0, idx.len() as u64));
         }
         let mut raw = [0; 8];
-        raw[0] = idx.len() as u16;
+        raw[0] = idx.len() as u64;
         for (i, d) in idx.iter().enumerate() {
             raw[i + 1] = *d;
         }
@@ -73,24 +73,24 @@ impl Idx {
     }
 
     /// Retrieve a reference to the raw field
-    pub fn raw(&self) -> &[u16; 8] {
+    pub fn raw(&self) -> &[u64; 8] {
         &self.0
     }
 
     /// Retrieve the rank of this index (dimensionality)
     pub fn rank(&self) -> usize {
-        usize::from(self.0[0])
+        self.0[0] as usize
     }
 }
 
-impl AsRef<[u16]> for Idx {
-    fn as_ref(&self) -> &[u16] {
+impl AsRef<[u64]> for Idx {
+    fn as_ref(&self) -> &[u64] {
         &self.0[1..=self.rank()]
     }
 }
 
-impl AsMut<[u16]> for Idx {
-    fn as_mut(&mut self) -> &mut [u16] {
+impl AsMut<[u64]> for Idx {
+    fn as_mut(&mut self) -> &mut [u64] {
         let rank = self.rank();
         &mut self.0[1..=rank]
     }
@@ -112,7 +112,7 @@ impl Dim {
     /// assert_eq!(dim.as_ref(), &[64, 32, 16]);
     /// # Ok::<(), nifti::NiftiError>(())
     /// ```
-    pub fn new(dim: [u16; 8]) -> Result<Self> {
+    pub fn new(dim: [u64; 8]) -> Result<Self> {
         let _ = validate_dim(&dim)?;
         Ok(Dim(Idx(dim)))
     }
@@ -124,7 +124,7 @@ impl Dim {
     /// The program may misbehave severely if the raw `dim` field is not
     /// consistent. The first element, `dim[0]`, must be a valid rank between
     /// 1 and 7, and the valid dimensions in `dim[0..rank]` must be positive.
-    pub unsafe fn new_unchecked(dim: [u16; 8]) -> Self {
+    pub unsafe fn new_unchecked(dim: [u64; 8]) -> Self {
         Dim(Idx(dim))
     }
 
@@ -141,13 +141,13 @@ impl Dim {
     /// ```
     pub fn from_slice<T>(dim: &[T]) -> Result<Self>
     where
-        T: 'static + Copy + AsPrimitive<u16>,
+        T: 'static + Copy + AsPrimitive<u64>,
     {
         if dim.is_empty() || dim.len() > 7 {
-            return Err(NiftiError::InconsistentDim(0, dim.len() as u16));
+            return Err(NiftiError::InconsistentDim(0, dim.len() as u64));
         }
         let mut raw = [1; 8];
-        raw[0] = dim.len() as u16;
+        raw[0] = dim.len() as u64;
         for (i, d) in dim.iter().enumerate() {
             raw[i + 1] = d.as_();
         }
@@ -156,7 +156,7 @@ impl Dim {
     }
 
     /// Retrieve a reference to the raw dim field
-    pub fn raw(&self) -> &[u16; 8] {
+    pub fn raw(&self) -> &[u64; 8] {
         self.0.raw()
     }
 
@@ -167,7 +167,7 @@ impl Dim {
 
     /// Calculate the number of elements in this shape
     pub fn element_count(&self) -> usize {
-        self.as_ref().iter().cloned().map(usize::from).product()
+        self.as_ref().iter().cloned().product::<u64>() as usize
     }
 
     /// Split the dimensions into two parts at the given axis. The first `Dim`
@@ -190,8 +190,8 @@ impl Dim {
     }
 }
 
-impl AsRef<[u16]> for Dim {
-    fn as_ref(&self) -> &[u16] {
+impl AsRef<[u64]> for Dim {
+    fn as_ref(&self) -> &[u64] {
         self.0.as_ref()
     }
 }
@@ -227,7 +227,7 @@ impl Iterator for DimIter {
     fn next(&mut self) -> Option<Self::Item> {
         let (out, next_state) = match &mut self.state {
             DimIterState::First => {
-                let out = Idx([self.shape.rank() as u16, 0, 0, 0, 0, 0, 0, 0]);
+                let out = Idx([self.shape.rank() as u64, 0, 0, 0, 0, 0, 0, 0]);
                 dbg!((Some(out), DimIterState::Middle(out)))
             }
             DimIterState::Fused => dbg!((None, DimIterState::Fused)),

@@ -19,11 +19,11 @@ use std::ops::{Add, Mul};
 /// intercept arguments to `f64`.
 pub trait LinearTransform<T: 'static + Copy> {
     /// Linearly transform a value with the given slope and intercept.
-    fn linear_transform(value: T, slope: f32, intercept: f32) -> T;
+    fn linear_transform(value: T, slope: f64, intercept: f64) -> T;
 
     /// Linearly transform a sequence of values with the given slope and intercept into
     /// a vector.
-    fn linear_transform_many(value: &[T], slope: f32, intercept: f32) -> Vec<T> {
+    fn linear_transform_many(value: &[T], slope: f64, intercept: f64) -> Vec<T> {
         value
             .iter()
             .map(|x| Self::linear_transform(*x, slope, intercept))
@@ -31,7 +31,7 @@ pub trait LinearTransform<T: 'static + Copy> {
     }
 
     /// Linearly transform a sequence of values inline, with the given slope and intercept.
-    fn linear_transform_many_inline(value: &mut [T], slope: f32, intercept: f32) {
+    fn linear_transform_many_inline(value: &mut [T], slope: f64, intercept: f64) {
         for v in value.iter_mut() {
             *v = Self::linear_transform(*v, slope, intercept);
         }
@@ -42,17 +42,17 @@ pub trait LinearTransform<T: 'static + Copy> {
 /// affine transformation, then converted back to the original type. Ideal for
 /// small, low precision types such as `u8` and `i16`.
 #[derive(Debug)]
-pub struct LinearTransformViaF32;
+pub struct LinearTransformViaF32; // TODO remove this for NIFTI-2?
 
 impl<T> LinearTransform<T> for LinearTransformViaF32
 where
     T: 'static + Copy + DataElement,
 {
-    fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
+    fn linear_transform(value: T, slope: f64, intercept: f64) -> T {
         if slope == 0. {
             return value;
         }
-        T::from_f32(AsPrimitive::<f32>::as_(value) * slope + intercept)
+        T::from_f32(AsPrimitive::<f32>::as_(value) * slope as f32 + intercept as f32)
     }
 }
 
@@ -66,7 +66,7 @@ impl<T> LinearTransform<T> for LinearTransformViaF64
 where
     T: 'static + Copy + DataElement,
 {
-    fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
+    fn linear_transform(value: T, slope: f64, intercept: f64) -> T {
         if slope == 0. {
             return value;
         }
@@ -86,12 +86,12 @@ impl<T> LinearTransform<T> for LinearTransformViaOriginal
 where
     T: 'static + Copy + DataElement + Mul<Output = T> + Add<Output = T>,
 {
-    fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
+    fn linear_transform(value: T, slope: f64, intercept: f64) -> T {
         if slope == 0. {
             return value;
         }
-        let slope = T::from_f32(slope);
-        let intercept = T::from_f32(intercept);
+        let slope = T::from_f64(slope);
+        let intercept = T::from_f64(intercept);
         value * slope + intercept
     }
 }

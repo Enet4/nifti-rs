@@ -29,7 +29,7 @@ pub trait NiftiVolume {
     /// Get the dimensions of the volume. Unlike how NIFTI-1
     /// stores dimensions, the returned slice does not include
     /// `dim[0]` and is clipped to the effective number of dimensions.
-    fn dim(&self) -> &[u16];
+    fn dim(&self) -> &[u64];
 
     /// Get the volume's number of dimensions. In a fully compliant file,
     /// this is equivalent to the corresponding header's `dim[0]` field
@@ -58,7 +58,7 @@ pub trait RandomAccessNiftiVolume: NiftiVolume {
     ///
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
-    fn get_f64(&self, coords: &[u16]) -> Result<f64>;
+    fn get_f64(&self, coords: &[u64]) -> Result<f64>;
 
     /// Fetch a single voxel's value in the given voxel index coordinates
     /// as a single precision floating point value.
@@ -72,7 +72,7 @@ pub trait RandomAccessNiftiVolume: NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     #[inline]
-    fn get_f32(&self, coords: &[u16]) -> Result<f32> {
+    fn get_f32(&self, coords: &[u64]) -> Result<f32> {
         self.get_f64(coords).map(|v| v as f32)
     }
 
@@ -88,7 +88,7 @@ pub trait RandomAccessNiftiVolume: NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     #[inline]
-    fn get_u8(&self, coords: &[u16]) -> Result<u8> {
+    fn get_u8(&self, coords: &[u64]) -> Result<u8> {
         self.get_f64(coords).map(|v| v as u8)
     }
 
@@ -104,7 +104,7 @@ pub trait RandomAccessNiftiVolume: NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     #[inline]
-    fn get_i8(&self, coords: &[u16]) -> Result<i8> {
+    fn get_i8(&self, coords: &[u64]) -> Result<i8> {
         self.get_f64(coords).map(|v| v as i8)
     }
 
@@ -120,7 +120,7 @@ pub trait RandomAccessNiftiVolume: NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     #[inline]
-    fn get_u16(&self, coords: &[u16]) -> Result<u16> {
+    fn get_u16(&self, coords: &[u64]) -> Result<u16> {
         self.get_f64(coords).map(|v| v as u16)
     }
 
@@ -136,7 +136,7 @@ pub trait RandomAccessNiftiVolume: NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     #[inline]
-    fn get_i16(&self, coords: &[u16]) -> Result<i16> {
+    fn get_i16(&self, coords: &[u64]) -> Result<i16> {
         self.get_f64(coords).map(|v| v as i16)
     }
 
@@ -152,7 +152,7 @@ pub trait RandomAccessNiftiVolume: NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     #[inline]
-    fn get_u32(&self, coords: &[u16]) -> Result<u32> {
+    fn get_u32(&self, coords: &[u64]) -> Result<u32> {
         self.get_f64(coords).map(|v| v as u32)
     }
 
@@ -168,7 +168,7 @@ pub trait RandomAccessNiftiVolume: NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     #[inline]
-    fn get_i32(&self, coords: &[u16]) -> Result<i32> {
+    fn get_i32(&self, coords: &[u64]) -> Result<i32> {
         self.get_f64(coords).map(|v| v as i32)
     }
 
@@ -184,7 +184,7 @@ pub trait RandomAccessNiftiVolume: NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     #[inline]
-    fn get_u64(&self, coords: &[u16]) -> Result<u64> {
+    fn get_u64(&self, coords: &[u64]) -> Result<u64> {
         self.get_f64(coords).map(|v| v as u64)
     }
 
@@ -200,7 +200,7 @@ pub trait RandomAccessNiftiVolume: NiftiVolume {
     /// - `NiftiError::OutOfBounds` if the given coordinates surpass this
     /// volume's boundaries.
     #[inline]
-    fn get_i64(&self, coords: &[u16]) -> Result<i64> {
+    fn get_i64(&self, coords: &[u64]) -> Result<i64> {
         self.get_f64(coords).map(|v| v as i64)
     }
 }
@@ -212,7 +212,7 @@ pub trait Sliceable {
 
     /// Obtain a slice of the volume over a certain axis, yielding a
     /// volume of N-1 dimensions.
-    fn get_slice(&self, axis: u16, index: u16) -> Result<Self::Slice>;
+    fn get_slice(&self, axis: u16, index: u64) -> Result<Self::Slice>;
 }
 
 /// Interface for specifying the type for the set of options that are relevent
@@ -243,8 +243,8 @@ pub trait FromSource<R>: FromSourceOptions + Sized {
 pub struct SliceView<T> {
     volume: T,
     axis: u16,
-    index: u16,
-    dim: Vec<u16>,
+    index: u64,
+    dim: Vec<u64>,
 }
 
 impl<'a, T> Sliceable for &'a T
@@ -253,7 +253,7 @@ where
 {
     type Slice = SliceView<&'a T>;
 
-    fn get_slice(&self, axis: u16, index: u16) -> Result<Self::Slice> {
+    fn get_slice(&self, axis: u16, index: u64) -> Result<Self::Slice> {
         let mut coords: Vec<_> = self.dim().into();
         if let Some(d) = coords.get(axis as usize) {
             if *d <= index {
@@ -283,7 +283,7 @@ where
     V: NiftiVolume,
 {
     #[inline]
-    fn dim(&self) -> &[u16] {
+    fn dim(&self) -> &[u64] {
         &self.dim
     }
 
@@ -302,61 +302,61 @@ impl<V> RandomAccessNiftiVolume for SliceView<V>
 where
     V: RandomAccessNiftiVolume,
 {
-    fn get_f32(&self, coords: &[u16]) -> Result<f32> {
+    fn get_f32(&self, coords: &[u64]) -> Result<f32> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_f32(&coords)
     }
 
-    fn get_f64(&self, coords: &[u16]) -> Result<f64> {
+    fn get_f64(&self, coords: &[u64]) -> Result<f64> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_f64(&coords)
     }
 
-    fn get_u8(&self, coords: &[u16]) -> Result<u8> {
+    fn get_u8(&self, coords: &[u64]) -> Result<u8> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_u8(&coords)
     }
 
-    fn get_i8(&self, coords: &[u16]) -> Result<i8> {
+    fn get_i8(&self, coords: &[u64]) -> Result<i8> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_i8(&coords)
     }
 
-    fn get_u16(&self, coords: &[u16]) -> Result<u16> {
+    fn get_u16(&self, coords: &[u64]) -> Result<u16> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_u16(&coords)
     }
 
-    fn get_i16(&self, coords: &[u16]) -> Result<i16> {
+    fn get_i16(&self, coords: &[u64]) -> Result<i16> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_i16(&coords)
     }
 
-    fn get_u32(&self, coords: &[u16]) -> Result<u32> {
+    fn get_u32(&self, coords: &[u64]) -> Result<u32> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_u32(&coords)
     }
 
-    fn get_i32(&self, coords: &[u16]) -> Result<i32> {
+    fn get_i32(&self, coords: &[u64]) -> Result<i32> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_i32(&coords)
     }
 
-    fn get_u64(&self, coords: &[u16]) -> Result<u64> {
+    fn get_u64(&self, coords: &[u64]) -> Result<u64> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_u64(&coords)
     }
 
-    fn get_i64(&self, coords: &[u16]) -> Result<i64> {
+    fn get_i64(&self, coords: &[u64]) -> Result<i64> {
         let mut coords = Vec::from(coords);
         coords.insert(self.axis as usize, self.index);
         self.volume.get_i64(&coords)

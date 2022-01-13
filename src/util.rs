@@ -8,6 +8,7 @@ use either::Either;
 use flate2::bufread::GzDecoder;
 use safe_transmute::{transmute_vec, TriviallyTransmutable};
 use std::borrow::Cow;
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufReader, Read, Result as IoResult, Seek};
 use std::mem;
@@ -76,7 +77,7 @@ where
 ///
 /// Errors if `dim[0]` is outside the accepted rank boundaries or
 /// one of the used dimensions is not positive.
-pub fn validate_dim(raw_dim: &[u16; 8]) -> Result<&[u16]> {
+pub fn validate_dim(raw_dim: &[u64; 8]) -> Result<&[u64]> {
     let ndim = validate_dimensionality(raw_dim)?;
     let o = &raw_dim[1..=ndim];
     if let Some(i) = o.iter().position(|&x| x == 0) {
@@ -91,28 +92,28 @@ pub fn validate_dim(raw_dim: &[u16; 8]) -> Result<&[u16]> {
 ///
 /// Errors if `raw_dim[0]` is outside the accepted rank boundaries: 0 or
 /// larger than 7.
-pub fn validate_dimensionality(raw_dim: &[u16; 8]) -> Result<usize> {
+pub fn validate_dimensionality(raw_dim: &[u64; 8]) -> Result<usize> {
     if raw_dim[0] == 0 || raw_dim[0] > 7 {
         return Err(NiftiError::InconsistentDim(0, raw_dim[0]));
     }
-    Ok(usize::from(raw_dim[0]))
+    Ok(raw_dim[0].try_into()?)
 }
 
 pub fn nb_bytes_for_data(header: &NiftiHeader) -> Result<usize> {
-    let resolution = nb_values_for_dims(header.dim()?);
+    let resolution = nb_values_for_dims(&header.dim()?);
     resolution
-        .and_then(|r| r.checked_mul(header.bitpix as usize / 8))
+        .and_then(|r| r.checked_mul(usize::from(header.get_bitpix()) / 8))
         .ok_or(NiftiError::BadVolumeSize)
 }
 
-pub fn nb_values_for_dims(dim: &[u16]) -> Option<usize> {
+pub fn nb_values_for_dims(dim: &[u64]) -> Option<usize> {
     dim.iter()
         .cloned()
-        .map(usize::from)
-        .fold(Some(1), |acc, v| acc.and_then(|x| x.checked_mul(v)))
+        .map(TryInto::<usize>::try_into)
+        .fold(Some(1), |acc, v| acc.and_then(|x| v.map_or(None, |v| x.checked_mul(v))))
 }
 
-pub fn nb_bytes_for_dim_datatype(dim: &[u16], datatype: NiftiType) -> Option<usize> {
+pub fn nb_bytes_for_dim_datatype(dim: &[u64], datatype: NiftiType) -> Option<usize> {
     let resolution = nb_values_for_dims(dim);
     resolution.and_then(|r| r.checked_mul(datatype.size_of()))
 }
