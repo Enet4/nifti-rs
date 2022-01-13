@@ -1658,16 +1658,32 @@ impl NiftiHeader {
     }
 }
 
-fn parse_header_1<S>(input: S) -> Result<NiftiHeader>
+// Take any object that implements the `byteordered::Endian` trait and return a
+// dynamic `byteordered::Endianness` object.
+fn endianness<E: Endian>(e: E) -> Endianness {
+    if e.is_native() {
+        Endianness::native()
+    } else {
+        Endianness::native().to_opposite()
+    }
+}
+
+// Private function to parse a NIfTI-1 header with the given header size.
+// The `ByteOrdered` input stream must already be set to the correct endianness,
+// and it must be located at the first field after sizeof_hdr.
+fn parse_nifti1_header<S, E>(mut input: ByteOrdered<S, E>, sizeof_hdr: u32) -> Result<Nifti1Header>
 where
     S: Read,
+    E: Endian + Copy,
 {
-    let mut h = NiftiHeader::default();
+    // Initialize default header.
+    let mut h: Nifti1Header = Nifti1Header::default();
+    // Set size of header to given (already read in) size.
+    h.sizeof_hdr = sizeof_hdr;
+    // Set endianness from ByteOrdered input stream.
+    h.endianness = endianness(input.endianness());
 
-    // try the system's native endianness first
-    let mut input = ByteOrdered::native(input);
-
-    h.sizeof_hdr = input.read_i32()?;
+    // Read remaining header fields.
     input.read_exact(&mut h.data_type)?;
     input.read_exact(&mut h.db_name)?;
     h.extents = input.read_i32()?;
@@ -1676,28 +1692,6 @@ where
     h.dim_info = input.read_u8()?;
     h.dim[0] = input.read_u16()?;
 
-    if h.dim[0] > 7 {
-        h.endianness = Endianness::native().to_opposite();
-
-        // swap bytes read so far, continue with the opposite endianness
-        h.sizeof_hdr = h.sizeof_hdr.swap_bytes();
-        h.extents = h.extents.swap_bytes();
-        h.session_error = h.session_error.swap_bytes();
-        h.dim[0] = h.dim[0].swap_bytes();
-        parse_header_2(h, input.into_opposite())
-    } else {
-        // all is well
-        h.endianness = Endianness::native();
-        parse_header_2(h, input)
-    }
-}
-
-/// second part of header parsing
-fn parse_header_2<S, E>(mut h: NiftiHeader, mut input: ByteOrdered<S, E>) -> Result<NiftiHeader>
-where
-    S: Read,
-    E: Endian,
-{
     for v in &mut h.dim[1..] {
         *v = input.read_u16()?;
     }
@@ -1754,4 +1748,75 @@ where
     } else {
         Ok(h)
     }
+}
+
+// Private function to parse a NIfTI-2 header with the given header size.
+// The `ByteOrdered` input stream must already be set to the correct endianness,
+// and it must be located at the first field after sizeof_hdr.
+fn parse_nifti2_header<S, E>(mut input: ByteOrdered<S, E>, sizeof_hdr: u32) -> Result<Nifti2Header>
+where
+    S: Read,
+    E: Endian + Copy,
+{
+    // Initialize default header.
+    let mut h: Nifti2Header = Nifti2Header::default();
+    // Set size of header to given (already read in) size.
+    h.sizeof_hdr = sizeof_hdr;
+    // Set endianness from ByteOrdered input stream.
+    h.endianness = endianness(input.endianness());
+
+    // Verify the magic code.
+    input.read_exact(&mut h.magic)?;
+    if &h.magic != MAGIC_CODE_NI2 && &h.magic != MAGIC_CODE_NIP2 {
+        return Err(NiftiError::InvalidFormat);
+    }
+
+    // Read remaining header fields.
+    h.datatype = input.read_i16()?;
+    h.bitpix = input.read_i16()? as u16;
+    for dim in &mut h.dim {
+        *dim = input.read_i64()? as u64;
+    }
+    h.intent_p1 = input.read_f64()?;
+    h.intent_p2 = input.read_f64()?;
+    h.intent_p3 = input.read_f64()?;
+    for v in &mut h.pixdim {
+        *v = input.read_f64()?;
+    }
+    h.vox_offset = input.read_i64()? as u64;
+    h.scl_slope = input.read_f64()?;
+    h.scl_inter = input.read_f64()?;
+    h.cal_max = input.read_f64()?;
+    h.cal_min = input.read_f64()?;
+    h.slice_duration = input.read_f64()?;
+    h.toffset = input.read_f64()?;
+    h.slice_start = input.read_i64()? as u64;
+    h.slice_end = input.read_i64()? as u64;
+    input.read_exact(&mut h.descrip)?;
+    input.read_exact(&mut h.aux_file)?;
+    h.qform_code = input.read_i32()?;
+    h.sform_code = input.read_i32()?;
+    h.quatern_b = input.read_f64()?;
+    h.quatern_c = input.read_f64()?;
+    h.quatern_d = input.read_f64()?;
+    h.quatern_x = input.read_f64()?;
+    h.quatern_y = input.read_f64()?;
+    h.quatern_z = input.read_f64()?;
+    for v in &mut h.srow_x {
+        *v = input.read_f64()?;
+    }
+    for v in &mut h.srow_y {
+        *v = input.read_f64()?;
+    }
+    for v in &mut h.srow_z {
+        *v = input.read_f64()?;
+    }
+    h.slice_code = input.read_i32()?;
+    h.xyzt_units = input.read_i32()?;
+    h.intent_code = input.read_i32()?;
+    input.read_exact(&mut h.intent_name)?;
+    h.dim_info = input.read_u8()?;
+
+    // All done, return header with populated fields.
+    Ok(h)
 }
