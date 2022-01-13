@@ -72,6 +72,16 @@ quick_error! {
         InvalidCode(typename: &'static str, code: i16) {
             display("invalid code `{}` for header field {}", code, typename)
         }
+        /// Integer field size is not large enough to hold assigned value
+        FieldSize(err: std::num::TryFromIntError) {
+            from()
+            source(err)
+        }
+        /// Invalid header size.  Header size must be 540 for NIfTI-2 or 348 for
+        /// NIfTI-1.
+        InvalidHeaderSize(sizeof_hdr: i32) {
+            display("Invalid header size {} must eb 540 for NIfTI-2 or 348 for NIfTI-1.", sizeof_hdr)
+        }
     }
 }
 
