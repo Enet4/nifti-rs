@@ -18,7 +18,7 @@ jobs:
           - "--no-default-features"
           - "--features ndarray_volumes,nalgebra_affine"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -44,7 +44,7 @@ jobs:
         features:
           - "--features ndarray_volumes,nalgebra_affine"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -69,7 +69,7 @@ jobs:
         features:
           - "--features ndarray_volumes,nalgebra_affine"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
