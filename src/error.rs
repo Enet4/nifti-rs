@@ -72,6 +72,16 @@ quick_error! {
         InvalidCode(typename: &'static str, code: i16) {
             display("invalid code `{}` for header field {}", code, typename)
         }
+        /// Could not reserve enough memory for volume data
+        ReserveVolume(bytes: usize, err: std::collections::TryReserveError) {
+            display("Could not reserve {} bytes of memory for volume data", bytes)
+            source(err)
+        }
+        /// Could not reserve enough memory for extended data
+        ReserveExtended(bytes: usize, err: std::collections::TryReserveError) {
+            display("Could not reserve {} bytes of memory for extended data", bytes)
+            source(err)
+        }
     }
 }
 
