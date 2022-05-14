@@ -363,7 +363,7 @@ where
     writer.write_all(&header.magic)?;
 
     // Empty 4 bytes after the header
-    // TODO Support writing extension data.
+    // TODO(#19) Support writing extension data.
     writer.write_u32(0)?;
 
     Ok(())

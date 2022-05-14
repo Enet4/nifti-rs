@@ -122,7 +122,6 @@ where
     ///
     /// The slice rank defines how many dimensions each slice should have.
     pub fn from_reader_rank(source: R, header: &NiftiHeader, slice_rank: u16) -> Result<Self> {
-        // TODO recoverable error if #dim == 0
         let dim = Dim::new(header.dim)?; // check dim consistency
         let datatype = header.data_type()?;
         let slice_dim = calculate_slice_dims(&dim, slice_rank);

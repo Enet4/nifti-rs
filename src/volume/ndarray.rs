@@ -49,7 +49,7 @@ where
     where
         T: DataElement,
     {
-        // TODO optimize this implementation (we don't need the whole volume)
+        // TODO(#94) optimize this implementation (we don't need the whole volume)
         let volume = self.volume.into_ndarray()?;
         Ok(volume.index_axis_move(Axis(self.axis as Ix), self.index as usize))
     }
