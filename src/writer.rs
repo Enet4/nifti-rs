@@ -29,12 +29,10 @@ impl<'a> HeaderReference<'a> {
         match self {
             HeaderReference::FromHeader(h) => Ok((*h).to_owned()),
             HeaderReference::FromFile(path) => NiftiHeader::from_file(path),
-            HeaderReference::None => {
-                Ok(NiftiHeader {
-                    sform_code: 2,
-                    .. NiftiHeader::default()
-                })
-            }
+            HeaderReference::None => Ok(NiftiHeader {
+                sform_code: 2,
+                ..NiftiHeader::default()
+            }),
         }
     }
 }

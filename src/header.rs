@@ -274,15 +274,19 @@ impl NiftiHeader {
     /// Get the spatial units type as a validated unit enum.
     pub fn xyzt_to_space(&self) -> Result<Unit> {
         let space_code = self.xyzt_units & 0o0007;
-        FromPrimitive::from_u8(space_code)
-            .ok_or(NiftiError::InvalidCode("xyzt units (space)", space_code as i16))
+        FromPrimitive::from_u8(space_code).ok_or(NiftiError::InvalidCode(
+            "xyzt units (space)",
+            space_code as i16,
+        ))
     }
 
     /// Get the time units type as a validated unit enum.
     pub fn xyzt_to_time(&self) -> Result<Unit> {
         let time_code = self.xyzt_units & 0o0070;
-        FromPrimitive::from_u8(time_code)
-            .ok_or(NiftiError::InvalidCode("xyzt units (time)", time_code as i16))
+        FromPrimitive::from_u8(time_code).ok_or(NiftiError::InvalidCode(
+            "xyzt units (time)",
+            time_code as i16,
+        ))
     }
 
     /// Get the xyzt units type as a validated pair of space and time unit enum.
@@ -292,8 +296,10 @@ impl NiftiHeader {
 
     /// Get the slice order as a validated enum.
     pub fn slice_order(&self) -> Result<SliceOrder> {
-        FromPrimitive::from_u8(self.slice_code)
-            .ok_or(NiftiError::InvalidCode("slice order", self.slice_code as i16))
+        FromPrimitive::from_u8(self.slice_code).ok_or(NiftiError::InvalidCode(
+            "slice order",
+            self.slice_code as i16,
+        ))
     }
 
     /// Get the intent as a validated enum.
