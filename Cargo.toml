@@ -16,7 +16,7 @@ exclude = ["resources/*"]
 features = ["ndarray_volumes", "nalgebra_affine"]
 
 [dependencies]
-approx = "0.4"
+approx = "0.5"
 byteordered = "0.6"
 flate2 = "1.0"
 num-derive = "0.3"
@@ -32,7 +32,7 @@ version = "0.31"
 [dependencies.ndarray]
 optional = true
 version = "0.15"
-features = ["approx"]
+features = ["approx-0_5"]
 
 [dependencies.simba]
 default-features = false
