@@ -82,6 +82,16 @@ quick_error! {
         InvalidHeaderSize(sizeof_hdr: i32) {
             display("Invalid header size {} must eb 540 for NIfTI-2 or 348 for NIfTI-1.", sizeof_hdr)
         }
+        /// Could not reserve enough memory for volume data
+        ReserveVolume(bytes: usize, err: std::collections::TryReserveError) {
+            display("Could not reserve {} bytes of memory for volume data", bytes)
+            source(err)
+        }
+        /// Could not reserve enough memory for extended data
+        ReserveExtended(bytes: usize, err: std::collections::TryReserveError) {
+            display("Could not reserve {} bytes of memory for extended data", bytes)
+            source(err)
+        }
     }
 }
 

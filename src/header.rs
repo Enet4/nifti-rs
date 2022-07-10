@@ -1626,7 +1626,7 @@ impl NiftiHeader {
         T: SubsetOf<f64>,
         T: ToPrimitive,
     {
-        let affine4: Matrix4<f64> = nalgebra::convert(*affine4);
+        let affine4: Matrix4<f64> = nalgebra::convert(affine4.clone());
         let (affine, translation) = affine_and_translation(&affine4);
         let aff2 = affine.component_mul(&affine);
         let spacing = (

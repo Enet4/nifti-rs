@@ -21,9 +21,6 @@ use super::ndarray::IntoNdArray;
 #[cfg(feature = "ndarray_volumes")]
 use ndarray::{Array, Ix, IxDyn, ShapeBuilder};
 
-/// The maximum size in bytes to reserve before the volume voxel data is read.
-const PREALLOC_MAX_SIZE: usize = 1 << 28; // 256M
-
 macro_rules! fn_convert_and_cast {
     ($fname: ident, $typ: ty, $converter: expr) => {
         #[cfg(feature = "ndarray_volumes")]
@@ -129,13 +126,12 @@ impl InMemNiftiVolume {
     /// following bytes represent the first voxels of the volume (and not part of the
     /// extensions).
     pub fn from_reader<R: Read>(source: R, header: &NiftiHeader) -> Result<Self> {
-        // rather than pre-allocating for the full volume size, this will
-        // pre-allocate up to a more reliable amount and feed the vector
-        // sequentially, to prevent some trivial OOM attacks
         let nb_bytes = nb_bytes_for_data(header)?;
-        let mut raw_data = Vec::with_capacity(nb_bytes.min(PREALLOC_MAX_SIZE));
-        let nb_bytes_written =
-            std::io::copy(&mut source.take(nb_bytes as u64), &mut raw_data)? as usize;
+        let mut raw_data = Vec::new();
+        raw_data
+            .try_reserve_exact(nb_bytes)
+            .map_err(|e| NiftiError::ReserveVolume(nb_bytes, e))?;
+        let nb_bytes_written = source.take(nb_bytes as u64).read_to_end(&mut raw_data)?;
 
         if nb_bytes_written != nb_bytes {
             return Err(NiftiError::IncompatibleLength(nb_bytes_written, nb_bytes));

@@ -12,10 +12,10 @@ use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis};
 use safe_transmute::{transmute_to_bytes, TriviallyTransmutable};
 
 use crate::{
-    header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1, MAGIC_CODE_NI2, MAGIC_CODE_NIP2},
+    header::{MAGIC_CODE_NI1, MAGIC_CODE_NI2, MAGIC_CODE_NIP1, MAGIC_CODE_NIP2},
     util::{adapt_bytes, is_gz_file, is_hdr_file},
     volume::shape::Dim,
-    DataElement, NiftiHeader, Nifti1Header, Nifti2Header, NiftiType, Result,
+    DataElement, Nifti1Header, Nifti2Header, NiftiHeader, NiftiType, Result,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -30,11 +30,10 @@ impl<'a> HeaderReference<'a> {
         match self {
             HeaderReference::FromHeader(h) => Ok((*h).to_owned()),
             HeaderReference::FromFile(path) => NiftiHeader::from_file(path),
-            HeaderReference::None => {
-                let mut new_header = NiftiHeader::default();
-                new_header.set_sform_code(2)?; // TODO unclear why this is needed
-                Ok(new_header)
-            }
+            HeaderReference::None => Ok(NiftiHeader::Nifti1Header(Nifti1Header {
+                sform_code: 2,
+                ..Nifti1Header::default()
+            })),
         }
     }
 }
@@ -276,7 +275,7 @@ impl<'a> WriterOptions<'a> {
         match header {
             NiftiHeader::Nifti1Header(ref mut header) => {
                 header.sizeof_hdr = 348;
-            },
+            }
             NiftiHeader::Nifti2Header(ref mut header) => {
                 header.sizeof_hdr = 540;
             }
@@ -293,10 +292,10 @@ impl<'a> WriterOptions<'a> {
             match header {
                 NiftiHeader::Nifti1Header(ref mut header) => {
                     header.vox_offset = 352.;
-                },
+                }
                 NiftiHeader::Nifti2Header(ref mut header) => {
                     header.vox_offset = 544;
-                },
+                }
             }
         }
 
@@ -309,7 +308,7 @@ impl<'a> WriterOptions<'a> {
                 } else {
                     header.magic = *MAGIC_CODE_NIP1;
                 }
-            },
+            }
             NiftiHeader::Nifti2Header(ref mut header) => {
                 if self.write_header_file {
                     header.magic = *MAGIC_CODE_NI2;
@@ -417,7 +416,7 @@ where
     writer.write_all(&header.magic)?;
 
     // Empty 4 bytes after the header
-    // TODO Support writing extension data.
+    // TODO(#19) Support writing extension data.
     writer.write_u32(0)?;
 
     Ok(())

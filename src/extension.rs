@@ -8,9 +8,6 @@ use crate::error::{NiftiError, Result};
 use byteordered::{ByteOrdered, Endian};
 use std::io::{ErrorKind as IoErrorKind, Read};
 
-/// The maximum size in bytes to reserve before the extension data is read.
-const PREALLOC_MAX_SIZE: usize = 1 << 25; // 32M
-
 /// Data type for the extender code.
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
 pub struct Extender([u8; 4]);
@@ -151,12 +148,13 @@ impl ExtensionSequence {
                 let ecode = source.read_i32()?;
 
                 let data_size = (esize as usize).saturating_sub(8);
-                // rather than pre-allocating for the data size, this will
-                // pre-allocate up to a more reliable amount and feed the
-                // vector sequentially, to prevent some trivial OOM attacks
-                let mut edata = Vec::with_capacity(data_size.min(PREALLOC_MAX_SIZE));
-                let nb_bytes_written =
-                    std::io::copy(&mut (&mut source).take(data_size as u64), &mut edata)? as usize;
+                let mut edata = Vec::new();
+                edata
+                    .try_reserve_exact(data_size)
+                    .map_err(|e| NiftiError::ReserveExtended(data_size, e))?;
+                let nb_bytes_written = (&mut source)
+                    .take(data_size as u64)
+                    .read_to_end(&mut edata)?;
 
                 if nb_bytes_written != data_size {
                     return Err(NiftiError::IncompatibleLength(nb_bytes_written, data_size));
