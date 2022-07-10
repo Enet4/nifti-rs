@@ -15,7 +15,7 @@ use num_traits::FromPrimitive;
 use num_traits::ToPrimitive;
 #[cfg(feature = "nalgebra_affine")]
 use simba::scalar::SubsetOf;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ops::Deref;
@@ -57,7 +57,7 @@ pub const MAGIC_CODE_NIP2: &[u8; 8] = b"n+2\0\r\n\x1A\n";
 /// # Examples
 ///
 /// ```no_run
-/// use nifti::{NiftiHeader, NiftiType};
+/// use nifti::{NiftiHeader, Nifti2Header, NiftiType};
 /// # use nifti::Result;
 ///
 /// # fn run() -> Result<()> {
@@ -69,7 +69,7 @@ pub const MAGIC_CODE_NIP2: &[u8; 8] = b"n+2\0\r\n\x1A\n";
 /// // Convert a header into NIFTI-2 (does nothing if already NIFTI-2).
 /// // First extracts/converts the `NiftiHeader` into a `Nifti2Header` and then
 /// // puts it back into a `NiftiHeader`.
-/// let hdr4:NiftiHeader = hdr3.into_nifti2().into();
+/// let hdr4:NiftiHeader = Nifti2Header::from(hdr3).into();
 ///
 /// // Make a new header from scratch.  Defaults to NIFTI-2.
 /// let mut hdr5 = NiftiHeader::default();
@@ -857,141 +857,6 @@ impl NiftiHeader {
         }
     }
 
-    /// Convert this header into a NIFTI-2 header.
-    /// Does nothing if the header is already NIFTI-2.
-    /// Promotes NIFTI-1 fields to larger types and removes unused fields.
-    /// Increases header size from NIFTI-1's 348 to NIFTI-2's 540 bytes.
-    /// Moves vox_offset forward by corresponding 192 bytes.
-    /// Changes NIFTI-1 magic string to NIFTI-2 magic string.
-    pub fn into_nifti2(self) -> Nifti2Header {
-        match self {
-            Self::Nifti1Header(header) => {
-                Nifti2Header {
-                    // If the original header file uses the NIFTI-1 magic string
-                    // for .hdr/.img then the new header should use the NIFTI-2
-                    // magic string for this filetype, otherwise use the magic
-                    // string for .nii.
-                    magic: if &header.magic == MAGIC_CODE_NI1 {
-                        *MAGIC_CODE_NI2
-                    } else {
-                        *MAGIC_CODE_NIP2
-                    },
-                    datatype: header.datatype,
-                    bitpix: header.bitpix,
-                    dim: header.dim.map(|x| x as u64),
-                    intent_p1: header.intent_p1 as f64,
-                    intent_p2: header.intent_p2 as f64,
-                    intent_p3: header.intent_p3 as f64,
-                    pixdim: header.pixdim.map(|x| x as f64),
-                    // Voxel offset should be equal to previous voxel offset
-                    // plus difference in header size = 540 - 348 = 192.
-                    vox_offset: header.vox_offset.round() as u64 + 192,
-                    scl_slope: header.scl_slope as f64,
-                    scl_inter: header.scl_inter as f64,
-                    cal_max: header.cal_max as f64,
-                    cal_min: header.cal_min as f64,
-                    slice_duration: header.slice_duration as f64,
-                    toffset: header.toffset as f64,
-                    slice_start: header.slice_start as u64,
-                    slice_end: header.slice_end as u64,
-                    descrip: header.descrip,
-                    aux_file: header.aux_file,
-                    qform_code: header.qform_code as i32,
-                    sform_code: header.sform_code as i32,
-                    quatern_b: header.quatern_b as f64,
-                    quatern_c: header.quatern_c as f64,
-                    quatern_d: header.quatern_d as f64,
-                    quatern_x: header.quatern_x as f64,
-                    quatern_y: header.quatern_y as f64,
-                    quatern_z: header.quatern_z as f64,
-                    srow_x: header.srow_x.map(|x| x as f64),
-                    srow_y: header.srow_y.map(|x| x as f64),
-                    srow_z: header.srow_z.map(|x| x as f64),
-                    slice_code: header.slice_code as i32,
-                    xyzt_units: header.xyzt_units as i32,
-                    intent_code: header.intent_code as i32,
-                    intent_name: header.intent_name,
-                    dim_info: header.dim_info,
-                    endianness: header.endianness,
-                    ..Default::default()
-                }
-            }
-            Self::Nifti2Header(header) => header,
-        }
-    }
-
-    /// Convert this header into a NIFTI-1 header.
-    /// Does nothing if the header is already NIFTI-1.
-    /// Shrinks the NIFTI-2 header size from 540 to NIFTI-1's 348, and moves
-    /// vox_offset back by a corresponding 192 bytes.
-    /// Attempts to downcast NIFTI-2 fields to their smaller NIFTI-1 types.
-    /// Performs saturating downcast for floating point fields.
-    /// Performs fallible downcast for integer fields, returning
-    /// [`NiftiError::FieldSize`] if the field won't fit into the smaller type.
-    /// Initializes the unused data_type, db_name, extents, session_error,
-    /// regular, glmax, and glmin fields with their default (zero) values.
-    pub fn into_nifti1(self) -> Result<Nifti1Header> {
-        Ok(match self {
-            Self::Nifti1Header(header) => header,
-            Self::Nifti2Header(header) => {
-                Nifti1Header {
-                    dim_info: header.dim_info,
-                    dim: {
-                        // attempt to map u64 to u16 that fits in an i16
-                        let mut dim: [u16; 8] = [0; 8];
-                        for (&src, dst) in header.dim.iter().zip(&mut dim) {
-                            *dst = TryInto::<i16>::try_into(src)? as u16;
-                        }
-                        dim
-                    },
-                    intent_p1: header.intent_p1 as f32,
-                    intent_p2: header.intent_p2 as f32,
-                    intent_p3: header.intent_p3 as f32,
-                    intent_code: header.intent_code.try_into()?,
-                    datatype: header.datatype,
-                    bitpix: header.bitpix,
-                    slice_start: TryInto::<i16>::try_into(header.slice_start)? as u16,
-                    pixdim: header.pixdim.map(|x| x as f32),
-                    vox_offset: TryInto::<i32>::try_into(header.vox_offset)? as f32,
-                    scl_slope: header.scl_slope as f32,
-                    scl_inter: header.scl_inter as f32,
-                    slice_end: TryInto::<i16>::try_into(header.slice_end)? as u16,
-                    slice_code: header.slice_code.try_into()?,
-                    xyzt_units: header.xyzt_units.try_into()?,
-                    cal_max: header.cal_max as f32,
-                    cal_min: header.cal_min as f32,
-                    slice_duration: header.slice_duration as f32,
-                    toffset: header.toffset as f32,
-                    descrip: header.descrip,
-                    aux_file: header.aux_file,
-                    qform_code: header.qform_code.try_into()?,
-                    sform_code: header.sform_code.try_into()?,
-                    quatern_b: header.quatern_b as f32,
-                    quatern_c: header.quatern_c as f32,
-                    quatern_d: header.quatern_d as f32,
-                    quatern_x: header.quatern_x as f32,
-                    quatern_y: header.quatern_y as f32,
-                    quatern_z: header.quatern_z as f32,
-                    srow_x: header.srow_x.map(|x| x as f32),
-                    srow_y: header.srow_y.map(|x| x as f32),
-                    srow_z: header.srow_z.map(|x| x as f32),
-                    intent_name: header.intent_name,
-                    // If the original header file uses the NIFTI-1 magic string
-                    // for .hdr/.img then the new header should use the NIFTI-2
-                    // magic string for this filetype, otherwise use the magic
-                    // string for .nii.
-                    magic: if &header.magic == MAGIC_CODE_NI2 {
-                        *MAGIC_CODE_NI1
-                    } else {
-                        *MAGIC_CODE_NIP1
-                    },
-                    endianness: header.endianness,
-                    ..Default::default()
-                }
-            }
-        })
-    }
-
     /// Fix some commonly invalid fields.
     ///
     /// Currently, only the following problems are fixed:
@@ -1462,6 +1327,147 @@ impl Into<NiftiHeader> for Nifti2Header {
     /// Place this `Nifti2Header` into a version-agnostic [`NiftiHeader`] enum.
     fn into(self) -> NiftiHeader {
         NiftiHeader::Nifti2Header(self)
+    }
+}
+
+impl TryFrom<NiftiHeader> for Nifti1Header {
+    type Error = NiftiError;
+
+    /// Convert this header into a NIFTI-1 header.
+    /// Does nothing if the header is already NIFTI-1.
+    /// Shrinks the NIFTI-2 header size from 540 to NIFTI-1's 348, and moves
+    /// vox_offset back by a corresponding 192 bytes.
+    /// Attempts to downcast NIFTI-2 fields to their smaller NIFTI-1 types.
+    /// Performs saturating downcast for floating point fields.
+    /// Performs fallible downcast for integer fields, returning
+    /// [`NiftiError::FieldSize`] if the field won't fit into the smaller type.
+    /// Initializes the unused data_type, db_name, extents, session_error,
+    /// regular, glmax, and glmin fields with their default (zero) values.
+    fn try_from(hdr: NiftiHeader) -> Result<Nifti1Header> {
+        Ok(match hdr {
+            NiftiHeader::Nifti1Header(header) => header,
+            NiftiHeader::Nifti2Header(header) => {
+                Nifti1Header {
+                    dim_info: header.dim_info,
+                    dim: {
+                        // attempt to map u64 to u16 that fits in an i16
+                        let mut dim: [u16; 8] = [0; 8];
+                        for (&src, dst) in header.dim.iter().zip(&mut dim) {
+                            *dst = TryInto::<i16>::try_into(src)? as u16;
+                        }
+                        dim
+                    },
+                    intent_p1: header.intent_p1 as f32,
+                    intent_p2: header.intent_p2 as f32,
+                    intent_p3: header.intent_p3 as f32,
+                    intent_code: header.intent_code.try_into()?,
+                    datatype: header.datatype,
+                    bitpix: header.bitpix,
+                    slice_start: TryInto::<i16>::try_into(header.slice_start)? as u16,
+                    pixdim: header.pixdim.map(|x| x as f32),
+                    vox_offset: TryInto::<i32>::try_into(header.vox_offset)? as f32,
+                    scl_slope: header.scl_slope as f32,
+                    scl_inter: header.scl_inter as f32,
+                    slice_end: TryInto::<i16>::try_into(header.slice_end)? as u16,
+                    slice_code: header.slice_code.try_into()?,
+                    xyzt_units: header.xyzt_units.try_into()?,
+                    cal_max: header.cal_max as f32,
+                    cal_min: header.cal_min as f32,
+                    slice_duration: header.slice_duration as f32,
+                    toffset: header.toffset as f32,
+                    descrip: header.descrip,
+                    aux_file: header.aux_file,
+                    qform_code: header.qform_code.try_into()?,
+                    sform_code: header.sform_code.try_into()?,
+                    quatern_b: header.quatern_b as f32,
+                    quatern_c: header.quatern_c as f32,
+                    quatern_d: header.quatern_d as f32,
+                    quatern_x: header.quatern_x as f32,
+                    quatern_y: header.quatern_y as f32,
+                    quatern_z: header.quatern_z as f32,
+                    srow_x: header.srow_x.map(|x| x as f32),
+                    srow_y: header.srow_y.map(|x| x as f32),
+                    srow_z: header.srow_z.map(|x| x as f32),
+                    intent_name: header.intent_name,
+                    // If the original header file uses the NIFTI-1 magic string
+                    // for .hdr/.img then the new header should use the NIFTI-2
+                    // magic string for this filetype, otherwise use the magic
+                    // string for .nii.
+                    magic: if &header.magic == MAGIC_CODE_NI2 {
+                        *MAGIC_CODE_NI1
+                    } else {
+                        *MAGIC_CODE_NIP1
+                    },
+                    endianness: header.endianness,
+                    ..Default::default()
+                }
+            }
+        })
+    }
+}
+
+impl From<NiftiHeader> for Nifti2Header {
+    /// Convert this header into a NIFTI-2 header.
+    /// Does nothing if the header is already NIFTI-2.
+    /// Promotes NIFTI-1 fields to larger types and removes unused fields.
+    /// Increases header size from NIFTI-1's 348 to NIFTI-2's 540 bytes.
+    /// Moves vox_offset forward by corresponding 192 bytes.
+    /// Changes NIFTI-1 magic string to NIFTI-2 magic string.
+    fn from(hdr: NiftiHeader) -> Self {
+        match hdr {
+            NiftiHeader::Nifti1Header(header) => {
+                Nifti2Header {
+                    // If the original header file uses the NIFTI-1 magic string
+                    // for .hdr/.img then the new header should use the NIFTI-2
+                    // magic string for this filetype, otherwise use the magic
+                    // string for .nii.
+                    magic: if &header.magic == MAGIC_CODE_NI1 {
+                        *MAGIC_CODE_NI2
+                    } else {
+                        *MAGIC_CODE_NIP2
+                    },
+                    datatype: header.datatype,
+                    bitpix: header.bitpix,
+                    dim: header.dim.map(|x| x as u64),
+                    intent_p1: header.intent_p1 as f64,
+                    intent_p2: header.intent_p2 as f64,
+                    intent_p3: header.intent_p3 as f64,
+                    pixdim: header.pixdim.map(|x| x as f64),
+                    // Voxel offset should be equal to previous voxel offset
+                    // plus difference in header size = 540 - 348 = 192.
+                    vox_offset: header.vox_offset.round() as u64 + 192,
+                    scl_slope: header.scl_slope as f64,
+                    scl_inter: header.scl_inter as f64,
+                    cal_max: header.cal_max as f64,
+                    cal_min: header.cal_min as f64,
+                    slice_duration: header.slice_duration as f64,
+                    toffset: header.toffset as f64,
+                    slice_start: header.slice_start as u64,
+                    slice_end: header.slice_end as u64,
+                    descrip: header.descrip,
+                    aux_file: header.aux_file,
+                    qform_code: header.qform_code as i32,
+                    sform_code: header.sform_code as i32,
+                    quatern_b: header.quatern_b as f64,
+                    quatern_c: header.quatern_c as f64,
+                    quatern_d: header.quatern_d as f64,
+                    quatern_x: header.quatern_x as f64,
+                    quatern_y: header.quatern_y as f64,
+                    quatern_z: header.quatern_z as f64,
+                    srow_x: header.srow_x.map(|x| x as f64),
+                    srow_y: header.srow_y.map(|x| x as f64),
+                    srow_z: header.srow_z.map(|x| x as f64),
+                    slice_code: header.slice_code as i32,
+                    xyzt_units: header.xyzt_units as i32,
+                    intent_code: header.intent_code as i32,
+                    intent_name: header.intent_name,
+                    dim_info: header.dim_info,
+                    endianness: header.endianness,
+                    ..Default::default()
+                }
+            }
+            NiftiHeader::Nifti2Header(header) => header,
+        }
     }
 }
 

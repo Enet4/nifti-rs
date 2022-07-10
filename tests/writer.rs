@@ -12,6 +12,7 @@ mod util;
 #[cfg(feature = "ndarray_volumes")]
 mod tests {
     use std::{
+        convert::TryInto,
         fs,
         ops::{Add, Mul},
         path::{Path, PathBuf},
@@ -227,7 +228,7 @@ mod tests {
         // Manual descrip. The original header won't be "repaired", but the written description
         // should be right. To compare the header, we must fix it ourselves.
         let v = "äbcdé".as_bytes();
-        let mut header = header.into_nifti1().unwrap();
+        let mut header: Nifti1Header = header.try_into().unwrap();
         header.descrip[..v.len()].copy_from_slice(&v);
         let mut header = header.into();
         WriterOptions::new(&path)

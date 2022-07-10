@@ -1,4 +1,5 @@
 use nifti::{Endianness, Nifti1Header, NiftiHeader, NiftiType};
+use std::convert::TryInto;
 
 /// Known meta-data for the "minimal.nii" test file.
 #[allow(dead_code)]
@@ -6,7 +7,7 @@ pub fn minimal_header_nii_gt() -> NiftiHeader {
     Nifti1Header {
         vox_offset: 352.,
         magic: *b"n+1\0",
-        ..minimal_header_hdr_gt().into_nifti1().unwrap()
+        ..minimal_header_hdr_gt().try_into().unwrap()
     }
     .into()
 }
