@@ -327,7 +327,7 @@ mod tests {
             endianness: Endianness::native(),
             ..Nifti1Header::default()
         }
-        .into_nifti();
+        .into();
 
         let mut volume = StreamedNiftiVolume::from_reader(&volume_data[..], &header).unwrap();
 
@@ -369,7 +369,7 @@ mod tests {
             endianness: Endianness::native(),
             ..Nifti1Header::default()
         }
-        .into_nifti();
+        .into();
 
         let mut volume = StreamedNiftiVolume::from_reader(&volume_data[..], &header).unwrap();
 
@@ -414,7 +414,7 @@ mod tests {
             endianness: Endianness::native(),
             ..Nifti1Header::default()
         }
-        .into_nifti();
+        .into();
 
         let mut volume = StreamedNiftiVolume::from_reader(&volume_data[..], &header).unwrap();
 
@@ -457,7 +457,7 @@ mod tests {
             endianness: Endianness::native(),
             ..Nifti1Header::default()
         }
-        .into_nifti();
+        .into();
 
         let mut volume =
             StreamedNiftiVolume::from_reader_rank(&volume_data[..], &header, 2).unwrap();
@@ -502,7 +502,7 @@ mod tests {
             endianness: Endianness::Little,
             ..Nifti1Header::default()
         }
-        .into_nifti();
+        .into();
 
         let mut volume =
             StreamedNiftiVolume::from_reader_rank(&volume_data[..], &header, 1).unwrap();

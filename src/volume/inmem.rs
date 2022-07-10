@@ -440,7 +440,7 @@ mod tests {
             bitpix: 8,
             ..Default::default()
         }
-        .into_nifti();
+        .into();
         let raw_data = vec![0; (w * h * d) as usize];
         let mut volume = InMemNiftiVolume::from_raw_data(&header, raw_data).unwrap();
         assert_eq!(header.get_dim()[0], 4);

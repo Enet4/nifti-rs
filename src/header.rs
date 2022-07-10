@@ -69,7 +69,7 @@ pub const MAGIC_CODE_NIP2: &[u8; 8] = b"n+2\0\r\n\x1A\n";
 /// // Convert a header into NIFTI-2 (does nothing if already NIFTI-2).
 /// // First extracts/converts the `NiftiHeader` into a `Nifti2Header` and then
 /// // puts it back into a `NiftiHeader`.
-/// let hdr4 = hdr3.into_nifti2().into_nifti();
+/// let hdr4:NiftiHeader = hdr3.into_nifti2().into();
 ///
 /// // Make a new header from scratch.  Defaults to NIFTI-2.
 /// let mut hdr5 = NiftiHeader::default();
@@ -89,7 +89,7 @@ pub enum NiftiHeader {
 }
 impl Default for NiftiHeader {
     fn default() -> NiftiHeader {
-        Nifti2Header::default().into_nifti() // default to NIfTI-2 format
+        Nifti2Header::default().into() // default to NIfTI-2 format
     }
 }
 impl NiftiHeader {
@@ -845,13 +845,13 @@ impl NiftiHeader {
         // 469893120 for NIfTI-2 or 1543569408 for NIfTI-2.
         match sizeof_hdr {
             // NIfTI-2 native endian
-            540 => Ok(parse_nifti2_header(input, 540)?.into_nifti()),
+            540 => Ok(parse_nifti2_header(input, 540)?.into()),
             // NIfTI-2 swap endian
-            469893120 => Ok(parse_nifti2_header(input.into_opposite(), 348)?.into_nifti()),
+            469893120 => Ok(parse_nifti2_header(input.into_opposite(), 348)?.into()),
             // NIfTI-1 native endian
-            348 => Ok(parse_nifti1_header(input, 348)?.into_nifti()),
+            348 => Ok(parse_nifti1_header(input, 348)?.into()),
             // NIfTI-1 swap endian
-            1543569408 => Ok(parse_nifti1_header(input.into_opposite(), 348)?.into_nifti()),
+            1543569408 => Ok(parse_nifti1_header(input.into_opposite(), 348)?.into()),
             // Invalid header size
             _ => Err(NiftiError::InvalidHeaderSize(sizeof_hdr)),
         }
@@ -1138,7 +1138,7 @@ impl NiftiHeader {
 /// hdr.datatype = 4;
 /// assert_eq!(hdr.cal_min, 0.);
 /// assert_eq!(hdr.cal_max, 128.);
-/// let hdr: NiftiHeader = hdr.into_nifti();
+/// let hdr: NiftiHeader = hdr.into();
 /// assert_eq!(hdr.data_type().unwrap(), NiftiType::Int16);
 /// ```
 #[derive(Debug, Clone, PartialEq)]
@@ -1261,7 +1261,7 @@ pub struct Nifti1Header {
 /// hdr.datatype = 4;
 /// assert_eq!(hdr.cal_min, 0.);
 /// assert_eq!(hdr.cal_max, 128.);
-/// let hdr: NiftiHeader = hdr.into_nifti();
+/// let hdr: NiftiHeader = hdr.into();
 /// assert_eq!(hdr.data_type().unwrap(), NiftiType::Int16);
 /// ```
 #[derive(Debug, Clone, PartialEq)]
@@ -1451,16 +1451,16 @@ impl Default for Nifti2Header {
     }
 }
 
-impl Nifti1Header {
+impl Into<NiftiHeader> for Nifti1Header {
     /// Place this `Nifti1Header` into a version-agnostic [`NiftiHeader`] enum.
-    pub fn into_nifti(self) -> NiftiHeader {
+    fn into(self) -> NiftiHeader {
         NiftiHeader::Nifti1Header(self)
     }
 }
 
-impl Nifti2Header {
+impl Into<NiftiHeader> for Nifti2Header {
     /// Place this `Nifti2Header` into a version-agnostic [`NiftiHeader`] enum.
-    pub fn into_nifti(self) -> NiftiHeader {
+    fn into(self) -> NiftiHeader {
         NiftiHeader::Nifti2Header(self)
     }
 }

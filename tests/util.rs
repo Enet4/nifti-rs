@@ -8,7 +8,7 @@ pub fn minimal_header_nii_gt() -> NiftiHeader {
         magic: *b"n+1\0",
         ..minimal_header_hdr_gt().into_nifti1().unwrap()
     }
-    .into_nifti()
+    .into()
 }
 
 /// Known meta-data for the "minimal.hdr" test file.
@@ -31,7 +31,7 @@ pub fn minimal_header_hdr_gt() -> NiftiHeader {
         endianness: Endianness::Big,
         ..Default::default()
     }
-    .into_nifti()
+    .into()
 }
 
 /// Known meta-data for the RGB volume test file.
@@ -44,5 +44,5 @@ pub fn rgb_header_gt() -> NiftiHeader {
         endianness: Endianness::Little,
         ..Default::default()
     }
-    .into_nifti()
+    .into()
 }

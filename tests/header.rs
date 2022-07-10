@@ -91,7 +91,7 @@ fn avg152T1_LR_hdr_gz() {
         endianness: Endianness::Big,
         ..Default::default()
     }
-    .into_nifti();
+    .into();
 
     const FILE_NAME: &str = "resources/avg152T1_LR_nifti.hdr.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
@@ -136,7 +136,7 @@ fn avg152T1_LR_nii_gz() {
         endianness: Endianness::Big,
         ..Default::default()
     }
-    .into_nifti();
+    .into();
 
     const FILE_NAME: &str = "resources/avg152T1_LR_nifti.nii.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
@@ -181,7 +181,7 @@ fn zstat1_nii_gz() {
         endianness: Endianness::Big,
         ..Default::default()
     }
-    .into_nifti();
+    .into();
 
     const FILE_NAME: &str = "resources/zstat1.nii.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
