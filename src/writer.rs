@@ -145,18 +145,18 @@ impl<'a> WriterOptions<'a> {
         let data = data.t();
 
         let header_file = File::create(header_path)?;
-        if header.get_vox_offset()? > 0 {
+        if header.vox_offset()? > 0 {
             if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(header_file, compression_level),
-                    header.get_endianness(),
+                    header.endianness(),
                 );
                 write_header(writer.as_mut(), &header)?;
                 write_data::<_, A, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let mut writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.get_endianness());
+                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness());
                 write_header(writer.as_mut(), &header)?;
                 write_data::<_, A, _, _, _, _>(writer, data)?;
             }
@@ -165,23 +165,23 @@ impl<'a> WriterOptions<'a> {
             if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(header_file, compression_level),
-                    header.get_endianness(),
+                    header.endianness(),
                 );
                 write_header(writer.as_mut(), &header)?;
                 let _ = writer.into_inner().finish()?;
 
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(data_file, compression_level),
-                    header.get_endianness(),
+                    header.endianness(),
                 );
                 write_data::<_, A, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let header_writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.get_endianness());
+                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness());
                 write_header(header_writer, &header)?;
                 let data_writer =
-                    ByteOrdered::runtime(BufWriter::new(data_file), header.get_endianness());
+                    ByteOrdered::runtime(BufWriter::new(data_file), header.endianness());
                 write_data::<_, A, _, _, _, _>(data_writer, data)?;
             }
         }
@@ -202,18 +202,18 @@ impl<'a> WriterOptions<'a> {
         let data = data.t();
 
         let header_file = File::create(header_path)?;
-        if header.get_vox_offset()? > 0 {
+        if header.vox_offset()? > 0 {
             if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(header_file, compression_level),
-                    header.get_endianness(),
+                    header.endianness(),
                 );
                 write_header(writer.as_mut(), &header)?;
                 write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let mut writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.get_endianness());
+                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness());
                 write_header(writer.as_mut(), &header)?;
                 write_data::<_, u8, _, _, _, _>(writer, data)?;
             }
@@ -222,24 +222,24 @@ impl<'a> WriterOptions<'a> {
             if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(header_file, compression_level),
-                    header.get_endianness(),
+                    header.endianness(),
                 );
                 write_header(writer.as_mut(), &header)?;
                 let _ = writer.into_inner().finish()?;
 
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(data_file, compression_level),
-                    header.get_endianness(),
+                    header.endianness(),
                 );
                 write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let header_writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.get_endianness());
+                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness());
                 write_header(header_writer, &header)?;
 
                 let data_writer =
-                    ByteOrdered::runtime(BufWriter::new(data_file), header.get_endianness());
+                    ByteOrdered::runtime(BufWriter::new(data_file), header.endianness());
                 write_data::<_, u8, _, _, _, _>(data_writer, data)?;
             }
         }

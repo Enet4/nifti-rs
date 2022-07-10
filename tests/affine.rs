@@ -14,8 +14,8 @@ mod nalgebra_affine {
         let affine = Affine4::from_diagonal(&Vector4::new(2.0, 2.0, 2.0, 1.0));
         header.set_affine(&affine);
         assert_eq!(affine, header.affine());
-        assert_eq!(header.get_sform_code(), 2);
-        assert_eq!(header.get_qform_code(), 0);
+        assert_eq!(header.sform_code(), 2);
+        assert_eq!(header.qform_code(), 0);
     }
 
     #[test]

@@ -52,7 +52,7 @@ fn minimal_nii() {
     let header = NiftiHeader::from_reader(file).unwrap();
 
     assert_eq!(header, minimal_hdr);
-    assert_eq!(header.get_endianness(), Endianness::Big);
+    assert_eq!(header.endianness(), Endianness::Big);
 
     assert_eq!(header.intent().unwrap(), Intent::None);
     assert_eq!(header.data_type().unwrap(), NiftiType::Uint8);
@@ -97,7 +97,7 @@ fn avg152T1_LR_hdr_gz() {
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
 
     assert_eq!(header, avg152t1_lr_hdr);
-    assert_eq!(header.get_endianness(), Endianness::Big);
+    assert_eq!(header.endianness(), Endianness::Big);
 
     assert_eq!(header.intent().unwrap(), Intent::None);
     assert_eq!(header.data_type().unwrap(), NiftiType::Uint8);

@@ -102,7 +102,7 @@ pub fn validate_dimensionality(raw_dim: &[u64; 8]) -> Result<usize> {
 pub fn nb_bytes_for_data(header: &NiftiHeader) -> Result<usize> {
     let resolution = nb_values_for_dims(&header.dim()?);
     resolution
-        .and_then(|r| r.checked_mul(usize::from(header.get_bitpix()) / 8))
+        .and_then(|r| r.checked_mul(usize::from(header.bitpix()) / 8))
         .ok_or(NiftiError::BadVolumeSize)
 }
 

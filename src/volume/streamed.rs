@@ -110,7 +110,7 @@ where
     ///
     /// By default, the slice's rank is the original volume's rank minus 1.
     pub fn from_reader(source: R, header: &NiftiHeader) -> Result<Self> {
-        let dim = Dim::new(header.get_dim())?;
+        let dim = Dim::new(header.raw_dim())?;
         let slice_rank = dim.rank() - 1;
         StreamedNiftiVolume::from_reader_rank(source, header, slice_rank as u16)
     }
@@ -123,7 +123,7 @@ where
     /// The slice rank defines how many dimensions each slice should have.
     pub fn from_reader_rank(source: R, header: &NiftiHeader, slice_rank: u16) -> Result<Self> {
         // TODO recoverable error if #dim == 0
-        let dim = Dim::new(header.get_dim())?; // check dim consistency
+        let dim = Dim::new(header.raw_dim())?; // check dim consistency
         let datatype = header.data_type()?;
         let slice_dim = calculate_slice_dims(&dim, slice_rank);
         let slices_left = calculate_total_slices(&dim, slice_rank);
@@ -132,9 +132,9 @@ where
             dim,
             slice_dim,
             datatype,
-            scl_slope: header.get_scl_slope(),
-            scl_inter: header.get_scl_inter(),
-            endianness: header.get_endianness(),
+            scl_slope: header.scl_slope(),
+            scl_inter: header.scl_inter(),
+            endianness: header.endianness(),
             slices_read: 0,
             slices_left,
         })

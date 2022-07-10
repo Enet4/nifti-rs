@@ -179,8 +179,8 @@ mod tests {
             .unwrap();
 
         let (read_header, read_data) = read_as_ndarray(path);
-        assert_eq!(read_header.get_scl_inter(), 0.0);
-        assert_eq!(read_header.get_scl_slope(), 1.0);
+        assert_eq!(read_header.scl_inter(), 0.0);
+        assert_eq!(read_header.scl_slope(), 1.0);
         assert_eq!(data, read_data);
     }
 

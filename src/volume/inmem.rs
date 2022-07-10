@@ -80,12 +80,12 @@ impl InMemNiftiVolume {
 
         let datatype = header.data_type()?;
         Ok(InMemNiftiVolume {
-            dim: Dim::new(header.get_dim())?,
+            dim: Dim::new(header.raw_dim())?,
             datatype,
-            scl_slope: header.get_scl_slope(),
-            scl_inter: header.get_scl_inter(),
+            scl_slope: header.scl_slope(),
+            scl_inter: header.scl_inter(),
             raw_data,
-            endianness: header.get_endianness(),
+            endianness: header.endianness(),
         })
     }
 
@@ -139,12 +139,12 @@ impl InMemNiftiVolume {
 
         let datatype = header.data_type()?;
         Ok(InMemNiftiVolume {
-            dim: Dim::new(header.get_dim())?,
+            dim: Dim::new(header.raw_dim())?,
             datatype,
-            scl_slope: header.get_scl_slope(),
-            scl_inter: header.get_scl_inter(),
+            scl_slope: header.scl_slope(),
+            scl_inter: header.scl_inter(),
             raw_data,
-            endianness: header.get_endianness(),
+            endianness: header.endianness(),
         })
     }
 
@@ -443,10 +443,10 @@ mod tests {
         .into();
         let raw_data = vec![0; (w * h * d) as usize];
         let mut volume = InMemNiftiVolume::from_raw_data(&header, raw_data).unwrap();
-        assert_eq!(header.get_dim()[0], 4);
+        assert_eq!(header.raw_dim()[0], 4);
         assert_eq!(volume.dimensionality(), 4);
-        if header.get_dim()[header.get_dim()[0] as usize] == 1 {
-            let mut dim = header.get_dim();
+        if header.raw_dim()[header.raw_dim()[0] as usize] == 1 {
+            let mut dim = header.raw_dim();
             dim[0] -= 1;
             header.set_dim(&dim).unwrap();
             volume = InMemNiftiVolume::from_raw_data(&header, volume.into_raw_data()).unwrap();
