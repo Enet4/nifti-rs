@@ -472,7 +472,10 @@ where
     writer.write_i32(header.intent_code)?;
     writer.write_all(&header.intent_name)?;
     writer.write_u8(header.dim_info)?;
-
+    
+    for _ in 0..15 {
+        writer.write_u8(0)?;
+    }
     // Empty 4 bytes after the header
     // TODO Support writing extension data.
     writer.write_u32(0)?;

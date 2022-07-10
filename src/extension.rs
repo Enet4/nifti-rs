@@ -1,4 +1,4 @@
-//! This module contains definitions for the extension and related types.
+//! This module contains definitions for the extension and related typ&es.
 //! Extensions are optional data frames sitting before the voxel data.
 //! When present, an extender frame of 4 bytes is also present at the
 //! end of the NIFTI-1 header, with the first byte set to something

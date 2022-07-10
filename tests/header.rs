@@ -2,8 +2,10 @@ extern crate nifti;
 #[macro_use]
 extern crate pretty_assertions;
 
-use nifti::{Endianness, Intent, Nifti1Header, NiftiHeader, NiftiType, SliceOrder, Unit, XForm};
-use std::fs::File;
+use nifti::{
+    Endianness, Intent, Nifti1Header, Nifti2Header, NiftiHeader, NiftiType, SliceOrder, Unit, XForm,
+};
+use std::{fs::File, io::Seek};
 
 mod util;
 
@@ -194,4 +196,42 @@ fn zstat1_nii_gz() {
     assert_eq!(header.slice_order().unwrap(), SliceOrder::Unknown);
     assert_eq!(header.qform().unwrap(), XForm::ScannerAnat);
     assert_eq!(header.sform().unwrap(), XForm::Unknown);
+}
+
+#[test]
+fn test_read_ones_dscalar() {
+    let descrip = [0; 80];
+
+    let one_dscalar_header = Nifti2Header {
+        sizeof_hdr: 540,
+        magic: *b"n+2\0\r\n\x1A\n",
+        datatype: 16,
+        bitpix: 32,
+        dim: [6, 1, 1, 1, 1, 1, 91282, 1],
+        pixdim: [0., 1., 1., 1., 1., 1., 1., 1.],
+        srow_x: [0.; 4],
+        srow_y: [0.; 4],
+        srow_z: [0.; 4],
+        vox_offset: 630784,
+        scl_slope: 1.,
+        scl_inter: 0.,
+        cal_max: 0.,
+        cal_min: 0.,
+        qform_code: 0,
+        sform_code: 0,
+        descrip,
+        xyzt_units: 12,
+        intent_code: 3006,
+        intent_name: *b"ConnDenseScalar\0",
+        endianness: Endianness::Little,
+        ..Default::default()
+    }
+    .into();
+
+    const FILE_NAME: &str = "resources/cifti/ones.dscalar.nii";
+    let mut reader = File::open(FILE_NAME).unwrap();
+
+    let header = NiftiHeader::from_reader(&mut reader).unwrap();
+    assert_eq!(header, one_dscalar_header);
+    assert_eq!(reader.seek(std::io::SeekFrom::Current(0)).unwrap(), 540);
 }

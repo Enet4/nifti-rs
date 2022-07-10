@@ -1,0 +1,24 @@
+These CIFTI files and the README files are originally gathered and distributed in the CiftiLib 
+https://github.com/Washington-University/CiftiLib, including the following section of the readme file
+
+-----
+
+These files are intended for testing CIFTI-2 reading code, identical to the ones in the v1.x zip files from https://www.nitrc.org/projects/cifti/.  There are 5 CIFTI-2 files, the other data files that were in the zip have been removed to save space, as they were in different (but related) formats.
+
+The files:
+
+Conte69.MyelinAndCorrThickness.32k_fs_LR.dscalar.nii
+Conte69.MyelinAndCorrThickness.32k_fs_LR.dtseries.nii
+
+contain the same data, which are two fairly smooth maps, with somewhat different value distributions (MyelinMap_BC_decurv ranges from 1 to 2, while corrThickness ranges from 1 to 4.8).  If you see a pattern that alternates from one vertex to the next, you have probably read the data matrix incorrectly, which may happen if you previously read data from CIFTI-1, and used the same code.  The CIFTI-2 matrix data should be read as a standard NIFTI-2 file, it does not require the special treatment that CIFTI-1 needed.
+
+The "ones.dscalar.nii" is the only cifti file in the zip that contains voxel data.  All of the data values are 1.  The various volume components should align well with subcortical structures in "Conte69_AverageT1w_restore.nii.gz" from any of the v1.x zip files from https://www.nitrc.org/projects/cifti/.
+
+The files:
+
+Conte69.MyelinAndCorrThickness.32k_fs_LR.ptseries.nii
+Conte69.parcellations_VGD11b.32k_fs_LR.dlabel.nii
+
+should have the first map of the .dlabel.nii file align with the areas in the .ptseries.nii file that have values.  The values in the .ptseries.nii file should match the vertex averages over the regions they cover, from the same-index map in "Conte69.MyelinAndCorrThickness.32k_fs_LR.dtseries.nii".
+
+These files are provided under the Open Data Commons Public Domain Dedication and Licence (PDDL), see ODC_PDDL.rtf and/or http://opendatacommons.org/licenses/pddl/1.0/ for details.

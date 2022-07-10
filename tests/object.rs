@@ -240,3 +240,20 @@ fn bad_file_4() {
         .read_file("resources/fuzz_artifacts/crash-08123ef33416bd6f0c5fa63d44b681b8581d62a0");
     // must not panic or abort
 }
+
+#[test]
+fn nifti2_ones_dscalar() {
+    const FILE_NAME: &str = "resources/cifti/ones.dscalar.nii";
+    let obj = ReaderOptions::new().read_file(FILE_NAME).unwrap();
+
+    let hdr = obj.header();
+    assert_eq!(hdr.vox_offset().unwrap(), 630784);
+    let exts = obj.extensions();
+    for i in exts {
+        assert_eq!(i.size(), 630240);
+        let s = String::from_utf8(i.data().clone()).unwrap();
+        assert_eq!(s.len(), 630232);
+    }
+    let vol = obj.volume();
+    assert_eq!(vol.dim(), &[1, 1, 1, 1, 1, 91282])
+}

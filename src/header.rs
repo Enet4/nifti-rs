@@ -847,7 +847,7 @@ impl NiftiHeader {
             // NIfTI-2 native endian
             540 => Ok(parse_nifti2_header(input, 540)?.into()),
             // NIfTI-2 swap endian
-            469893120 => Ok(parse_nifti2_header(input.into_opposite(), 348)?.into()),
+            469893120 => Ok(parse_nifti2_header(input.into_opposite(), 540)?.into()),
             // NIfTI-1 native endian
             348 => Ok(parse_nifti1_header(input, 348)?.into()),
             // NIfTI-1 swap endian
@@ -1836,6 +1836,10 @@ where
     h.intent_code = input.read_i32()?;
     input.read_exact(&mut h.intent_name)?;
     h.dim_info = input.read_u8()?;
+    
+    // exhaust remaining 15 bytes
+    let mut unused_str = [0u8; 15];
+    input.read_exact(&mut unused_str)?;
 
     // All done, return header with populated fields.
     Ok(h)
