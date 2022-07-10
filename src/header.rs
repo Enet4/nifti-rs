@@ -32,7 +32,7 @@ pub const MAGIC_CODE_NIP2: &[u8; 8] = b"n+2\0\r\n\x1A\n";
 
 /// Abstraction over NIFTI version 1 and 2 headers.  This is the high-level type
 /// you will likely use most often.
-/// 
+///
 /// The NIFTI file format has two different versions for headers.  NIFTI-1 was
 /// finalized in 2007 and is still widely used by many scanner manufacturers.
 /// NIFTI-2 was created in 2011 and is widely used in many research-oriented
@@ -41,7 +41,7 @@ pub const MAGIC_CODE_NIP2: &[u8; 8] = b"n+2\0\r\n\x1A\n";
 /// and removal of some unused fields.  Refer to the
 /// [reference documentation](https://nifti.nimh.nih.gov/pub/dist/doc/nifti2.h)
 /// for a comprehensive list of changes.
-/// 
+///
 /// For practical purposes, there is no difference between the header versions.
 /// This `NiftiHeader` type is an `enum` storing either a `Nifti2Header` or
 /// `Nifti1Header`.  Calling `from_file()` or `from_reader()` automatically
@@ -50,10 +50,10 @@ pub const MAGIC_CODE_NIP2: &[u8; 8] = b"n+2\0\r\n\x1A\n";
 /// `set_slice_duration()`, and high-level methods like `data_type()`,
 /// automatically convert values to/from the appropriate underlying type
 /// depending on the header version.
-/// 
+///
 /// If you must work with a specific header version, you can easily convert
 /// between versions with `into_nifti1()` or `into_nifti2()`.
-/// 
+///
 /// # Examples
 ///
 /// ```no_run
@@ -65,15 +65,15 @@ pub const MAGIC_CODE_NIP2: &[u8; 8] = b"n+2\0\r\n\x1A\n";
 /// let hdr1 = NiftiHeader::from_file("0000.hdr")?;
 /// let hdr2 = NiftiHeader::from_file("0001.hdr.gz")?;
 /// let hdr3 = NiftiHeader::from_file("4321.nii.gz")?;
-/// 
+///
 /// // Convert a header into NIFTI-2 (does nothing if already NIFTI-2).
 /// // First extracts/converts the `NiftiHeader` into a `Nifti2Header` and then
 /// // puts it back into a `NiftiHeader`.
 /// let hdr4 = hdr3.into_nifti2().into_nifti();
-/// 
+///
 /// // Make a new header from scratch.  Defaults to NIFTI-2.
 /// let mut hdr5 = NiftiHeader::default();
-/// 
+///
 /// // Change the slice duration to two-and-a-half seconds.
 /// hdr5.set_slice_duration(2.5);
 /// assert_eq!(hdr1.get_slice_duration(), 2.5);
@@ -94,7 +94,7 @@ impl Default for NiftiHeader {
 }
 impl NiftiHeader {
     // Getter and setter methods.
-    // 
+    //
     // Signatures are for the larger types of NIFTI-2 fields.
     // When getting a smaller field from a NIFTI-1 header (e.g. intent_code) the
     // value is promoted to the larger type (e.g. i16 -> i32).
@@ -126,18 +126,16 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.dim_info = dim_info;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.dim_info = dim_info;
-            },
+            }
         }
     }
     /// Get data array dimensions.
     pub fn get_dim(&self) -> [u64; 8] {
         match *self {
-            Self::Nifti1Header(ref header) => {
-                header.dim.map(|x| x as u64)
-            },
+            Self::Nifti1Header(ref header) => header.dim.map(|x| x as u64),
             Self::Nifti2Header(ref header) => header.dim,
         }
     }
@@ -151,12 +149,12 @@ impl NiftiHeader {
                 for (&src, dst) in dim.iter().zip(&mut header.dim) {
                     *dst = TryInto::<i16>::try_into(src)? as u16;
                 }
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 for (&src, dst) in dim.iter().zip(&mut header.dim) {
                     *dst = TryInto::<i64>::try_into(src)? as u64;
                 }
-            },
+            }
         }
         Ok(())
     }
@@ -173,10 +171,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.intent_p1 = intent_p1 as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.intent_p1 = intent_p1;
-            },
+            }
         }
     }
     /// Get 2nd intent parameter.
@@ -192,10 +190,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.intent_p2 = intent_p2 as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.intent_p2 = intent_p2;
-            },
+            }
         }
     }
     /// Get 3rd intent parameter.
@@ -211,10 +209,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.intent_p3 = intent_p3 as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.intent_p3 = intent_p3;
-            },
+            }
         }
     }
     /// Get NIFTI_INTENT_* code.
@@ -231,7 +229,7 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.intent_code = intent_code.try_into()?;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.intent_code = intent_code;
             }
@@ -250,10 +248,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.datatype = datatype;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.datatype = datatype;
-            },
+            }
         }
     }
     /// Get number of bits per voxel.
@@ -270,10 +268,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.bitpix = bitpix;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.bitpix = bitpix;
-            },
+            }
         }
         Ok(())
     }
@@ -291,10 +289,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.slice_start = TryInto::<i16>::try_into(slice_start)? as u16;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.slice_start = TryInto::<i64>::try_into(slice_start)? as u64;
-            },
+            }
         }
         Ok(())
     }
@@ -310,10 +308,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.pixdim = pixdim.map(|x| x as f32);
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.pixdim = *pixdim;
-            },
+            }
         }
     }
     /// Get offset into .nii file to reach the volume.  Note that NIFTI-1 stores
@@ -321,12 +319,10 @@ impl NiftiHeader {
     /// nearest integer.  Returns [`NiftiError::FieldSize`] if that integer
     /// would be negative.
     pub fn get_vox_offset(&self) -> Result<u64> {
-        Ok(
-            match *self {
-                Self::Nifti1Header(ref header) => (header.vox_offset.round() as i64).try_into()?,
-                Self::Nifti2Header(ref header) => header.vox_offset,
-            }
-        )
+        Ok(match *self {
+            Self::Nifti1Header(ref header) => (header.vox_offset.round() as i64).try_into()?,
+            Self::Nifti2Header(ref header) => header.vox_offset,
+        })
     }
     /// Set offset into .nii file to reach the volume.  Note that NIFTI-1 stores
     /// this offset as `f32` and NIFTI-2 stores it as `i64`.  Returns
@@ -336,10 +332,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.vox_offset = TryInto::<i32>::try_into(vox_offset)? as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.vox_offset = TryInto::<i64>::try_into(vox_offset)? as u64;
-            },
+            }
         }
         Ok(())
     }
@@ -356,10 +352,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.scl_slope = scl_slope as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.scl_slope = scl_slope;
-            },
+            }
         }
     }
     /// Get data scaling offset (intercept).  When the header version is
@@ -375,10 +371,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.scl_inter = scl_inter as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.scl_inter = scl_inter;
-            },
+            }
         }
     }
     /// Get last slice index.
@@ -395,10 +391,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.slice_end = TryInto::<i16>::try_into(slice_end)? as u16;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.slice_end = TryInto::<i64>::try_into(slice_end)? as u64;
-            },
+            }
         }
         Ok(())
     }
@@ -415,10 +411,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.slice_code = slice_code.try_into()?;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.slice_code = slice_code;
-            },
+            }
         }
         Ok(())
     }
@@ -435,10 +431,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.xyzt_units = xyzt_units.try_into()?;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.xyzt_units = xyzt_units;
-            },
+            }
         }
         Ok(())
     }
@@ -455,10 +451,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.cal_max = cal_max as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.cal_max = cal_max;
-            },
+            }
         }
     }
     /// Get min display intensity.
@@ -474,10 +470,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.cal_min = cal_min as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.cal_min = cal_min;
-            },
+            }
         }
     }
     /// Get time for 1 slice (in seconds).
@@ -493,10 +489,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.slice_duration = slice_duration as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.slice_duration = slice_duration;
-            },
+            }
         }
     }
     /// Get time axis shift.
@@ -511,10 +507,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.toffset = toffset as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.toffset = toffset;
-            },
+            }
         }
     }
     /// Get description.
@@ -529,10 +525,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.descrip = descrip;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.descrip = descrip;
-            },
+            }
         }
     }
     /// Get auxiliary filename.
@@ -547,10 +543,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.aux_file = aux_file;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.aux_file = aux_file;
-            },
+            }
         }
     }
     /// Get NIFTI_XFORM_* code.
@@ -566,10 +562,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.qform_code = qform_code.try_into()?;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.qform_code = qform_code;
-            },
+            }
         }
         Ok(())
     }
@@ -586,10 +582,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.sform_code = sform_code.try_into()?;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.sform_code = sform_code;
-            },
+            }
         }
         Ok(())
     }
@@ -606,10 +602,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.quatern_b = quatern_b as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.quatern_b = quatern_b;
-            },
+            }
         }
     }
     /// Get quaternion c param.
@@ -625,10 +621,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.quatern_c = quatern_c as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.quatern_c = quatern_c;
-            },
+            }
         }
     }
     /// Get quaternion d param.
@@ -644,10 +640,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.quatern_d = quatern_d as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.quatern_d = quatern_d;
-            },
+            }
         }
     }
     /// Get quaternion x param, also known as qoffset_x.
@@ -663,10 +659,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.quatern_x = quatern_x as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.quatern_x = quatern_x;
-            },
+            }
         }
     }
     /// Get quaternion y param, also known as qoffset_y.
@@ -682,10 +678,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.quatern_y = quatern_y as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.quatern_y = quatern_y;
-            },
+            }
         }
     }
     /// Get quaternion z param, also known as qoffset_z.
@@ -701,10 +697,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.quatern_z = quatern_z as f32;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.quatern_z = quatern_z;
-            },
+            }
         }
     }
     /// Get 1st row affine transform.
@@ -722,10 +718,10 @@ impl NiftiHeader {
                 for (&src, dst) in srow_x.iter().zip(&mut header.srow_x) {
                     *dst = src as f32;
                 }
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.srow_x = *srow_x;
-            },
+            }
         }
     }
     /// Get 2nd row affine transform.
@@ -743,10 +739,10 @@ impl NiftiHeader {
                 for (&src, dst) in srow_y.iter().zip(&mut header.srow_y) {
                     *dst = src as f32;
                 }
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.srow_y = *srow_y;
-            },
+            }
         }
     }
     /// Get 3rd row affine transform.
@@ -764,10 +760,10 @@ impl NiftiHeader {
                 for (&src, dst) in srow_z.iter().zip(&mut header.srow_z) {
                     *dst = src as f32;
                 }
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.srow_z = *srow_z;
-            },
+            }
         }
     }
     /// Get magic code.  This will be 4 bytes for a NIFTI-1 header and 8 bytes
@@ -791,10 +787,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.intent_name = intent_name;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.intent_name = intent_name;
-            },
+            }
         }
     }
     /// Get original data endianness.
@@ -810,10 +806,10 @@ impl NiftiHeader {
         match *self {
             Self::Nifti1Header(ref mut header) => {
                 header.endianness = endianness;
-            },
+            }
             Self::Nifti2Header(ref mut header) => {
                 header.endianness = endianness;
-            },
+            }
         }
     }
 
@@ -919,7 +915,7 @@ impl NiftiHeader {
                     endianness: header.endianness,
                     ..Default::default()
                 }
-            },
+            }
             Self::Nifti2Header(header) => header,
         }
     }
@@ -935,12 +931,13 @@ impl NiftiHeader {
     /// Initializes the unused data_type, db_name, extents, session_error,
     /// regular, glmax, and glmin fields with their default (zero) values.
     pub fn into_nifti1(self) -> Result<Nifti1Header> {
-        Ok( match self {
+        Ok(match self {
             Self::Nifti1Header(header) => header,
             Self::Nifti2Header(header) => {
                 Nifti1Header {
                     dim_info: header.dim_info,
-                    dim: { // attempt to map u64 to u16 that fits in an i16
+                    dim: {
+                        // attempt to map u64 to u16 that fits in an i16
                         let mut dim: [u16; 8] = [0; 8];
                         for (&src, dst) in header.dim.iter().zip(&mut dim) {
                             *dst = TryInto::<i16>::try_into(src)? as u16;
@@ -991,8 +988,8 @@ impl NiftiHeader {
                     endianness: header.endianness,
                     ..Default::default()
                 }
-            },
-        } )
+            }
+        })
     }
 
     /// Fix some commonly invalid fields.
@@ -1032,8 +1029,10 @@ impl NiftiHeader {
 
     /// Get the data type as a validated enum.
     pub fn data_type(&self) -> Result<NiftiType> {
-        FromPrimitive::from_i16(self.get_datatype())
-            .ok_or(NiftiError::InvalidCode("datatype", self.get_datatype().into()))
+        FromPrimitive::from_i16(self.get_datatype()).ok_or(NiftiError::InvalidCode(
+            "datatype",
+            self.get_datatype().into(),
+        ))
     }
 
     /// Get the spatial units type as a validated unit enum.
@@ -1057,8 +1056,10 @@ impl NiftiHeader {
 
     /// Get the slice order as a validated enum.
     pub fn slice_order(&self) -> Result<SliceOrder> {
-        FromPrimitive::from_i32(self.get_slice_code())
-            .ok_or(NiftiError::InvalidCode("slice order", self.get_slice_code()))
+        FromPrimitive::from_i32(self.get_slice_code()).ok_or(NiftiError::InvalidCode(
+            "slice order",
+            self.get_slice_code(),
+        ))
     }
 
     /// Get the intent as a validated enum.
@@ -1119,14 +1120,14 @@ impl NiftiHeader {
 }
 
 /// The NIFTI-1 header data type.
-/// 
+///
 /// All fields are public and named after the specification's header file.
 /// The type of each field was adjusted according to their use and
 /// array limitations.
-/// 
+///
 /// See also `NiftiHeader` for a high-level abstraction over NIFTI-1 and NIFTI-2
 /// headers.
-/// 
+///
 /// # Examples
 ///
 /// ```
@@ -1242,14 +1243,14 @@ pub struct Nifti1Header {
 }
 
 /// The NIFTI-2 header data type.
-/// 
+///
 /// All fields are public and named after the specification's header file.
 /// The type of each field was adjusted according to their use and
 /// array limitations.
-/// 
+///
 /// See also `NiftiHeader` for a high-level abstraction over NIFTI-1 and NIFTI-2
 /// headers.
-/// 
+///
 /// # Examples
 ///
 /// ```
@@ -1522,11 +1523,7 @@ impl NiftiHeader {
 
         let quaternion = self.qform_quaternion();
         let r = quaternion_to_affine(quaternion);
-        let s = Matrix3::from_diagonal(&Vector3::new(
-            pixdim[1],
-            pixdim[2],
-            pixdim[3] * pixdim[0],
-        ));
+        let s = Matrix3::from_diagonal(&Vector3::new(pixdim[1], pixdim[2], pixdim[3] * pixdim[0]));
         let m = r * s;
         #[rustfmt::skip]
         let affine = Matrix4::new(

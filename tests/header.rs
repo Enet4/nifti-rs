@@ -2,7 +2,7 @@ extern crate nifti;
 #[macro_use]
 extern crate pretty_assertions;
 
-use nifti::{Endianness, Intent, NiftiHeader, Nifti1Header, NiftiType, SliceOrder, Unit, XForm};
+use nifti::{Endianness, Intent, Nifti1Header, NiftiHeader, NiftiType, SliceOrder, Unit, XForm};
 use std::fs::File;
 
 mod util;
@@ -90,7 +90,8 @@ fn avg152T1_LR_hdr_gz() {
         magic: *b"ni1\0",
         endianness: Endianness::Big,
         ..Default::default()
-    }.into_nifti();
+    }
+    .into_nifti();
 
     const FILE_NAME: &str = "resources/avg152T1_LR_nifti.hdr.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
@@ -134,7 +135,8 @@ fn avg152T1_LR_nii_gz() {
         magic: *b"n+1\0",
         endianness: Endianness::Big,
         ..Default::default()
-    }.into_nifti();
+    }
+    .into_nifti();
 
     const FILE_NAME: &str = "resources/avg152T1_LR_nifti.nii.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();
@@ -178,7 +180,8 @@ fn zstat1_nii_gz() {
         magic: *b"n+1\0",
         endianness: Endianness::Big,
         ..Default::default()
-    }.into_nifti();
+    }
+    .into_nifti();
 
     const FILE_NAME: &str = "resources/zstat1.nii.gz";
     let header = NiftiHeader::from_file(FILE_NAME).unwrap();

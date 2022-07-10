@@ -144,7 +144,8 @@ fn f32_nii_gz() {
         magic: *b"n+1\0",
         endianness: Endianness::Little,
         ..Default::default()
-    }.into_nifti();
+    }
+    .into_nifti();
 
     const FILE_NAME: &str = "resources/f32.nii.gz";
     let obj = ReaderOptions::new().read_file(FILE_NAME).unwrap();
@@ -182,7 +183,8 @@ fn streamed_f32_nii_gz() {
         magic: *b"n+1\0",
         endianness: Endianness::Little,
         ..Default::default()
-    }.into_nifti();
+    }
+    .into_nifti();
 
     const FILE_NAME: &str = "resources/f32.nii.gz";
     let obj = ReaderStreamedOptions::new().read_file(FILE_NAME).unwrap();

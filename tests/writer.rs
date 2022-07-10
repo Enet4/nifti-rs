@@ -28,7 +28,7 @@ mod tests {
         object::NiftiObject,
         volume::shape::Dim,
         writer::WriterOptions,
-        DataElement, IntoNdArray, NiftiHeader, Nifti1Header, NiftiType, ReaderOptions,
+        DataElement, IntoNdArray, Nifti1Header, NiftiHeader, NiftiType, ReaderOptions,
     };
 
     use super::util::rgb_header_gt;
@@ -79,7 +79,8 @@ mod tests {
     fn test_write_read(arr: Array<f32, IxDyn>, path: &str) {
         let path = get_temporary_path(path);
         let dim = *Dim::from_slice(arr.shape()).unwrap().raw();
-        let header = generate_nifti1_header(dim.map(|d| d as u16), 1.0, 0.0, NiftiType::Float32).into_nifti();
+        let header = generate_nifti1_header(dim.map(|d| d as u16), 1.0, 0.0, NiftiType::Float32)
+            .into_nifti();
         WriterOptions::new(&path)
             .reference_header(&header)
             .write_nifti(&arr)
@@ -146,7 +147,9 @@ mod tests {
 
         let path = get_temporary_path("test_slope_inter.nii");
         let dim = *Dim::from_slice(arr.shape()).unwrap().raw();
-        let header = generate_nifti1_header(dim.map(|d| d as u16), slope, inter, NiftiType::Float32).into_nifti();
+        let header =
+            generate_nifti1_header(dim.map(|d| d as u16), slope, inter, NiftiType::Float32)
+                .into_nifti();
         let transformed_data = arr.mul(slope).add(inter);
         WriterOptions::new(&path)
             .reference_header(&header)

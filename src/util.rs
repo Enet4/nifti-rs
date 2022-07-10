@@ -110,7 +110,9 @@ pub fn nb_values_for_dims(dim: &[u64]) -> Option<usize> {
     dim.iter()
         .cloned()
         .map(TryInto::<usize>::try_into)
-        .fold(Some(1), |acc, v| acc.and_then(|x| v.map_or(None, |v| x.checked_mul(v))))
+        .fold(Some(1), |acc, v| {
+            acc.and_then(|x| v.map_or(None, |v| x.checked_mul(v)))
+        })
 }
 
 pub fn nb_bytes_for_dim_datatype(dim: &[u64], datatype: NiftiType) -> Option<usize> {
