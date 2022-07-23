@@ -531,7 +531,6 @@ impl<V> GenericNiftiObject<V> {
         V: FromSource<MaybeGzDecodedFile>,
     {
         let header = NiftiHeader::from_reader(&mut stream)?;
-        println!("{:#?}", header);
         let (volume, ext) = if &header.magic() == MAGIC_CODE_NI1
             || &header.magic() == MAGIC_CODE_NI2
         {
@@ -540,7 +539,6 @@ impl<V> GenericNiftiObject<V> {
 
             // extender is optional
             let extender = Extender::from_reader_optional(&mut stream)?.unwrap_or_default();
-            println!("{:#?}", extender);
             // look for corresponding img file
             let img_path = path.as_ref().to_path_buf();
             let mut img_path_gz = into_img_file_gz(img_path);
@@ -568,7 +566,6 @@ impl<V> GenericNiftiObject<V> {
             // extensions and volume are in the same source
 
             let extender = Extender::from_reader(&mut stream)?;
-            println!("{:#?}", extender);
             let len: usize = header.vox_offset()?.try_into()?;
             let len = if len == 0 {
                 0
