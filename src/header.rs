@@ -487,7 +487,7 @@ impl NiftiHeader {
     }
 
     /// Set affine transformation in 'sform' fields.
-    fn set_sform<T>(&mut self, affine: &Matrix4<T>, code: XForm)
+    pub fn set_sform<T>(&mut self, affine: &Matrix4<T>, code: XForm)
     where
         T: RealField,
         T: ToPrimitive,
@@ -513,7 +513,7 @@ impl NiftiHeader {
     /// components to the `affine` transform, the written qform gives the closest approximation
     /// where the rotation matrix is orthogonal. This is to allow quaternion representation. The
     /// orthogonal representation enforces orthogonal axes.
-    fn set_qform<T>(&mut self, affine4: &Matrix4<T>, code: XForm)
+    pub fn set_qform<T>(&mut self, affine4: &Matrix4<T>, code: XForm)
     where
         T: RealField,
         T: SubsetOf<f64>,
