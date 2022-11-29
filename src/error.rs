@@ -6,6 +6,7 @@ use std::io::Error as IOError;
 quick_error! {
     /// Error type for all error variants originated by this crate.
     #[derive(Debug)]
+    #[non_exhaustive]
     pub enum NiftiError {
         /// An invalid NIfTI-1 file was parsed.
         /// This is detected when reading the file's magic code,
