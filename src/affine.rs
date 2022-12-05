@@ -23,7 +23,7 @@ where
 ///
 /// We get the translations from the center of the image (implied by `shape`).
 #[rustfmt::skip]
-pub(crate) fn shape_zoom_affine(shape: &[u16], spacing: &[f32]) -> Matrix4<f64> {
+pub(crate) fn shape_zoom_affine(shape: &[u64], spacing: &[f64]) -> Matrix4<f64> {
     // Get translations from center of image
     let origin = Vector3::new(
         (shape[0] as f64 - 1.0) / 2.0,

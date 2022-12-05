@@ -3,14 +3,14 @@
 use crate::error::NiftiError;
 use crate::error::Result;
 use crate::extension::{Extender, ExtensionSequence};
-use crate::header::NiftiHeader;
-use crate::header::MAGIC_CODE_NI1;
+use crate::header::{NiftiHeader, MAGIC_CODE_NI1, MAGIC_CODE_NI2};
 use crate::util::{into_img_file_gz, is_gz_file, open_file_maybe_gz};
 use crate::volume::inmem::InMemNiftiVolume;
 use crate::volume::streamed::StreamedNiftiVolume;
 use crate::volume::{FromSource, FromSourceOptions, NiftiVolume};
 use byteordered::ByteOrdered;
 use flate2::bufread::GzDecoder;
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{self, BufReader, Read};
 use std::path::Path;
@@ -467,7 +467,9 @@ impl<V> GenericNiftiObject<V> {
         V: FromSource<R>,
     {
         let header = NiftiHeader::from_reader(&mut source)?;
-        if &header.magic == MAGIC_CODE_NI1 {
+        if &header.magic() == MAGIC_CODE_NI1 || &header.magic() == MAGIC_CODE_NI2 {
+            // Magic code tells us reader is the .hdr file in an .hdr/.img
+            // combination.  Extensions and volume are in another file/reader.
             return Err(NiftiError::NoVolumeData);
         }
         let extender = Extender::from_reader(&mut source)?;
@@ -500,11 +502,16 @@ impl<V> GenericNiftiObject<V> {
         V: FromSource<R>,
     {
         // fetch extensions
-        let len = header.vox_offset as usize;
-        let len = if len < 352 { 0 } else { len - 352 };
+        let len: usize = header.vox_offset()?.try_into()?;
+        let len = if len == 0 {
+            0
+        } else {
+            // header (348 / 540) + extender(4 bytes)
+            len - TryInto::<usize>::try_into(header.sizeof_hdr())? - 4
+        }; // TODO: duplicated code blocks!
 
         let ext = {
-            let source = ByteOrdered::runtime(&mut source, header.endianness);
+            let source = ByteOrdered::runtime(&mut source, header.endianness());
             ExtensionSequence::from_reader(extender, source, len)?
         };
 
@@ -524,12 +531,14 @@ impl<V> GenericNiftiObject<V> {
         V: FromSource<MaybeGzDecodedFile>,
     {
         let header = NiftiHeader::from_reader(&mut stream)?;
-        let (volume, ext) = if &header.magic == MAGIC_CODE_NI1 {
-            // extensions and volume are in another file
+        let (volume, ext) = if &header.magic() == MAGIC_CODE_NI1
+            || &header.magic() == MAGIC_CODE_NI2
+        {
+            // Magic code tells us reader is the .hdr file in an .hdr/.img
+            // combination.  Extensions and volume are in another file/reader.
 
             // extender is optional
             let extender = Extender::from_reader_optional(&mut stream)?.unwrap_or_default();
-
             // look for corresponding img file
             let img_path = path.as_ref().to_path_buf();
             let mut img_path_gz = into_img_file_gz(img_path);
@@ -557,11 +566,16 @@ impl<V> GenericNiftiObject<V> {
             // extensions and volume are in the same source
 
             let extender = Extender::from_reader(&mut stream)?;
-            let len = header.vox_offset as usize;
-            let len = if len < 352 { 0 } else { len - 352 };
+            let len: usize = header.vox_offset()?.try_into()?;
+            let len = if len == 0 {
+                0
+            } else {
+                // header (348 / 540) + extender(4 bytes)
+                len - TryInto::<usize>::try_into(header.sizeof_hdr())? - 4
+            }; // TODO: duplicated code blocks!
 
             let ext = {
-                let stream = ByteOrdered::runtime(&mut stream, header.endianness);
+                let stream = ByteOrdered::runtime(&mut stream, header.endianness());
                 ExtensionSequence::from_reader(extender, stream, len)?
             };
 

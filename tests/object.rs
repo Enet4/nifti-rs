@@ -6,7 +6,7 @@ extern crate nifti;
 extern crate pretty_assertions;
 
 use nifti::{
-    Endianness, NiftiHeader, NiftiObject, NiftiType, NiftiVolume, RandomAccessNiftiVolume,
+    Endianness, Nifti1Header, NiftiObject, NiftiType, NiftiVolume, RandomAccessNiftiVolume,
     ReaderOptions, ReaderStreamedOptions, XForm,
 };
 
@@ -128,7 +128,7 @@ fn minimal_by_pair() {
 
 #[test]
 fn f32_nii_gz() {
-    let f32_hdr = NiftiHeader {
+    let f32_hdr = Nifti1Header {
         sizeof_hdr: 348,
         dim: [3, 11, 11, 11, 1, 1, 1, 1],
         datatype: 16,
@@ -144,7 +144,8 @@ fn f32_nii_gz() {
         magic: *b"n+1\0",
         endianness: Endianness::Little,
         ..Default::default()
-    };
+    }
+    .into();
 
     const FILE_NAME: &str = "resources/f32.nii.gz";
     let obj = ReaderOptions::new().read_file(FILE_NAME).unwrap();
@@ -166,7 +167,7 @@ fn f32_nii_gz() {
 
 #[test]
 fn streamed_f32_nii_gz() {
-    let f32_hdr = NiftiHeader {
+    let f32_hdr = Nifti1Header {
         sizeof_hdr: 348,
         dim: [3, 11, 11, 11, 1, 1, 1, 1],
         datatype: 16,
@@ -182,7 +183,8 @@ fn streamed_f32_nii_gz() {
         magic: *b"n+1\0",
         endianness: Endianness::Little,
         ..Default::default()
-    };
+    }
+    .into();
 
     const FILE_NAME: &str = "resources/f32.nii.gz";
     let obj = ReaderStreamedOptions::new().read_file(FILE_NAME).unwrap();
@@ -237,4 +239,21 @@ fn bad_file_4() {
     let _ = ReaderOptions::new()
         .read_file("resources/fuzz_artifacts/crash-08123ef33416bd6f0c5fa63d44b681b8581d62a0");
     // must not panic or abort
+}
+
+#[test]
+fn nifti2_ones_dscalar() {
+    const FILE_NAME: &str = "resources/cifti/ones.dscalar.nii";
+    let obj = ReaderOptions::new().read_file(FILE_NAME).unwrap();
+
+    let hdr = obj.header();
+    assert_eq!(hdr.vox_offset().unwrap(), 630784);
+    let exts = obj.extensions();
+    for i in exts {
+        assert_eq!(i.size(), 630240);
+        let s = String::from_utf8(i.data().clone()).unwrap();
+        assert_eq!(s.len(), 630232);
+    }
+    let vol = obj.volume();
+    assert_eq!(vol.dim(), &[1, 1, 1, 1, 1, 91282])
 }

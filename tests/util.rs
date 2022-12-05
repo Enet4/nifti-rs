@@ -1,18 +1,20 @@
-use nifti::{Endianness, NiftiHeader, NiftiType};
+use nifti::{Endianness, Nifti1Header, NiftiHeader, NiftiType};
+use std::convert::TryInto;
 
 /// Known meta-data for the "minimal.nii" test file.
 #[allow(dead_code)]
 pub fn minimal_header_nii_gt() -> NiftiHeader {
-    NiftiHeader {
+    Nifti1Header {
         vox_offset: 352.,
         magic: *b"n+1\0",
-        ..minimal_header_hdr_gt()
+        ..minimal_header_hdr_gt().try_into().unwrap()
     }
+    .into()
 }
 
 /// Known meta-data for the "minimal.hdr" test file.
 pub fn minimal_header_hdr_gt() -> NiftiHeader {
-    NiftiHeader {
+    Nifti1Header {
         sizeof_hdr: 348,
         dim: [3, 64, 64, 10, 0, 0, 0, 0],
         datatype: NiftiType::Uint8 as i16,
@@ -30,16 +32,18 @@ pub fn minimal_header_hdr_gt() -> NiftiHeader {
         endianness: Endianness::Big,
         ..Default::default()
     }
+    .into()
 }
 
 /// Known meta-data for the RGB volume test file.
 #[allow(dead_code)]
 pub fn rgb_header_gt() -> NiftiHeader {
-    NiftiHeader {
+    Nifti1Header {
         datatype: NiftiType::Rgb24 as i16,
         sform_code: 2,
         qform_code: 0,
         endianness: Endianness::Little,
-        ..NiftiHeader::default()
+        ..Default::default()
     }
+    .into()
 }

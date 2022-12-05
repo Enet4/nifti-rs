@@ -12,6 +12,7 @@ mod util;
 #[cfg(feature = "ndarray_volumes")]
 mod tests {
     use std::{
+        convert::TryInto,
         fs,
         ops::{Add, Mul},
         path::{Path, PathBuf},
@@ -28,7 +29,7 @@ mod tests {
         object::NiftiObject,
         volume::shape::Dim,
         writer::WriterOptions,
-        DataElement, IntoNdArray, NiftiHeader, NiftiType, ReaderOptions,
+        DataElement, IntoNdArray, Nifti1Header, NiftiHeader, NiftiType, ReaderOptions,
     };
 
     use super::util::rgb_header_gt;
@@ -42,20 +43,20 @@ mod tests {
         path
     }
 
-    pub fn generate_nifti_header(
+    pub fn generate_nifti1_header(
         dim: [u16; 8],
         scl_slope: f32,
         scl_inter: f32,
         datatype: NiftiType,
-    ) -> NiftiHeader {
-        NiftiHeader {
+    ) -> Nifti1Header {
+        Nifti1Header {
             dim,
             datatype: datatype as i16,
-            bitpix: (datatype.size_of() * 8) as i16,
+            bitpix: (datatype.size_of() * 8) as u16,
             magic: *MAGIC_CODE_NIP1,
             scl_slope,
             scl_inter,
-            ..NiftiHeader::default()
+            ..Nifti1Header::default()
         }
     }
 
@@ -79,7 +80,8 @@ mod tests {
     fn test_write_read(arr: Array<f32, IxDyn>, path: &str) {
         let path = get_temporary_path(path);
         let dim = *Dim::from_slice(arr.shape()).unwrap().raw();
-        let header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
+        let header =
+            generate_nifti1_header(dim.map(|d| d as u16), 1.0, 0.0, NiftiType::Float32).into();
         WriterOptions::new(&path)
             .reference_header(&header)
             .write_nifti(&arr)
@@ -146,7 +148,8 @@ mod tests {
 
         let path = get_temporary_path("test_slope_inter.nii");
         let dim = *Dim::from_slice(arr.shape()).unwrap().raw();
-        let header = generate_nifti_header(dim, slope, inter, NiftiType::Float32);
+        let header =
+            generate_nifti1_header(dim.map(|d| d as u16), slope, inter, NiftiType::Float32).into();
         let transformed_data = arr.mul(slope).add(inter);
         WriterOptions::new(&path)
             .reference_header(&header)
@@ -167,7 +170,7 @@ mod tests {
         let dim = [3, 6, 6, 6, 1, 1, 1, 1];
         let slope = 0.4;
         let inter = 100.1;
-        let header = generate_nifti_header(dim, slope, inter, NiftiType::Uint8);
+        let header = generate_nifti1_header(dim, slope, inter, NiftiType::Uint8).into();
 
         let path = get_temporary_path("test_slope_inter.nii");
         WriterOptions::new(&path)
@@ -176,8 +179,8 @@ mod tests {
             .unwrap();
 
         let (read_header, read_data) = read_as_ndarray(path);
-        assert_eq!(read_header.scl_inter, 0.0);
-        assert_eq!(read_header.scl_slope, 1.0);
+        assert_eq!(read_header.scl_inter(), 0.0);
+        assert_eq!(read_header.scl_slope(), 1.0);
         assert_eq!(data, read_data);
     }
 
@@ -218,14 +221,16 @@ mod tests {
     #[test]
     fn write_wrong_description() {
         let dim = [3, 3, 4, 5, 1, 1, 1, 1];
-        let mut header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
+        let header: NiftiHeader = generate_nifti1_header(dim, 1.0, 0.0, NiftiType::Float32).into();
         let path = get_temporary_path("error_description.nii");
         let data = Array::from_elem((3, 4, 5), 1.5);
 
         // Manual descrip. The original header won't be "repaired", but the written description
         // should be right. To compare the header, we must fix it ourselves.
         let v = "äbcdé".as_bytes();
-        header.descrip = v.to_vec();
+        let mut header: Nifti1Header = header.try_into().unwrap();
+        header.descrip[..v.len()].copy_from_slice(&v);
+        let mut header = header.into();
         WriterOptions::new(&path)
             .reference_header(&header)
             .write_nifti(&data)
@@ -257,22 +262,10 @@ mod tests {
     }
 
     #[test]
-    fn write_descrip_panic() {
-        let dim = [3, 3, 4, 5, 1, 1, 1, 1];
-        let mut header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
-        header.descrip = (0..84).into_iter().collect();
-        let path = get_temporary_path("error_description.nii");
-        let data = Array::from_elem((3, 4, 5), 1.5);
-        assert!(WriterOptions::new(&path)
-            .reference_header(&header)
-            .write_nifti(&data)
-            .is_err());
-    }
-
-    #[test]
     fn write_set_description_panic() {
         let dim = [3, 3, 4, 5, 1, 1, 1, 1];
-        let mut header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
+        let mut header: NiftiHeader =
+            generate_nifti1_header(dim, 1.0, 0.0, NiftiType::Float32).into();
         assert!(header
             .set_description((0..81).into_iter().collect::<Vec<_>>())
             .is_err());
@@ -281,7 +274,8 @@ mod tests {
     #[test]
     fn write_set_description_str_panic() {
         let dim = [3, 3, 4, 5, 1, 1, 1, 1];
-        let mut header = generate_nifti_header(dim, 1.0, 0.0, NiftiType::Float32);
+        let mut header: NiftiHeader =
+            generate_nifti1_header(dim, 1.0, 0.0, NiftiType::Float32).into();
         let description: String = std::iter::repeat('é').take(41).collect();
         assert!(header.set_description_str(description).is_err());
     }

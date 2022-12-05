@@ -88,8 +88,8 @@ impl NiftiType {
         self,
         source: S,
         endianness: Endianness,
-        slope: f32,
-        inter: f32,
+        slope: f64,
+        inter: f64,
     ) -> Result<T>
     where
         S: Read,

@@ -12,7 +12,7 @@ where
     v
 }
 
-pub fn coords_to_index(coords: &[u16], dim: &[u16]) -> Result<usize> {
+pub fn coords_to_index(coords: &[u64], dim: &[u64]) -> Result<usize> {
     if coords.len() != dim.len() || coords.is_empty() {
         return Err(NiftiError::IncorrectVolumeDimensionality(
             dim.len() as u16,
@@ -20,7 +20,7 @@ pub fn coords_to_index(coords: &[u16], dim: &[u16]) -> Result<usize> {
         ));
     }
 
-    if !coords.iter().zip(dim).all(|(i, d)| *i < (*d) as u16) {
+    if !coords.iter().zip(dim).all(|(i, d)| *i < *d) {
         return Err(NiftiError::OutOfBounds(Vec::from(coords)));
     }
 

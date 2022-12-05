@@ -78,8 +78,8 @@ pub struct StreamedNiftiVolume<R> {
     dim: Dim,
     slice_dim: Dim,
     datatype: NiftiType,
-    scl_slope: f32,
-    scl_inter: f32,
+    scl_slope: f64,
+    scl_inter: f64,
     endianness: Endianness,
     slices_read: usize,
     slices_left: usize,
@@ -110,7 +110,7 @@ where
     ///
     /// By default, the slice's rank is the original volume's rank minus 1.
     pub fn from_reader(source: R, header: &NiftiHeader) -> Result<Self> {
-        let dim = Dim::new(header.dim)?;
+        let dim = Dim::new(header.raw_dim())?;
         let slice_rank = dim.rank() - 1;
         StreamedNiftiVolume::from_reader_rank(source, header, slice_rank as u16)
     }
@@ -122,7 +122,8 @@ where
     ///
     /// The slice rank defines how many dimensions each slice should have.
     pub fn from_reader_rank(source: R, header: &NiftiHeader, slice_rank: u16) -> Result<Self> {
-        let dim = Dim::new(header.dim)?; // check dim consistency
+        // TODO recoverable error if #dim == 0
+        let dim = Dim::new(header.raw_dim())?; // check dim consistency
         let datatype = header.data_type()?;
         let slice_dim = calculate_slice_dims(&dim, slice_rank);
         let slices_left = calculate_total_slices(&dim, slice_rank);
@@ -131,21 +132,21 @@ where
             dim,
             slice_dim,
             datatype,
-            scl_slope: header.scl_slope,
-            scl_inter: header.scl_inter,
-            endianness: header.endianness,
+            scl_slope: header.scl_slope(),
+            scl_inter: header.scl_inter(),
+            endianness: header.endianness(),
             slices_read: 0,
             slices_left,
         })
     }
 
     /// Retrieve the full volume shape.
-    pub fn dim(&self) -> &[u16] {
+    pub fn dim(&self) -> &[u64] {
         self.dim.as_ref()
     }
 
     /// Retrieve the shape of the slices.
-    pub fn slice_dim(&self) -> &[u16] {
+    pub fn slice_dim(&self) -> &[u64] {
         self.slice_dim.as_ref()
     }
 
@@ -244,7 +245,7 @@ where
 }
 
 impl<'a, R> NiftiVolume for &'a StreamedNiftiVolume<R> {
-    fn dim(&self) -> &[u16] {
+    fn dim(&self) -> &[u64] {
         (**self).dim()
     }
 
@@ -258,7 +259,7 @@ impl<'a, R> NiftiVolume for &'a StreamedNiftiVolume<R> {
 }
 
 impl<R> NiftiVolume for StreamedNiftiVolume<R> {
-    fn dim(&self) -> &[u16] {
+    fn dim(&self) -> &[u64] {
         self.dim.as_ref()
     }
 
@@ -296,7 +297,7 @@ fn calculate_slice_dims(dim: &Dim, slice_rank: u16) -> Dim {
     assert!(dim.rank() > 0);
     assert!(usize::from(slice_rank) < dim.rank());
     let mut raw_dim = *dim.raw();
-    raw_dim[0] = slice_rank;
+    raw_dim[0] = slice_rank as u64;
     Dim::new(raw_dim).unwrap()
 }
 
@@ -312,20 +313,21 @@ mod tests {
     use super::super::{NiftiVolume, RandomAccessNiftiVolume};
     use super::StreamedNiftiVolume;
     use crate::typedef::NiftiType;
-    use crate::NiftiHeader;
+    use crate::Nifti1Header;
     use byteordered::Endianness;
 
     #[test]
     fn test_streamed_base() {
         let volume_data = &[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
-        let header = NiftiHeader {
+        let header = Nifti1Header {
             dim: [3, 2, 3, 2, 0, 0, 0, 0],
             datatype: NiftiType::Uint8 as i16,
             scl_slope: 1.,
             scl_inter: 0.,
             endianness: Endianness::native(),
-            ..NiftiHeader::default()
-        };
+            ..Nifti1Header::default()
+        }
+        .into();
 
         let mut volume = StreamedNiftiVolume::from_reader(&volume_data[..], &header).unwrap();
 
@@ -359,14 +361,15 @@ mod tests {
     #[test]
     fn test_streamed_indexed() {
         let volume_data = &[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
-        let header = NiftiHeader {
+        let header = Nifti1Header {
             dim: [3, 2, 3, 2, 0, 0, 0, 0],
             datatype: NiftiType::Uint8 as i16,
             scl_slope: 1.,
             scl_inter: 0.,
             endianness: Endianness::native(),
-            ..NiftiHeader::default()
-        };
+            ..Nifti1Header::default()
+        }
+        .into();
 
         let mut volume = StreamedNiftiVolume::from_reader(&volume_data[..], &header).unwrap();
 
@@ -403,14 +406,15 @@ mod tests {
     #[test]
     fn test_streamed_inline() {
         let volume_data = &[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
-        let header = NiftiHeader {
+        let header = Nifti1Header {
             dim: [3, 2, 3, 2, 0, 0, 0, 0],
             datatype: NiftiType::Uint8 as i16,
             scl_slope: 1.,
             scl_inter: 0.,
             endianness: Endianness::native(),
-            ..NiftiHeader::default()
-        };
+            ..Nifti1Header::default()
+        }
+        .into();
 
         let mut volume = StreamedNiftiVolume::from_reader(&volume_data[..], &header).unwrap();
 
@@ -445,14 +449,15 @@ mod tests {
     #[test]
     fn test_streamed_ranked() {
         let volume_data = &[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
-        let header = NiftiHeader {
+        let header = Nifti1Header {
             dim: [4, 2, 3, 2, 1, 0, 0, 0],
             datatype: NiftiType::Uint8 as i16,
             scl_slope: 1.,
             scl_inter: 0.,
             endianness: Endianness::native(),
-            ..NiftiHeader::default()
-        };
+            ..Nifti1Header::default()
+        }
+        .into();
 
         let mut volume =
             StreamedNiftiVolume::from_reader_rank(&volume_data[..], &header, 2).unwrap();
@@ -489,14 +494,15 @@ mod tests {
         let volume_data = &[
             1, 0, 3, 0, 5, 0, 7, 0, 9, 0, 11, 0, 13, 0, 15, 0, 17, 0, 19, 0, 21, 0, 23, 0,
         ];
-        let header = NiftiHeader {
+        let header = Nifti1Header {
             dim: [3, 2, 3, 2, 0, 0, 0, 0],
             datatype: NiftiType::Uint16 as i16,
             scl_slope: 1.,
             scl_inter: 0.,
             endianness: Endianness::Little,
-            ..NiftiHeader::default()
-        };
+            ..Nifti1Header::default()
+        }
+        .into();
 
         let mut volume =
             StreamedNiftiVolume::from_reader_rank(&volume_data[..], &header, 1).unwrap();
