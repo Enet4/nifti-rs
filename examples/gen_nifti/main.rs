@@ -22,7 +22,7 @@ fn main() {
     let extension_sequence = ExtensionSequence::new(Extender::from([1u8; 4]), vec![extension1, extension2]);
 
     WriterOptions::new(&filename)
-    .extension_sequence(extension_sequence)
+    .extension_sequence(Some(extension_sequence))
     .write_nifti(&data)
     .unwrap();
 }
