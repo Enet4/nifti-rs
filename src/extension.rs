@@ -82,6 +82,13 @@ impl Extension {
         }
     }
 
+    /// Create a new extension out of a &str
+    pub fn from_str(ecode: i32, edata: &str) -> Self 
+    {
+        let esize = 8 + edata.len() as i32;
+        Extension::new(esize, ecode, edata.as_bytes().to_vec())
+    }
+
     /// Obtain the claimed extension raw size (`esize` field).
     pub fn size(&self) -> i32 {
         self.esize

@@ -16,11 +16,10 @@ fn main() {
 
     // generate some test data 256x256 float32
     let data = ndarray::Array3::<f32>::zeros((256, 256, 1));
-    let datatype = NiftiType::Float32;
 
     let extension1 = Extension::new(8 + 4, 3, vec![0, 0, 0, 0]);
 
-    let extension2 = Extension::new(8 + 4, 6, vec![0, 0, 0, 0]);
+    let extension2 = Extension::from_str(6, "Hello World!");
 
     let extension_sequence = ExtensionSequence::new(Extender::from([1u8; 4]), vec![extension1, extension2]);
 
