@@ -194,6 +194,13 @@ impl ExtensionSequence {
         self.extensions.len()
     }
 
+    /// return the number of bytes the extensions take on disk
+    pub fn bytes_on_disk(&self) -> usize {
+        self.extensions
+            .iter()
+            .map(|e| e.size() as usize)
+            .sum::<usize>()
+    }
     /// Get the extender code from this extension sequence.
     pub fn extender(&self) -> Extender {
         self.extender

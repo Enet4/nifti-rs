@@ -14,7 +14,7 @@ use crate::{
     header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
     util::{adapt_bytes, is_gz_file, is_hdr_file},
     volume::shape::Dim,
-    DataElement, NiftiHeader, NiftiType, Result,
+    DataElement, NiftiHeader, NiftiType, Result, ExtensionSequence
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -57,6 +57,9 @@ pub struct WriterOptions<'a> {
     /// The header file will only be compressed if the caller specifically asked for a path ending
     /// with "hdr.gz". Otherwise, only the volume will be compressed (if requested).
     force_header_compression: bool,
+
+    /// optional ExtensionSequence
+    extension_sequence: Option<ExtensionSequence>
 }
 
 impl<'a> WriterOptions<'a> {
@@ -81,6 +84,7 @@ impl<'a> WriterOptions<'a> {
             write_header_file,
             compression,
             force_header_compression: write_header_file && compression.is_some(),
+            extension_sequence: None,
         }
     }
 
@@ -127,6 +131,11 @@ impl<'a> WriterOptions<'a> {
         self
     }
 
+    pub fn extension_sequence(mut self, extension_sequence: ExtensionSequence) -> Self {
+        self.extension_sequence = Some(extension_sequence);
+        self
+    }
+
     /// Write a nifti file (.nii or .nii.gz).
     pub fn write_nifti<A, S, D>(&self, data: &ArrayBase<S, D>) -> Result<()>
     where
@@ -149,12 +158,22 @@ impl<'a> WriterOptions<'a> {
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
+                if let Some(extension_sequence) = self.extension_sequence.as_ref() {
+                    write_extensions(writer.as_mut(), extension_sequence)?;
+                } else {
+                    write_zero_extender(writer.as_mut())?;
+                }
                 write_data::<_, A, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let mut writer =
                     ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
                 write_header(writer.as_mut(), &header)?;
+                if let Some(extension_sequence) = self.extension_sequence.as_ref() {
+                    write_extensions(writer.as_mut(), extension_sequence)?;
+                } else {
+                    write_zero_extender(writer.as_mut())?;
+                }
                 write_data::<_, A, _, _, _, _>(writer, data)?;
             }
         } else {
@@ -206,12 +225,22 @@ impl<'a> WriterOptions<'a> {
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
+                if let Some(extension_sequence) = self.extension_sequence.as_ref() {
+                    write_extensions(writer.as_mut(), extension_sequence)?;
+                } else {
+                    write_zero_extender(writer.as_mut())?;
+                }
                 write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let mut writer =
                     ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
                 write_header(writer.as_mut(), &header)?;
+                if let Some(extension_sequence) = self.extension_sequence.as_ref() {
+                    write_extensions(writer.as_mut(), extension_sequence)?;
+                } else {
+                    write_zero_extender(writer.as_mut())?;
+                }
                 write_data::<_, u8, _, _, _, _>(writer, data)?;
             }
         } else {
@@ -297,6 +326,30 @@ impl<'a> WriterOptions<'a> {
     }
 }
 
+fn write_extensions<W, E>(mut writer: ByteOrdered<W, E>, extensions: &ExtensionSequence) -> Result<()>
+where
+    W: Write,
+    E: Endian,
+{
+    let mut extender = extensions.extender();
+    writer.write_all(extender.as_bytes())?;
+    for extension in extensions.iter() {
+        writer.write_i32(extension.size())?;
+        writer.write_i32(extension.code())?;
+        writer.write_all(extension.data())?;
+    }
+    Ok(())
+}
+
+fn write_zero_extender<W, E>(mut writer: ByteOrdered<W, E>) -> Result<()>
+where
+    W: Write,
+    E: Endian,
+{
+    writer.write_u32(0)?;
+    Ok(())
+}
+
 fn write_header<W, E>(mut writer: ByteOrdered<W, E>, header: &NiftiHeader) -> Result<()>
 where
     W: Write,
@@ -359,10 +412,6 @@ where
     }
     writer.write_all(&header.intent_name)?;
     writer.write_all(&header.magic)?;
-
-    // Empty 4 bytes after the header
-    // TODO(#19) Support writing extension data.
-    writer.write_u32(0)?;
 
     Ok(())
 }

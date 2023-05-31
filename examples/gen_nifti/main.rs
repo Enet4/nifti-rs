@@ -29,7 +29,7 @@ fn main() {
         sizeof_hdr: 348,
         datatype: datatype as i16,
         bitpix: (datatype.size_of() * 8) as i16,
-        vox_offset: 352.0,
+        vox_offset: 352.0 + extension_sequence.bytes_on_disk() as f32,
         scl_inter: 0.0,
         scl_slope: 1.0,
         magic: *MAGIC_CODE_NIP1,
