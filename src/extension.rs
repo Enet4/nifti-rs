@@ -130,6 +130,14 @@ impl<'a> IntoIterator for &'a ExtensionSequence {
 }
 
 impl ExtensionSequence {
+    /// Provide a public constructor
+    pub fn new(extender: Extender, extensions: Vec<Extension>) -> Self {
+        ExtensionSequence {
+            extender,
+            extensions,
+        }
+    }
+
     /// Read a sequence of extensions from a source, up until `len` bytes.
     pub fn from_reader<S, E>(
         extender: Extender,
