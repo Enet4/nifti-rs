@@ -161,7 +161,7 @@ impl<'a> WriterOptions<'a> {
                 if let Some(extension_sequence) = self.extension_sequence.as_ref() {
                     write_extensions(writer.as_mut(), extension_sequence)?;
                 } else {
-                    write_zero_extender(writer.as_mut())?;
+                    write_header_terminator(writer.as_mut())?;
                 }
                 write_data::<_, A, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
@@ -172,7 +172,7 @@ impl<'a> WriterOptions<'a> {
                 if let Some(extension_sequence) = self.extension_sequence.as_ref() {
                     write_extensions(writer.as_mut(), extension_sequence)?;
                 } else {
-                    write_zero_extender(writer.as_mut())?;
+                    write_header_terminator(writer.as_mut())?;
                 }
                 write_data::<_, A, _, _, _, _>(writer, data)?;
             }
@@ -228,7 +228,7 @@ impl<'a> WriterOptions<'a> {
                 if let Some(extension_sequence) = self.extension_sequence.as_ref() {
                     write_extensions(writer.as_mut(), extension_sequence)?;
                 } else {
-                    write_zero_extender(writer.as_mut())?;
+                    write_header_terminator(writer.as_mut())?;
                 }
                 write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
@@ -239,7 +239,7 @@ impl<'a> WriterOptions<'a> {
                 if let Some(extension_sequence) = self.extension_sequence.as_ref() {
                     write_extensions(writer.as_mut(), extension_sequence)?;
                 } else {
-                    write_zero_extender(writer.as_mut())?;
+                    write_header_terminator(writer.as_mut())?;
                 }
                 write_data::<_, u8, _, _, _, _>(writer, data)?;
             }
@@ -338,8 +338,13 @@ where
     W: Write,
     E: Endian,
 {
-    let mut extender = extensions.extender();
-    writer.write_all(extender.as_bytes())?;
+    if extensions.is_empty() {
+        // write an extender code of 4 zeros, which for NIFTI means that there are no extensions
+        writer.write_u32(0)?;
+        return Ok(());
+    }
+
+    writer.write_all(extensions.extender().as_bytes())?;
     for extension in extensions.iter() {
         writer.write_i32(extension.size())?;
         writer.write_i32(extension.code())?;
@@ -348,12 +353,14 @@ where
     Ok(())
 }
 
-fn write_zero_extender<W, E>(mut writer: ByteOrdered<W, E>) -> Result<()>
+fn write_header_terminator<W, E>(mut writer: ByteOrdered<W, E>) -> Result<()>
 where
     W: Write,
     E: Endian,
 {
+    // write an extender code of 4 zeros, which for NIFTI means that there are no extensions
     writer.write_u32(0)?;
+
     Ok(())
 }
 
