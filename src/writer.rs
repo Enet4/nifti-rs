@@ -131,8 +131,9 @@ impl<'a> WriterOptions<'a> {
         self
     }
 
-    pub fn extension_sequence(mut self, extension_sequence: ExtensionSequence) -> Self {
-        self.extension_sequence = Some(extension_sequence);
+    /// Sets an extension sequence for the writer
+    pub fn extension_sequence(mut self, extension_sequence: Option<ExtensionSequence>) -> Self {
+        self.extension_sequence = extension_sequence;
         self
     }
 

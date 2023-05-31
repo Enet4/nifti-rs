@@ -5,9 +5,7 @@ extern crate nifti;
 use std::env;
 
 use crate::nifti::{
-    header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
-    volume::shape::Dim,
-    DataElement, NiftiHeader, NiftiType, Result, Extension, ExtensionSequence, Extender, writer::WriterOptions
+    Extension, ExtensionSequence, Extender, writer::WriterOptions
 };
 
 fn main() {
