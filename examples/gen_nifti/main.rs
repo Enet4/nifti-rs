@@ -19,7 +19,7 @@ fn main() {
 
     let extension2 = Extension::from_str(6, "Hello World!");
 
-    let extension_sequence = ExtensionSequence::new(Extender::from([1u8; 4]), vec![extension1, extension2]);
+    let extension_sequence = ExtensionSequence::new(Extender::from([1u8,0u8,0u8,0u8]), vec![extension1, extension2]);
 
     WriterOptions::new(&filename)
     .extension_sequence(Some(extension_sequence))
