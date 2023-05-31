@@ -282,12 +282,19 @@ impl<'a> WriterOptions<'a> {
         T: Data,
         D: Dimension,
     {
+        let mut vox_offset:f32 = 352.0;
+    
+        if let Some(extension_sequence) = self.extension_sequence.as_ref() {
+            if extension_sequence.bytes_on_disk() > 0 {
+                vox_offset += extension_sequence.bytes_on_disk() as f32;
+            }
+        } 
         let mut header = NiftiHeader {
             dim: *Dim::from_slice(data.shape())?.raw(),
             sizeof_hdr: 348,
             datatype: datatype as i16,
             bitpix: (datatype.size_of() * 8) as i16,
-            vox_offset: 352.0,
+            vox_offset: vox_offset,
             scl_inter: 0.0,
             scl_slope: 1.0,
             magic: *MAGIC_CODE_NIP1,
