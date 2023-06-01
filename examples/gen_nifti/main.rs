@@ -4,9 +4,7 @@ extern crate nifti;
 
 use std::env;
 
-use crate::nifti::{
-    Extension, ExtensionSequence, Extender, writer::WriterOptions
-};
+use crate::nifti::{writer::WriterOptions, Extender, Extension, ExtensionSequence};
 
 fn main() {
     let mut args = env::args().skip(1);
@@ -19,10 +17,13 @@ fn main() {
 
     let extension2 = Extension::from_str(6, "Hello World!");
 
-    let extension_sequence = ExtensionSequence::new(Extender::from([1u8,0u8,0u8,0u8]), vec![extension1, extension2]);
+    let extension_sequence = ExtensionSequence::new(
+        Extender::from([1u8, 0u8, 0u8, 0u8]),
+        vec![extension1, extension2],
+    );
 
     WriterOptions::new(&filename)
-    .extension_sequence(Some(extension_sequence))
-    .write_nifti(&data)
-    .unwrap();
+        .extension_sequence(Some(extension_sequence))
+        .write_nifti(&data)
+        .unwrap();
 }

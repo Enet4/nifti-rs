@@ -14,7 +14,7 @@ use crate::{
     header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
     util::{adapt_bytes, is_gz_file, is_hdr_file},
     volume::shape::Dim,
-    DataElement, NiftiHeader, NiftiType, Result, ExtensionSequence
+    DataElement, ExtensionSequence, NiftiHeader, NiftiType, Result,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -59,7 +59,7 @@ pub struct WriterOptions<'a> {
     force_header_compression: bool,
 
     /// optional ExtensionSequence
-    extension_sequence: Option<ExtensionSequence>
+    extension_sequence: Option<ExtensionSequence>,
 }
 
 impl<'a> WriterOptions<'a> {
@@ -283,13 +283,12 @@ impl<'a> WriterOptions<'a> {
         T: Data,
         D: Dimension,
     {
-        let mut vox_offset:f32 = 352.0;
-    
+        let mut vox_offset: f32 = 352.0;
+
         if let Some(extension_sequence) = self.extension_sequence.as_ref() {
-            if extension_sequence.bytes_on_disk() > 0 {
-                vox_offset += extension_sequence.bytes_on_disk() as f32;
-            }
-        } 
+            vox_offset += extension_sequence.bytes_on_disk() as f32;
+        }
+
         let mut header = NiftiHeader {
             dim: *Dim::from_slice(data.shape())?.raw(),
             sizeof_hdr: 348,
@@ -334,7 +333,10 @@ impl<'a> WriterOptions<'a> {
     }
 }
 
-fn write_extensions<W, E>(mut writer: ByteOrdered<W, E>, extensions: &ExtensionSequence) -> Result<()>
+fn write_extensions<W, E>(
+    mut writer: ByteOrdered<W, E>,
+    extensions: &ExtensionSequence,
+) -> Result<()>
 where
     W: Write,
     E: Endian,
