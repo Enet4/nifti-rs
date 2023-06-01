@@ -185,6 +185,7 @@ impl<'a> WriterOptions<'a> {
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
+                write_header_terminator(writer.as_mut())?;
                 let _ = writer.into_inner().finish()?;
 
                 let mut writer = ByteOrdered::runtime(
@@ -197,6 +198,7 @@ impl<'a> WriterOptions<'a> {
                 let header_writer =
                     ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
                 write_header(header_writer, &header)?;
+                write_header_terminator(writer.as_mut())?;
                 let data_writer =
                     ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
                 write_data::<_, A, _, _, _, _>(data_writer, data)?;
@@ -252,6 +254,7 @@ impl<'a> WriterOptions<'a> {
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
+                write_header_terminator(writer.as_mut())?;
                 let _ = writer.into_inner().finish()?;
 
                 let mut writer = ByteOrdered::runtime(
@@ -264,7 +267,7 @@ impl<'a> WriterOptions<'a> {
                 let header_writer =
                     ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
                 write_header(header_writer, &header)?;
-
+                write_header_terminator(writer.as_mut())?;
                 let data_writer =
                     ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
                 write_data::<_, u8, _, _, _, _>(data_writer, data)?;
