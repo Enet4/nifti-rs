@@ -297,7 +297,7 @@ impl<'a> WriterOptions<'a> {
             sizeof_hdr: 348,
             datatype: datatype as i16,
             bitpix: (datatype.size_of() * 8) as i16,
-            vox_offset: vox_offset,
+            vox_offset,
             scl_inter: 0.0,
             scl_slope: 1.0,
             magic: *MAGIC_CODE_NIP1,
