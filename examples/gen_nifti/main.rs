@@ -4,8 +4,10 @@ extern crate nifti;
 
 use std::env;
 
+#[cfg(feature = "ndarray_volumes")]
 use crate::nifti::{writer::WriterOptions, Extender, Extension, ExtensionSequence};
 
+#[cfg(feature = "ndarray_volumes")]
 fn main() {
     let mut args = env::args().skip(1);
     let filename = args.next().expect("Path to NIFTI file is required");
@@ -26,4 +28,9 @@ fn main() {
         .extension_sequence(Some(extension_sequence))
         .write_nifti(&data)
         .unwrap();
+}
+
+#[cfg(not(feature = "ndarray_volumes"))]
+fn main() {
+    println!("This example requires the ndarray_volumes feature to be enabled");
 }
