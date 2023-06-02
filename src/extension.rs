@@ -17,20 +17,61 @@ pub enum NiftiEcode {
     NiftEcodeIgnore = 0,
     /// DICOM
     NiftiEcodeDicom = 2,
-    /// AFNI extension in XML format
+    /// AFNI extension in XML format, Robert W Cox: rwcox@nih.gov, https://afni.nimh.nih.gov/afni
     NiftiEcodeAFNI = 4,
-    /// String Comment
+    /// String Comment, plain ASCII text only
     NiftiEcodeComment = 6,
-    /// XCEDE extension in XML format
+    /// David B Keator: dbkeator@uci.edu, http://www.nbirn.net/Resources/Users/Applications/xcede/index.htm
     NiftiEcodeXCEDE = 8,
-    /// JimDimInfo
+    /// Mark A Horsfield: mah5@leicester.ac.uk
     NiftiEcodeJimDimInfo = 10,
-    /// WorkflowFWDS
+    /// Kate Fissell: fissell@pitt.edu, http://kraepelin.wpic.pitt.edu/~fissell/NIFTI_ECODE_WORKFLOW_FWDS/NIFTI_ECODE_WORKFLOW_FWDS.html
     NiftiEcodeWorkflowFWDS = 12,
-    /// Freesurfer
+    /// Freesurfer: http://surfer.nmr.mgh.harvard.edu
     NiftiEcodeFreesurfer = 14,
+    /// embedded Python objects, http://niftilib.sourceforge.net/pynifti
+    /// This is not the same as the NiftiEcodePython
+    /// which is used for the Nifti1Extension::Python
+    /// extension
+    NiftiEcodePyPickle = 16,
+    /// LONI MiND codes: http://www.loni.ucla.edu/twiki/bin/view/Main/MiND
+    /// Vishal Patel: vishal.patel@ucla.edu
+    NiftiEcodeMindIdent = 18,
+    /// B value
+    NiftiEcodeBValue = 20,
+    /// Spherical Direction
+    NiftiEcodeSphericalDirection = 22,
+    /// DT Component
+    NiftiEcodeDTComponent = 24,
+    /// SHC Degree Order
+    NiftiEcodeSHCDegreeOrder = 26,
+    /// VOXBO
+    /// Dan Kimberg: www.voxbo.org
+    NiftiEcodeVoxbo = 28,
+    /// Caret
+    /// John Harwell:
+    /// http://brainvis.wustl.edu/wiki/index.php/Caret:Documentation:CaretNiftiExtension
+    /// john@brainvis
+    NiftiEcodeCaret = 30,
+    /// CIFTI-2_Main_FINAL_1March2014.pdf
+    /// CIFTI
+    NiftiEcodeCifti = 32,
+    /// Variable Frame Timing
+    NiftiEcodeVariableFrameTiming = 34,
+    /// Eval
+    /// Munster University Hospital
+    NiftiEcodeEval = 38,
+    /// MATLAB extension
+    /// http://www.mathworks.com/matlabcentral/fileexchange/42997-dicom-to-nifti-converter
+    NiftiEcodeMatlab = 40,
+    /// Quantiphyse extension
+    /// https://quantiphyse.readthedocs.io/en/latest/advanced/nifti_extension.html
+    NiftiEcodeQuantiphyse = 42,
+    /// MRS extension
+    /// link to come...
+    /// Magnetic Resonance Spectroscopy (MRS)
+    NiftiEcodeMRS = 44,
 }
-
 /// Data type for the extender code.
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
 pub struct Extender([u8; 4]);
@@ -86,7 +127,7 @@ pub struct Extension {
 impl Extension {
     /// Create an extension out of its main components.
     pub fn new(ecode: i32, edata: Vec<u8>) -> Self {
-        let esize =  8 + edata.len() as i32;
+        let esize = 8 + edata.len() as i32;
 
         Extension {
             esize,
