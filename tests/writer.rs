@@ -410,23 +410,25 @@ mod tests {
 
     #[test]
     fn write_extended_header() {
-        let data: ndarray::ArrayBase<ndarray::OwnedRepr<f64>, ndarray::Dim<[usize; 2]>> = Array2::zeros((8, 8));
+        let data: Array2<f64> = Array2::zeros((8, 8));
 
         let path = get_temporary_path("2d_extended_header.nii");
         let extension = nifti::Extension::from_str(6, "Hello World!");
 
-        let extension_sequence = nifti::ExtensionSequence::new(nifti::Extender::from([1u8, 0u8, 0u8, 0u8]), vec![extension]);
+        let extension_sequence = nifti::ExtensionSequence::new(
+            nifti::Extender::from([1u8, 0u8, 0u8, 0u8]),
+            vec![extension],
+        );
 
         WriterOptions::new(&path)
             .with_extensions(Some(extension_sequence))
             .write_nifti(&data)
             .unwrap();
 
-        // verify the binary identity to the nibabel generated file
+        // Verify the binary identity to the nibabel generated file
         assert_eq!(
             fs::read(&path).unwrap(),
             fs::read("resources/minimal_extended_hdr.nii").unwrap()
         );
-    
     }
 }

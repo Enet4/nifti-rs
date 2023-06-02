@@ -6,8 +6,8 @@
 
 use crate::error::{NiftiError, Result};
 use byteordered::{ByteOrdered, Endian};
-use std::io::{ErrorKind as IoErrorKind, Read};
 use num_derive::FromPrimitive;
+use std::io::{ErrorKind as IoErrorKind, Read};
 
 /// Data type for representing a NIFTI ecodes
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
@@ -15,7 +15,7 @@ use num_derive::FromPrimitive;
 pub enum NiftiEcode {
     /// Ignore the extension
     NiftEcodeIgnore = 0,
-    /// DICOM 
+    /// DICOM
     NiftiEcodeDicom = 2,
     /// AFNI extension in XML format
     NiftiEcodeAFNI = 4,
@@ -227,7 +227,7 @@ impl ExtensionSequence {
         self.extensions.len()
     }
 
-    /// return the number of bytes the extensions take on disk
+    /// Return the number of bytes the extensions take on disk
     pub fn bytes_on_disk(&self) -> usize {
         self.extensions
             .iter()

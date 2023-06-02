@@ -58,7 +58,7 @@ pub struct WriterOptions<'a> {
     /// with "hdr.gz". Otherwise, only the volume will be compressed (if requested).
     force_header_compression: bool,
 
-    /// optional ExtensionSequence
+    /// Optional ExtensionSequence
     extension_sequence: Option<ExtensionSequence>,
 }
 
@@ -330,11 +330,14 @@ where
 {
     let extensions = match extensions {
         Some(extensions) => extensions,
-        None => { writer.write_u32(0)?; return Ok(())},
+        None => {
+            writer.write_u32(0)?;
+            return Ok(());
+        }
     };
 
     if extensions.is_empty() {
-        // write an extender code of 4 zeros, which for NIFTI means that there are no extensions
+        // Write an extender code of 4 zeros, which for NIFTI means that there are no extensions
         writer.write_u32(0)?;
         return Ok(());
     }
