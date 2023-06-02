@@ -418,7 +418,7 @@ mod tests {
         let extension_sequence = nifti::ExtensionSequence::new(nifti::Extender::from([1u8, 0u8, 0u8, 0u8]), vec![extension]);
 
         WriterOptions::new(&path)
-            .extension_sequence(Some(extension_sequence))
+            .with_extensions(Some(extension_sequence))
             .write_nifti(&data)
             .unwrap();
 

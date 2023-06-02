@@ -132,7 +132,7 @@ impl<'a> WriterOptions<'a> {
     }
 
     /// Sets an extension sequence for the writer
-    pub fn extension_sequence(mut self, extension_sequence: Option<ExtensionSequence>) -> Self {
+    pub fn with_extensions(mut self, extension_sequence: Option<ExtensionSequence>) -> Self {
         self.extension_sequence = extension_sequence;
         self
     }
@@ -159,22 +159,14 @@ impl<'a> WriterOptions<'a> {
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
-                if let Some(extension_sequence) = self.extension_sequence.as_ref() {
-                    write_extensions(writer.as_mut(), extension_sequence)?;
-                } else {
-                    write_header_terminator(writer.as_mut())?;
-                }
+                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
                 write_data::<_, A, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let mut writer =
                     ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
                 write_header(writer.as_mut(), &header)?;
-                if let Some(extension_sequence) = self.extension_sequence.as_ref() {
-                    write_extensions(writer.as_mut(), extension_sequence)?;
-                } else {
-                    write_header_terminator(writer.as_mut())?;
-                }
+                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
                 write_data::<_, A, _, _, _, _>(writer, data)?;
             }
         } else {
@@ -185,7 +177,7 @@ impl<'a> WriterOptions<'a> {
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
-                write_header_terminator(writer.as_mut())?;
+                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
                 let _ = writer.into_inner().finish()?;
 
                 let mut writer = ByteOrdered::runtime(
@@ -198,7 +190,7 @@ impl<'a> WriterOptions<'a> {
                 let mut header_writer =
                     ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
                 write_header(header_writer.as_mut(), &header)?;
-                write_header_terminator(header_writer.as_mut())?;
+                write_extensions(header_writer.as_mut(), self.extension_sequence.as_ref())?;
                 let data_writer =
                     ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
                 write_data::<_, A, _, _, _, _>(data_writer, data)?;
@@ -228,22 +220,14 @@ impl<'a> WriterOptions<'a> {
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
-                if let Some(extension_sequence) = self.extension_sequence.as_ref() {
-                    write_extensions(writer.as_mut(), extension_sequence)?;
-                } else {
-                    write_header_terminator(writer.as_mut())?;
-                }
+                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
                 write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
                 let _ = writer.into_inner().finish()?;
             } else {
                 let mut writer =
                     ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
                 write_header(writer.as_mut(), &header)?;
-                if let Some(extension_sequence) = self.extension_sequence.as_ref() {
-                    write_extensions(writer.as_mut(), extension_sequence)?;
-                } else {
-                    write_header_terminator(writer.as_mut())?;
-                }
+                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
                 write_data::<_, u8, _, _, _, _>(writer, data)?;
             }
         } else {
@@ -254,7 +238,7 @@ impl<'a> WriterOptions<'a> {
                     header.endianness,
                 );
                 write_header(writer.as_mut(), &header)?;
-                write_header_terminator(writer.as_mut())?;
+                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
                 let _ = writer.into_inner().finish()?;
 
                 let mut writer = ByteOrdered::runtime(
@@ -267,7 +251,7 @@ impl<'a> WriterOptions<'a> {
                 let mut header_writer =
                     ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
                 write_header(header_writer.as_mut(), &header)?;
-                write_header_terminator(header_writer.as_mut())?;
+                write_extensions(header_writer.as_mut(), self.extension_sequence.as_ref())?;
                 let data_writer =
                     ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
                 write_data::<_, u8, _, _, _, _>(data_writer, data)?;
@@ -338,12 +322,17 @@ impl<'a> WriterOptions<'a> {
 
 fn write_extensions<W, E>(
     mut writer: ByteOrdered<W, E>,
-    extensions: &ExtensionSequence,
+    extensions: Option<&ExtensionSequence>,
 ) -> Result<()>
 where
     W: Write,
     E: Endian,
 {
+    let extensions = match extensions {
+        Some(extensions) => extensions,
+        None => { writer.write_u32(0)?; return Ok(())},
+    };
+
     if extensions.is_empty() {
         // write an extender code of 4 zeros, which for NIFTI means that there are no extensions
         writer.write_u32(0)?;
@@ -356,17 +345,6 @@ where
         writer.write_i32(extension.code())?;
         writer.write_all(extension.data())?;
     }
-    Ok(())
-}
-
-fn write_header_terminator<W, E>(mut writer: ByteOrdered<W, E>) -> Result<()>
-where
-    W: Write,
-    E: Endian,
-{
-    // write an extender code of 4 zeros, which for NIFTI means that there are no extensions
-    writer.write_u32(0)?;
-
     Ok(())
 }
 
