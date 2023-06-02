@@ -85,18 +85,8 @@ pub struct Extension {
 
 impl Extension {
     /// Create an extension out of its main components.
-    ///
-    /// # Panics
-    /// If `esize` does not correspond to the full size
-    /// of the extension in bytes: `8 + edata.len()`
-    pub fn new(esize: i32, ecode: i32, edata: Vec<u8>) -> Self {
-        if esize as usize != 8 + edata.len() {
-            panic!(
-                "Illegal extension size: esize is {}, but full size is {}",
-                esize,
-                edata.len()
-            );
-        }
+    pub fn new(ecode: i32, edata: Vec<u8>) -> Self {
+        let esize =  8 + edata.len() as i32;
 
         Extension {
             esize,
@@ -112,7 +102,7 @@ impl Extension {
         let padded_esize = (esize + 15) & !15;
         let mut edata = edata.as_bytes().to_vec();
         edata.resize(padded_esize as usize - 8, 0);
-        Extension::new(padded_esize, ecode, edata)
+        Extension::new(ecode, edata)
     }
 
     /// Obtain the claimed extension raw size (`esize` field).
@@ -201,7 +191,7 @@ impl ExtensionSequence {
                     return Err(NiftiError::IncompatibleLength(nb_bytes_written, data_size));
                 }
 
-                extensions.push(Extension::new(i32::max(esize, 8), ecode, edata));
+                extensions.push(Extension::new(ecode, edata));
                 offset += esize as usize;
             }
         }
