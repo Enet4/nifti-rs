@@ -9,16 +9,25 @@ use byteordered::{ByteOrdered, Endian};
 use std::io::{ErrorKind as IoErrorKind, Read};
 use num_derive::FromPrimitive;
 
+/// Data type for representing a NIFTI ecodes
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
 #[repr(u32)]
 pub enum NiftiEcode {
+    /// Ignore the extension
     NiftEcodeIgnore = 0,
+    /// DICOM 
     NiftiEcodeDicom = 2,
+    /// AFNI extension in XML format
     NiftiEcodeAFNI = 4,
+    /// String Comment
     NiftiEcodeComment = 6,
+    /// XCEDE extension in XML format
     NiftiEcodeXCEDE = 8,
+    /// JimDimInfo
     NiftiEcodeJimDimInfo = 10,
+    /// WorkflowFWDS
     NiftiEcodeWorkflowFWDS = 12,
+    /// Freesurfer
     NiftiEcodeFreesurfer = 14,
 }
 
