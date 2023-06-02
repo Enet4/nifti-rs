@@ -85,7 +85,11 @@ impl Extension {
     /// Create a new extension out of a &str
     pub fn from_str(ecode: i32, edata: &str) -> Self {
         let esize = 8 + edata.len() as i32;
-        Extension::new(esize, ecode, edata.as_bytes().to_vec())
+        // pad the esize to a multiple of 16
+        let padded_esize = (esize + 15) & !15;
+        let mut edata = edata.as_bytes().to_vec();
+        edata.resize(padded_esize as usize - 8, 0);
+        Extension::new(padded_esize, ecode, edata)
     }
 
     /// Obtain the claimed extension raw size (`esize` field).
