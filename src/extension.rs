@@ -7,6 +7,20 @@
 use crate::error::{NiftiError, Result};
 use byteordered::{ByteOrdered, Endian};
 use std::io::{ErrorKind as IoErrorKind, Read};
+use num_derive::FromPrimitive;
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
+#[repr(u32)]
+pub enum NiftiEcode {
+    NiftEcodeIgnore = 0,
+    NiftiEcodeDicom = 2,
+    NiftiEcodeAFNI = 4,
+    NiftiEcodeComment = 6,
+    NiftiEcodeXCEDE = 8,
+    NiftiEcodeJimDimInfo = 10,
+    NiftiEcodeWorkflowFWDS = 12,
+    NiftiEcodeFreesurfer = 14,
+}
 
 /// Data type for the extender code.
 #[derive(Debug, Default, PartialEq, Clone, Copy)]

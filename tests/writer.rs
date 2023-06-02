@@ -421,7 +421,7 @@ mod tests {
             .extension_sequence(Some(extension_sequence))
             .write_nifti(&data)
             .unwrap();
-        
+
         // verify the binary identity to the nibabel generated file
         assert_eq!(
             fs::read(&path).unwrap(),
