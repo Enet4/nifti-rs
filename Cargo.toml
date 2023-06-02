@@ -47,6 +47,10 @@ tempfile = "3.1"
 name = "niftidump"
 path = "examples/niftidump/main.rs"
 
+[[example]]
+name = "gen_nifti"
+path = "examples/gen_nifti/main.rs"
+
 [features]
 default = ["ndarray_volumes"]
 nalgebra_affine = ["nalgebra", "simba"]
