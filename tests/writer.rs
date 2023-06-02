@@ -421,7 +421,8 @@ mod tests {
             .extension_sequence(Some(extension_sequence))
             .write_nifti(&data)
             .unwrap();
-        fs::copy(&path, "/tmp/test.nii").unwrap();
+        
+        // verify the binary identity to the nibabel generated file
         assert_eq!(
             fs::read(&path).unwrap(),
             fs::read("resources/minimal_extended_hdr.nii").unwrap()
