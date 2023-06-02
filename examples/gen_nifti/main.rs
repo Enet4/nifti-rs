@@ -25,7 +25,7 @@ fn main() {
     );
 
     WriterOptions::new(&filename)
-        .with_extensions(Some(extension_sequence))
+        .with_extensions(extension_sequence)
         .write_nifti(&data)
         .unwrap();
 }

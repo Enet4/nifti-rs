@@ -421,7 +421,7 @@ mod tests {
         );
 
         WriterOptions::new(&path)
-            .with_extensions(Some(extension_sequence))
+            .with_extensions(extension_sequence)
             .write_nifti(&data)
             .unwrap();
 
