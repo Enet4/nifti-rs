@@ -90,8 +90,10 @@ pub struct NiftiHeader {
     pub slice_start: i16,
     /// Grid spacings
     pub pixdim: [f32; 8],
-    /// Offset into .nii file to reach the volume
-    /// Note: the highly unusual choice of f32 is intentional and due to trying to achieve header backwards compatibility to ANALYZE 7.5
+    /// Offset into .nii file to reach the volume.
+    ///
+    /// Note: the highly unusual choice of f32 is intentional
+    /// and due to trying to achieve header backwards compatibility to ANALYZE 7.5
     pub vox_offset: f32,
     /// Data scaling: slope
     pub scl_slope: f32,
