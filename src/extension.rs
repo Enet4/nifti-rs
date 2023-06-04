@@ -6,7 +6,30 @@
 
 use crate::error::{NiftiError, Result};
 use byteordered::{ByteOrdered, Endian};
+use num_derive::FromPrimitive;
 use std::io::{ErrorKind as IoErrorKind, Read};
+
+/// Data type for representing a NIfTI-1.1 extension code
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
+#[repr(u32)]
+pub enum NiftiEcode {
+    /// Ignore the extension
+    NiftEcodeIgnore = 0,
+    /// DICOM
+    NiftiEcodeDicom = 2,
+    /// AFNI extension in XML format
+    NiftiEcodeAFNI = 4,
+    /// String Comment
+    NiftiEcodeComment = 6,
+    /// XCEDE extension in XML format
+    NiftiEcodeXCEDE = 8,
+    /// JimDimInfo
+    NiftiEcodeJimDimInfo = 10,
+    /// WorkflowFWDS
+    NiftiEcodeWorkflowFWDS = 12,
+    /// Freesurfer
+    NiftiEcodeFreesurfer = 14,
+}
 
 /// Data type for the extender code.
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
@@ -82,6 +105,16 @@ impl Extension {
         }
     }
 
+    /// Create a new extension out of a &str
+    pub fn from_str(ecode: i32, edata: &str) -> Self {
+        let esize = 8 + edata.len() as i32;
+        // pad the esize to a multiple of 16
+        let padded_esize = (esize + 15) & !15;
+        let mut edata = edata.as_bytes().to_vec();
+        edata.resize(padded_esize as usize - 8, 0);
+        Extension::new(padded_esize, ecode, edata)
+    }
+
     /// Obtain the claimed extension raw size (`esize` field).
     pub fn size(&self) -> i32 {
         self.esize
@@ -130,6 +163,14 @@ impl<'a> IntoIterator for &'a ExtensionSequence {
 }
 
 impl ExtensionSequence {
+    /// Provide a public constructor
+    pub fn new(extender: Extender, extensions: Vec<Extension>) -> Self {
+        ExtensionSequence {
+            extender,
+            extensions,
+        }
+    }
+
     /// Read a sequence of extensions from a source, up until `len` bytes.
     pub fn from_reader<S, E>(
         extender: Extender,
@@ -186,6 +227,13 @@ impl ExtensionSequence {
         self.extensions.len()
     }
 
+    /// Return the number of bytes the extensions take on disk
+    pub fn bytes_on_disk(&self) -> usize {
+        self.extensions
+            .iter()
+            .map(|e| e.size() as usize)
+            .sum::<usize>()
+    }
     /// Get the extender code from this extension sequence.
     pub fn extender(&self) -> Extender {
         self.extender
