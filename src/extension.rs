@@ -9,7 +9,7 @@ use byteordered::{ByteOrdered, Endian};
 use num_derive::FromPrimitive;
 use std::io::{ErrorKind as IoErrorKind, Read};
 
-/// Data type for representing a NIFTI ecodes
+/// Data type for representing a NIfTI-1.1 extension code
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, FromPrimitive)]
 #[repr(u32)]
 pub enum NiftiEcode {
