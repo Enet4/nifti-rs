@@ -6,7 +6,6 @@
 
 use crate::error::{NiftiError, Result};
 use byteordered::{ByteOrdered, Endian};
-use num_derive::FromPrimitive;
 use std::io::{ErrorKind as IoErrorKind, Read};
 
 /// Data type for the extender code.
