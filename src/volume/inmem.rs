@@ -159,9 +159,9 @@ impl InMemNiftiVolume {
             .unwrap_or(false);
         let file = BufReader::new(File::open(path)?);
         if gz {
-            InMemNiftiVolume::from_reader(GzDecoder::new(file), &header)
+            InMemNiftiVolume::from_reader(GzDecoder::new(file), header)
         } else {
-            InMemNiftiVolume::from_reader(file, &header)
+            InMemNiftiVolume::from_reader(file, header)
         }
     }
 

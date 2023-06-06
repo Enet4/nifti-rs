@@ -18,16 +18,10 @@ use std::path::Path;
 pub use crate::util::{GzDecodedFile, MaybeGzDecodedFile};
 
 /// Options and flags which can be used to configure how a NIfTI image is read.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ReaderOptions {
     /// Whether to automatically fix value in the header
     fix_header: bool,
-}
-
-impl Default for ReaderOptions {
-    fn default() -> Self {
-        ReaderOptions { fix_header: false }
-    }
 }
 
 impl ReaderOptions {
@@ -100,16 +94,10 @@ impl ReaderOptions {
 }
 
 /// Options and flags which can be used to configure how a NIfTI image is read and iterated.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ReaderStreamedOptions {
     /// Whether to automatically fix value in the header
     fix_header: bool,
-}
-
-impl Default for ReaderStreamedOptions {
-    fn default() -> Self {
-        ReaderStreamedOptions { fix_header: false }
-    }
 }
 
 impl ReaderStreamedOptions {
@@ -509,7 +497,7 @@ impl<V> GenericNiftiObject<V> {
         };
 
         // fetch volume (rest of file)
-        Ok((V::from_reader(source, &header, options)?, ext))
+        Ok((V::from_reader(source, header, options)?, ext))
     }
 
     fn from_file_impl<P, R>(
@@ -613,6 +601,6 @@ impl<V> GenericNiftiObject<V> {
         V: FromSource<MaybeGzDecodedFile>,
     {
         let reader = open_file_maybe_gz(path)?;
-        Self::from_reader_with_extensions(reader, &header, extender, options)
+        Self::from_reader_with_extensions(reader, header, extender, options)
     }
 }

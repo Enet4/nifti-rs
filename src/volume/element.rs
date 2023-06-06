@@ -153,7 +153,7 @@ pub trait DataElement:
         let mut cursor: &[u8] = &vec;
         let n = align_of::<Self>();
         (0..n)
-            .map(|_| Self::from_raw(&mut cursor, endianness.clone()))
+            .map(|_| Self::from_raw(&mut cursor, endianness))
             .collect()
     }
 }

@@ -20,7 +20,7 @@ pub fn coords_to_index(coords: &[u16], dim: &[u16]) -> Result<usize> {
         ));
     }
 
-    if !coords.iter().zip(dim).all(|(i, d)| *i < (*d) as u16) {
+    if !coords.iter().zip(dim).all(|(&i, &d)| i < d) {
         return Err(NiftiError::OutOfBounds(Vec::from(coords)));
     }
 

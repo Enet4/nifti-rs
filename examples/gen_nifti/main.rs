@@ -2,6 +2,7 @@
 
 extern crate nifti;
 
+#[cfg(feature = "ndarray_volumes")]
 use std::env;
 
 #[cfg(feature = "ndarray_volumes")]
