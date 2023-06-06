@@ -170,7 +170,7 @@ impl<'a> WriterOptions<'a> {
                 write_data::<_, A, _, _, _, _>(writer, data)?;
             }
         } else {
-            let data_file = File::create(&data_path)?;
+            let data_file = File::create(data_path)?;
             if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(header_file, compression_level),
@@ -231,7 +231,7 @@ impl<'a> WriterOptions<'a> {
                 write_data::<_, u8, _, _, _, _>(writer, data)?;
             }
         } else {
-            let data_file = File::create(&data_path)?;
+            let data_file = File::create(data_path)?;
             if let Some(compression_level) = self.compression {
                 let mut writer = ByteOrdered::runtime(
                     GzEncoder::new(header_file, compression_level),
@@ -463,7 +463,7 @@ where
     let slice = arr_data.as_slice().unwrap();
     let bytes = transmute_to_bytes(slice);
     let (writer, endianness) = writer.into_parts();
-    let bytes = adapt_bytes::<B, _>(&bytes, endianness);
-    writer.write_all(&*bytes)?;
+    let bytes = adapt_bytes::<B, _>(bytes, endianness);
+    writer.write_all(&bytes)?;
     Ok(())
 }

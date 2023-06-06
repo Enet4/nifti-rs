@@ -314,13 +314,13 @@ impl NiftiHeader {
     /// Get the qform coordinate mapping method as a validated enum.
     pub fn qform(&self) -> Result<XForm> {
         FromPrimitive::from_i16(self.qform_code)
-            .ok_or(NiftiError::InvalidCode("qform", self.qform_code as i16))
+            .ok_or(NiftiError::InvalidCode("qform", self.qform_code))
     }
 
     /// Get the sform coordinate mapping method as a validated enum.
     pub fn sform(&self) -> Result<XForm> {
         FromPrimitive::from_i16(self.sform_code)
-            .ok_or(NiftiError::InvalidCode("sform", self.sform_code as i16))
+            .ok_or(NiftiError::InvalidCode("sform", self.sform_code))
     }
 
     /// Ensure that the current `descrip` field is valid and is exactly equal to 80 bytes.
