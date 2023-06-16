@@ -5,7 +5,7 @@
 //! converted to these types and vice-versa.
 
 use crate::error::{NiftiError, Result};
-use crate::volume::element::{DataElement, LinearTransform};
+use crate::volume::element::{DataElement, LinearTransform, NiftiDataRescaler};
 use byteordered::{Endian, Endianness};
 use num_derive::FromPrimitive;
 use std::io::Read;
@@ -97,6 +97,7 @@ impl NiftiType {
         T: Mul<Output = T>,
         T: Add<Output = T>,
         T: DataElement,
+        T: NiftiDataRescaler,
     {
         match self {
             // TODO: check for slope == 0 at this level, should increase performance substantially

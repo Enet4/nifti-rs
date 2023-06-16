@@ -39,41 +39,115 @@ pub trait LinearTransform<T: 'static + Copy> {
     }
 }
 
-/// A linear transformation in which the value is converted to `f32` for the
-/// affine transformation, then converted back to the original type. Ideal for
-/// small, low precision types such as `u8` and `i16`.
-#[derive(Debug)]
-pub struct LinearTransformViaF32;
+pub trait NiftiDataRescaler {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self;
+}
 
-impl<T> LinearTransform<T> for LinearTransformViaF32
-where
-    T: 'static + Copy + DataElement,
-{
-    fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
+impl NiftiDataRescaler for u8 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
         if slope == 0. {
-            return value;
+            return *self;
         }
-        T::from_f32(AsPrimitive::<f32>::as_(value) * slope + intercept)
+        (*self as f32 * slope + intercept) as u8
     }
 }
 
-/// A linear transformation in which the value and parameters are converted to
-/// `f64` for the affine transformation, then converted to the original type.
-/// Ideal for wide integer types such as `i64`.
-#[derive(Debug)]
-pub struct LinearTransformViaF64;
-
-impl<T> LinearTransform<T> for LinearTransformViaF64
-where
-    T: 'static + Copy + DataElement,
-{
-    fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
+impl NiftiDataRescaler for i8 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
         if slope == 0. {
-            return value;
+            return *self;
         }
-        let slope: f64 = slope.as_();
-        let intercept: f64 = intercept.as_();
-        T::from_f64(AsPrimitive::<f64>::as_(value) * slope + intercept)
+        (*self as f32 * slope + intercept) as i8
+    }
+}
+
+impl NiftiDataRescaler for u16 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        if slope == 0. {
+            return *self;
+        }
+        (*self as f32 * slope + intercept) as u16
+    }
+}
+
+impl NiftiDataRescaler for i16 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        if slope == 0. {
+            return *self;
+        }
+        (*self as f32 * slope + intercept) as i16
+    }
+}
+
+impl NiftiDataRescaler for u32 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        if slope == 0. {
+            return *self;
+        }
+        (*self as f32 * slope + intercept) as u32
+    }
+}
+
+impl NiftiDataRescaler for i32 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        if slope == 0. {
+            return *self;
+        }
+        (*self as f32 * slope + intercept) as i32
+    }
+}
+
+impl NiftiDataRescaler for u64 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        if slope == 0. {
+            return *self;
+        }
+        (*self as f64 * slope as f64 + intercept as f64) as u64
+    }
+}
+
+impl NiftiDataRescaler for i64 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        if slope == 0. {
+            return *self;
+        }
+        (*self as f64 * slope as f64 + intercept as f64) as i64
+    }
+}
+
+impl NiftiDataRescaler for f32 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        if slope == 0. {
+            return *self;
+        }
+        self * slope + intercept
+    }
+}
+
+impl NiftiDataRescaler for f64 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        if slope == 0. {
+            return *self;
+        }
+        *self * slope as f64 + intercept as f64
+    }
+}
+
+impl NiftiDataRescaler for Complex32 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        if slope == 0. {
+            return *self;
+        }
+        Complex32::new(self.re * slope + intercept, self.im * slope + intercept)
+    }
+}
+
+impl NiftiDataRescaler for Complex64 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        if slope == 0. {
+            return *self;
+        }
+        Complex64::new(self.re * slope as f64 + intercept as f64, self.im * slope as f64 + intercept as f64)
     }
 }
 
@@ -85,15 +159,10 @@ pub struct LinearTransformViaOriginal;
 
 impl<T> LinearTransform<T> for LinearTransformViaOriginal
 where
-    T: 'static + Copy + DataElement + Mul<Output = T> + Add<Output = T>,
+    T: 'static + Copy + DataElement + Mul<Output = T> + Add<Output = T> + NiftiDataRescaler,
 {
     fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
-        if slope == 0. {
-            return value;
-        }
-        let slope = T::from_f32(slope);
-        let intercept = T::from_f32(intercept);
-        value * slope + intercept
+        T::nifti_rescale(&value, slope, intercept)
     }
 }
 
@@ -293,7 +362,7 @@ macro_rules! fn_from_real_scalar {
 
 impl DataElement for u8 {
     const DATA_TYPE: NiftiType = NiftiType::Uint8;
-    type Transform = LinearTransformViaF32;
+    type Transform = LinearTransformViaOriginal;
     fn from_raw_vec<E>(vec: Vec<u8>, _: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -313,7 +382,7 @@ impl DataElement for u8 {
 
 impl DataElement for i8 {
     const DATA_TYPE: NiftiType = NiftiType::Int8;
-    type Transform = LinearTransformViaF32;
+    type Transform = LinearTransformViaOriginal;
     fn from_raw_vec<E>(vec: Vec<u8>, _: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -333,7 +402,7 @@ impl DataElement for i8 {
 
 impl DataElement for u16 {
     const DATA_TYPE: NiftiType = NiftiType::Uint16;
-    type Transform = LinearTransformViaF32;
+    type Transform = LinearTransformViaOriginal;
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -353,7 +422,7 @@ impl DataElement for u16 {
 
 impl DataElement for i16 {
     const DATA_TYPE: NiftiType = NiftiType::Int16;
-    type Transform = LinearTransformViaF32;
+    type Transform = LinearTransformViaOriginal;
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -373,7 +442,7 @@ impl DataElement for i16 {
 
 impl DataElement for u32 {
     const DATA_TYPE: NiftiType = NiftiType::Uint32;
-    type Transform = LinearTransformViaF32;
+    type Transform = LinearTransformViaOriginal;
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -393,7 +462,7 @@ impl DataElement for u32 {
 
 impl DataElement for i32 {
     const DATA_TYPE: NiftiType = NiftiType::Int32;
-    type Transform = LinearTransformViaF32;
+    type Transform = LinearTransformViaOriginal;
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -413,7 +482,7 @@ impl DataElement for i32 {
 
 impl DataElement for u64 {
     const DATA_TYPE: NiftiType = NiftiType::Uint64;
-    type Transform = LinearTransformViaF64;
+    type Transform = LinearTransformViaOriginal;
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -433,7 +502,7 @@ impl DataElement for u64 {
 
 impl DataElement for i64 {
     const DATA_TYPE: NiftiType = NiftiType::Int64;
-    type Transform = LinearTransformViaF64;
+    type Transform = LinearTransformViaOriginal;
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,

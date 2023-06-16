@@ -6,10 +6,11 @@ use crate::error::{NiftiError, Result};
 use crate::header::NiftiHeader;
 use crate::typedef::NiftiType;
 use crate::util::{nb_bytes_for_data, nb_bytes_for_dim_datatype};
-use crate::volume::element::DataElement;
+use crate::volume::element::{DataElement, NiftiDataRescaler};
 use crate::volume::{FromSource, FromSourceOptions, NiftiVolume, RandomAccessNiftiVolume};
 use byteordered::Endianness;
 use flate2::bufread::GzDecoder;
+use num_complex::Complex32;
 use num_traits::Num;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -183,6 +184,7 @@ impl InMemNiftiVolume {
     fn get_prim<T>(&self, coords: &[u16]) -> Result<T>
     where
         T: DataElement,
+        T: NiftiDataRescaler,
         T: Num,
         T: Copy,
         T: Mul<Output = T>,
@@ -204,6 +206,9 @@ impl InMemNiftiVolume {
     fn_convert_and_cast!(convert_and_cast_i64, i64, DataElement::from_i64);
     fn_convert_and_cast!(convert_and_cast_f32, f32, DataElement::from_f32);
     fn_convert_and_cast!(convert_and_cast_f64, f64, DataElement::from_f64);
+    //fn_convert_and_cast!(convert_and_cast_Complex32, Complex32, DataElement::from_Complex32);
+    //fn_convert_and_cast!(convert_and_cast_Complex64, Complex32, DataElement::from_Complex64);
+
 }
 
 impl FromSourceOptions for InMemNiftiVolume {
@@ -238,8 +243,8 @@ impl IntoNdArray for InMemNiftiVolume {
             NiftiType::Float32 => self.convert_and_cast_f32::<T>(),
             NiftiType::Float64 => self.convert_and_cast_f64::<T>(),
             //NiftiType::Float128 => {}
-            //NiftiType::Complex64 => {}
-            //NiftiType::Complex128 => {}
+            //NiftiType::Complex64 => self.convert_and_cast_Complex32::<T>(),
+            //NiftiType::Complex128 => self.convert_and_cast_Complex64::<T>(),
             //NiftiType::Complex256 => {}
             //NiftiType::Rgb24 => {}
             //NiftiType::Rgba32 => {}
@@ -327,6 +332,7 @@ impl RandomAccessNiftiVolume for InMemNiftiVolume {
     fn get_i64(&self, coords: &[u16]) -> Result<i64> {
         self.get_prim(coords)
     }
+
 }
 
 impl<'a> RandomAccessNiftiVolume for &'a InMemNiftiVolume {
