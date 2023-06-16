@@ -11,6 +11,7 @@ use std::io::Read;
 use std::mem::align_of;
 use std::ops::{Add, Mul};
 use num_complex::{Complex, Complex32, Complex64};
+use rgb::*;
 
 /// Interface for linear (affine) transformations to values. Multiple
 /// implementations are needed because the original type `T` may not have
@@ -133,6 +134,7 @@ impl NiftiDataRescaler for f64 {
     }
 }
 
+// Nifti 1.1 specifies that Complex valued data is scaled the same for both real and imaginary parts
 impl NiftiDataRescaler for Complex32 {
     fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
         if slope == 0. {
@@ -142,12 +144,27 @@ impl NiftiDataRescaler for Complex32 {
     }
 }
 
+// Nifti 1.1 specifies that Complex valued data is scaled the same for both real and imaginary parts
 impl NiftiDataRescaler for Complex64 {
     fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
         if slope == 0. {
             return *self;
         }
         Complex64::new(self.re * slope as f64 + intercept as f64, self.im * slope as f64 + intercept as f64)
+    }
+}
+
+// Nifti 1.1 specifies that RGB data must NOT be rescaled
+impl NiftiDataRescaler for RGB8 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        return *self;
+    }
+}
+
+// Nifti 1.1 specifies that RGB data must NOT be rescaled
+impl NiftiDataRescaler for RGBA8 {
+    fn nifti_rescale(&self, slope: f32, intercept: f32) -> Self {
+        return *self;
     }
 }
 
@@ -609,4 +626,57 @@ impl DataElement for Complex64 {
     }
 
     fn_from_real_scalar!(f64);
+}
+
+impl DataElement for RGB8 {
+    const DATA_TYPE: NiftiType = NiftiType::Rgb24;
+    type Transform = LinearTransformViaOriginal;
+
+    fn from_raw_vec<E>(vec: Vec<u8>, _: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
+        Ok(vec.chunks(3).map(|x| RGB8::new(x[0],x[1],x[2])).collect())
+    }
+
+    fn from_raw<R, E>(mut src: R, _: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
+        let r = src.read_u8()?;
+        let g = src.read_u8()?;
+        let b = src.read_u8()?;
+
+        Ok(RGB8::new(r,g,b))
+    }
+
+    fn_from_scalar!(u8);
+}
+
+impl DataElement for RGBA8 {
+    const DATA_TYPE: NiftiType = NiftiType::Rgb32;
+    type Transform = LinearTransformViaOriginal;
+
+    fn from_raw_vec<E>(vec: Vec<u8>, _: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
+        Ok(vec.chunks(4).map(|x| RGBA8::new(x[0],x[1],x[2], x[3])).collect())
+    }
+
+    fn from_raw<R, E>(mut src: R, _: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
+        let r = src.read_u8()?;
+        let g = src.read_u8()?;
+        let b = src.read_u8()?;
+        let a = src.read_u8()?;
+
+        Ok(RGBA8::new(r,g,b,a))
+    }
+
+    fn_from_scalar!(u8);
 }
