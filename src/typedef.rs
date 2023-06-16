@@ -10,6 +10,7 @@ use byteordered::{Endian, Endianness};
 use num_derive::FromPrimitive;
 use std::io::Read;
 use std::ops::{Add, Mul};
+use num_complex::{Complex32, Complex64};
 
 /// Data type for representing a NIFTI value type in a volume.
 /// Methods for reading values of that type from a source are also included.
@@ -86,7 +87,7 @@ impl NiftiType {
     /// Read a primitive voxel value from a source.
     pub fn read_primitive_value<S, T>(
         self,
-        source: S,
+        mut source: S,
         endianness: Endianness,
         slope: f32,
         inter: f32,
@@ -98,6 +99,7 @@ impl NiftiType {
         T: DataElement,
     {
         match self {
+            // TODO: check for slope == 0 at this level, should increase performance substantially
             NiftiType::Uint8 => {
                 let raw = u8::from_raw(source, endianness)?;
                 Ok(<u8 as DataElement>::Transform::linear_transform(
@@ -174,6 +176,26 @@ impl NiftiType {
                 let raw = endianness.read_f64(source)?;
                 Ok(<f64 as DataElement>::Transform::linear_transform(
                     T::from_f64(raw),
+                    slope,
+                    inter,
+                ))
+            }
+
+            NiftiType::Complex64 => {
+                let real = endianness.read_f32(&mut source)?;
+                let imag = endianness.read_f32(&mut source)?;
+                Ok(<Complex32 as DataElement>::Transform::linear_transform(
+                    T::from_complex_f32(real, imag),
+                    slope,
+                    inter,
+                ))
+            }
+
+            NiftiType::Complex128 => {
+                let real = endianness.read_f64(&mut source)?;
+                let imag = endianness.read_f64(&mut source)?;
+                Ok(<Complex64 as DataElement>::Transform::linear_transform(
+                    T::from_complex_f64(real, imag),
                     slope,
                     inter,
                 ))

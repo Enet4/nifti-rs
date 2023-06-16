@@ -6,10 +6,11 @@ use crate::util::convert_bytes_to;
 use crate::NiftiType;
 use byteordered::{ByteOrdered, Endian};
 use num_traits::cast::AsPrimitive;
-use safe_transmute::transmute_vec;
+use safe_transmute::{transmute_vec};
 use std::io::Read;
 use std::mem::align_of;
 use std::ops::{Add, Mul};
+use num_complex::{Complex, Complex32, Complex64};
 
 /// Interface for linear (affine) transformations to values. Multiple
 /// implementations are needed because the original type `T` may not have
@@ -144,6 +145,18 @@ pub trait DataElement:
     /// Create a single element by converting a scalar value.
     fn from_f64(value: f64) -> Self;
 
+    /// Create a single element by converting a complex value
+    fn from_complex_f32(real: f32, imag: f32) -> Self;
+
+    /// Create a single element by converting a complex value
+    fn from_complex_f64(real: f64, imag: f64) -> Self;
+    
+    /// Create a single element by converting a complex value
+    fn from_complex32(value: Complex32) -> Self;
+
+    /// Create a single element by converting a complex value
+    fn from_complex64(value: Complex64) -> Self;
+
     /// Transform the given data vector into a vector of data elements.
     fn from_raw_vec<E>(vec: Vec<u8>, endianness: E) -> Result<Vec<Self>>
     where
@@ -200,7 +213,82 @@ macro_rules! fn_from_scalar {
         fn from_f64(value: f64) -> Self {
             value as $typ
         }
+
+        fn from_complex_f32(real: f32, imag: f32) -> Self {
+            ((real*real + imag*imag).sqrt() as $typ)
+        }
+
+        fn from_complex_f64(real: f64, imag: f64) -> Self {
+            ((real*real + imag*imag).sqrt() as $typ)
+        }
+
+        fn from_complex32(value: Complex32) -> Self {
+            (value.norm() as $typ)
+        }
+
+        fn from_complex64(value: Complex64) -> Self {
+            (value.norm() as $typ)
+        }
     };
+}
+macro_rules! fn_from_real_scalar {
+    ($typ: ty) => {
+        fn from_u8(value: u8) -> Self {
+            Complex::<$typ>::new(value as $typ, 0.)
+        }
+
+        fn from_i8(value: i8) -> Self {
+            Complex::<$typ>::new(value as $typ, 0.)
+        }
+
+        fn from_u16(value: u16) -> Self {
+            Complex::<$typ>::new(value as $typ, 0.)
+        }
+
+        fn from_i16(value: i16) -> Self {
+            Complex::<$typ>::new(value as $typ, 0.)
+        }
+
+        fn from_u32(value: u32) -> Self {
+            Complex::<$typ>::new(value as $typ, 0.)
+        }
+
+        fn from_i32(value: i32) -> Self {
+            Complex::<$typ>::new(value as $typ, 0.)
+        }
+
+        fn from_u64(value: u64) -> Self {
+            Complex::<$typ>::new(value as $typ, 0.)
+        }
+
+        fn from_i64(value: i64) -> Self {
+            Complex::<$typ>::new(value as $typ, 0.)
+        }
+
+        fn from_f32(value: f32) -> Self {
+            Complex::<$typ>::new(value as $typ, 0.)
+        }
+
+        fn from_f64(value: f64) -> Self {
+            Complex::<$typ>::new(value as $typ, 0.)
+        }
+
+        fn from_complex_f32(real: f32, imag: f32) -> Self {
+            Complex::<$typ>::new(real as $typ, imag as $typ)
+        }
+
+        fn from_complex_f64(real: f64, imag: f64) -> Self {
+            Complex::<$typ>::new(real as $typ, imag as $typ)
+        }
+
+        fn from_complex32(value: Complex32) -> Self {
+            Complex::<$typ>::new(value.re as $typ, value.im as $typ)
+        }
+
+        fn from_complex64(value: Complex64) -> Self {
+            Complex::<$typ>::new(value.re as $typ, value.im as $typ)
+        }
+    }
 }
 
 impl DataElement for u8 {
@@ -401,4 +489,55 @@ impl DataElement for f64 {
     }
 
     fn_from_scalar!(f64);
+}
+
+impl DataElement for Complex32 {
+    const DATA_TYPE: NiftiType = NiftiType::Complex64;
+    type Transform = LinearTransformViaOriginal;
+
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
+        Ok(convert_bytes_to::<[f32;2],_>(vec, e).into_iter().map(|x| Complex32::new(x[0],x[1])).collect())
+    }
+
+    fn from_raw<R, E>(mut src: R, e: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
+        let real = e.read_f32(&mut src)?;
+        let imag = e.read_f32(&mut src)?;
+
+        Ok(Complex32::new(real,imag))
+    }
+
+    fn_from_real_scalar!(f32);
+}
+
+impl DataElement for Complex64 {
+    const DATA_TYPE: NiftiType = NiftiType::Complex128;
+    type Transform = LinearTransformViaOriginal;
+
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
+
+        Ok(convert_bytes_to::<[f64;2],_>(vec, e).into_iter().map(|x| Complex64::new(x[0],x[1])).collect())
+    }
+
+    fn from_raw<R, E>(mut src: R, e: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
+        let real = e.read_f64(&mut src)?;
+        let imag = e.read_f64(&mut src)?;
+
+        Ok(Complex64::new(real,imag))
+    }
+
+    fn_from_real_scalar!(f64);
 }
