@@ -83,6 +83,10 @@ quick_error! {
             display("Could not reserve {} bytes of memory for extended data", bytes)
             source(err)
         }
+
+        InvalidTypeConversion(from: NiftiType, to: &'static str) {
+            display("Invalid type conversion from {:?} to {}", from, to)
+        }
     }
 }
 

@@ -7,10 +7,11 @@
 use crate::error::{NiftiError, Result};
 use crate::volume::element::{DataElement, LinearTransform, NiftiDataRescaler};
 use byteordered::{Endian, Endianness};
+use num_complex::{Complex32, Complex64};
 use num_derive::FromPrimitive;
+use rgb::{RGB8, RGBA8};
 use std::io::Read;
 use std::ops::{Add, Mul};
-use num_complex::{Complex32, Complex64};
 
 /// Data type for representing a NIFTI value type in a volume.
 /// Methods for reading values of that type from a source are also included.
@@ -97,7 +98,7 @@ impl NiftiType {
         T: Mul<Output = T>,
         T: Add<Output = T>,
         T: DataElement,
-        T: NiftiDataRescaler,
+        T: NiftiDataRescaler<T>,
     {
         match self {
             // TODO: check for slope == 0 at this level, should increase performance substantially
@@ -182,25 +183,6 @@ impl NiftiType {
                 ))
             }
 
-            NiftiType::Complex64 => {
-                let real = endianness.read_f32(&mut source)?;
-                let imag = endianness.read_f32(&mut source)?;
-                Ok(<Complex32 as DataElement>::Transform::linear_transform(
-                    T::from_complex_f32(real, imag),
-                    slope,
-                    inter,
-                ))
-            }
-
-            NiftiType::Complex128 => {
-                let real = endianness.read_f64(&mut source)?;
-                let imag = endianness.read_f64(&mut source)?;
-                Ok(<Complex64 as DataElement>::Transform::linear_transform(
-                    T::from_complex_f64(real, imag),
-                    slope,
-                    inter,
-                ))
-            }
             // TODO(#3) add support for more data types
             _ => Err(NiftiError::UnsupportedDataType(self)),
         }

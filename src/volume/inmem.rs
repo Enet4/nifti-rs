@@ -181,10 +181,18 @@ impl InMemNiftiVolume {
         &mut self.raw_data
     }
 
+    /// Retrieve the raw data, typed as specified in the volume's header, consuming the volume
+    pub fn into_nifti_typed_data<T>(self) -> Result<Vec<T>>
+    where
+        T: DataElement,
+    {
+        T::from_raw_vec_validated(self.raw_data, self.endianness, self.datatype)
+    }
+
     fn get_prim<T>(&self, coords: &[u16]) -> Result<T>
     where
         T: DataElement,
-        T: NiftiDataRescaler,
+        T: NiftiDataRescaler<T>,
         T: Num,
         T: Copy,
         T: Mul<Output = T>,
@@ -208,7 +216,6 @@ impl InMemNiftiVolume {
     fn_convert_and_cast!(convert_and_cast_f64, f64, DataElement::from_f64);
     //fn_convert_and_cast!(convert_and_cast_Complex32, Complex32, DataElement::from_Complex32);
     //fn_convert_and_cast!(convert_and_cast_Complex64, Complex32, DataElement::from_Complex64);
-
 }
 
 impl FromSourceOptions for InMemNiftiVolume {
@@ -332,7 +339,6 @@ impl RandomAccessNiftiVolume for InMemNiftiVolume {
     fn get_i64(&self, coords: &[u16]) -> Result<i64> {
         self.get_prim(coords)
     }
-
 }
 
 impl<'a> RandomAccessNiftiVolume for &'a InMemNiftiVolume {
