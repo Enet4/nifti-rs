@@ -3,6 +3,7 @@
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
+use std::mem::size_of;
 
 use byteordered::{ByteOrdered, Endian};
 use flate2::write::GzEncoder;
@@ -137,15 +138,20 @@ impl<'a> WriterOptions<'a> {
         self
     }
 
-    /// Write a nifti file (.nii or .nii.gz).
-    pub fn write_nifti<A, S, D>(&self, data: &ArrayBase<S, D>) -> Result<()>
+    /// Write a nifti file (.nii or .nii.gz) from an NdArray of any TriviallyTransmutable type
+    pub fn write_nifti_tt<A, S, D>(&self, data: &ArrayBase<S, D>, datatype: NiftiType) -> Result<()>
     where
         S: Data<Elem = A>,
-        A: DataElement,
         A: TriviallyTransmutable,
         D: Dimension + RemoveAxis,
     {
-        let header = self.prepare_header(data, A::DATA_TYPE)?;
+
+        // do a basic size check
+        if size_of::<A>() != datatype.size_of() {
+            return Err(crate::error::NiftiError::UnsupportedDataType(datatype));
+        }
+
+        let header = self.prepare_header(data, datatype)?;
         let (header_path, data_path) = self.output_paths();
 
         // Need the transpose for fortran ordering used in nifti file format.
@@ -198,6 +204,17 @@ impl<'a> WriterOptions<'a> {
         }
 
         Ok(())
+    }
+
+    /// Write a nifti file (.nii or .nii.gz) from an NdArray of DataElements
+    pub fn write_nifti<A, S, D>(&self, data: &ArrayBase<S, D>) -> Result<()>
+    where
+        S: Data<Elem = A>,
+        A: DataElement,
+        A: TriviallyTransmutable,
+        D: Dimension + RemoveAxis,
+    {
+        self.write_nifti_tt(data, A::DATA_TYPE)
     }
 
     /// Write a RGB nifti file (.nii or .nii.gz).

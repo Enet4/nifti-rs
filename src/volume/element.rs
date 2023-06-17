@@ -14,6 +14,7 @@ use safe_transmute::transmute_vec;
 use std::io::Read;
 use std::mem::align_of;
 use std::ops::{Add, Mul};
+use safe_transmute::TriviallyTransmutable;
 
 /// Interface for linear (affine) transformations to values. Multiple
 /// implementations are needed because the original type `T` may not have
@@ -176,15 +177,15 @@ impl NiftiDataRescaler<Complex64> for Complex64 {
 }
 
 // Nifti 1.1 specifies that RGB data must NOT be rescaled
-impl NiftiDataRescaler<RGB8> for RGB8 {
-    fn nifti_rescale(value: RGB8, slope: f32, intercept: f32) -> RGB8 {
+impl NiftiDataRescaler<NiftiRGB> for NiftiRGB {
+    fn nifti_rescale(value: NiftiRGB, _slope: f32, _intercept: f32) -> NiftiRGB {
         return value;
     }
 }
 
-// Nifti 1.1 specifies that RGB data must NOT be rescaled
-impl NiftiDataRescaler<RGBA8> for RGBA8 {
-    fn nifti_rescale(value: RGBA8, slope: f32, intercept: f32) -> RGBA8 {
+// Nifti 1.1 specifies that RGB(A) data must NOT be rescaled
+impl NiftiDataRescaler<NiftiRGBA> for NiftiRGBA {
+    fn nifti_rescale(value: NiftiRGBA, _slope: f32, _intercept: f32) -> NiftiRGBA {
         return value;
     }
 }
@@ -950,7 +951,35 @@ impl DataElement for Complex64 {
     fn_from_real_scalar!(f64);
 }
 
-impl DataElement for RGB8 {
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct NiftiRGB {
+    r: u8,
+    g: u8,
+    b: u8,
+}
+
+impl NiftiRGB {
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
+        NiftiRGB { r, g, b }
+    }
+}
+
+impl Into<RGB8> for NiftiRGB {
+    fn into(self) -> RGB8 {
+        RGB8::new(self.r, self.g, self.b)
+    }
+}
+
+impl From<RGB8> for NiftiRGB {
+    fn from(rgb: RGB8) -> Self {
+        NiftiRGB::new(rgb.r, rgb.g, rgb.b)
+    }
+}
+
+unsafe impl TriviallyTransmutable for NiftiRGB {}
+
+impl DataElement for NiftiRGB {
     const DATA_TYPE: NiftiType = NiftiType::Rgb24;
     type Transform = NoTransform;
 
@@ -960,7 +989,7 @@ impl DataElement for RGB8 {
     {
         Ok(convert_bytes_to::<[u8; 3], _>(vec, e)
             .into_iter()
-            .map(|x| RGB8::new(x[0], x[1], x[2]))
+            .map(|x| NiftiRGB::new(x[0], x[1], x[2]))
             .collect())
     }
 
@@ -988,11 +1017,73 @@ impl DataElement for RGB8 {
         let g = ByteOrdered::native(&mut src).read_u8()?;
         let b = ByteOrdered::native(&mut src).read_u8()?;
 
-        Ok(RGB8::new(r, g, b))
+        Ok(NiftiRGB::new(r, g, b))
     }
 }
 
-impl DataElement for RGBA8 {
+impl DataElement for [u8; 3] {
+    const DATA_TYPE: NiftiType = NiftiType::Rgb24;
+    type Transform = NoTransform;
+
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
+        Ok(convert_bytes_to::<[u8; 3], _>(vec, e))
+    }
+
+    fn from_raw_vec_validated<E>(
+        vec: Vec<u8>,
+        endianness: E,
+        datatype: NiftiType,
+    ) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
+        if datatype == NiftiType::Rgb24 {
+            Self::from_raw_vec(vec, endianness)
+        } else {
+            Err(NiftiError::InvalidTypeConversion(datatype, "[u8; 3]"))
+        }
+    }
+
+    fn from_raw<R, E>(mut src: R, _: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
+        let r = ByteOrdered::native(&mut src).read_u8()?;
+        let g = ByteOrdered::native(&mut src).read_u8()?;
+        let b = ByteOrdered::native(&mut src).read_u8()?;
+
+        Ok([r, g, b])
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+struct NiftiRGBA {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+}
+
+impl NiftiRGBA {
+    fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
+        NiftiRGBA { r, g, b, a }
+    }
+}
+
+impl Into<RGBA8> for NiftiRGBA {
+    fn into(self) -> RGBA8 {
+        RGBA8::new(self.r, self.g, self.b, self.a)
+    }
+}
+
+unsafe impl TriviallyTransmutable for NiftiRGBA {}
+
+impl DataElement for NiftiRGBA {
     const DATA_TYPE: NiftiType = NiftiType::Rgba32;
     type Transform = NoTransform;
 
@@ -1002,7 +1093,7 @@ impl DataElement for RGBA8 {
     {
         Ok(convert_bytes_to::<[u8; 4], _>(vec, e)
             .into_iter()
-            .map(|x| RGBA8::new(x[0], x[1], x[2], x[3]))
+            .map(|x| NiftiRGBA::new(x[0], x[1], x[2], x[3]))
             .collect())
     }
 
@@ -1031,6 +1122,46 @@ impl DataElement for RGBA8 {
         let b = ByteOrdered::native(&mut src).read_u8()?;
         let a = ByteOrdered::native(&mut src).read_u8()?;
 
-        Ok(RGBA8::new(r, g, b, a))
+        Ok(NiftiRGBA::new(r, g, b, a))
+    }
+}
+
+impl DataElement for [u8; 4] {
+    const DATA_TYPE: NiftiType = NiftiType::Rgba32;
+    type Transform = NoTransform;
+
+    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
+        Ok(convert_bytes_to::<[u8; 4], _>(vec, e))
+    }
+
+    fn from_raw_vec_validated<E>(
+        vec: Vec<u8>,
+        endianness: E,
+        datatype: NiftiType,
+    ) -> Result<Vec<Self>>
+    where
+        E: Endian,
+    {
+        if datatype == NiftiType::Rgba32 {
+            Self::from_raw_vec(vec, endianness)
+        } else {
+            Err(NiftiError::InvalidTypeConversion(datatype, "[u8; 4]"))
+        }
+    }
+
+    fn from_raw<R, E>(mut src: R, _: E) -> Result<Self>
+    where
+        R: Read,
+        E: Endian,
+    {
+        let r = ByteOrdered::native(&mut src).read_u8()?;
+        let g = ByteOrdered::native(&mut src).read_u8()?;
+        let b = ByteOrdered::native(&mut src).read_u8()?;
+        let a = ByteOrdered::native(&mut src).read_u8()?;
+
+        Ok([r, g, b, a])
     }
 }

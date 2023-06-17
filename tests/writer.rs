@@ -28,7 +28,7 @@ mod tests {
         object::NiftiObject,
         volume::shape::Dim,
         writer::WriterOptions,
-        DataElement, IntoNdArray, NiftiHeader, NiftiType, ReaderOptions,
+        DataElement, IntoNdArray, NiftiHeader, NiftiType, ReaderOptions, volume::element::NiftiRGB,
     };
 
     use super::util::rgb_header_gt;
@@ -398,6 +398,57 @@ mod tests {
         WriterOptions::new(&path)
             .reference_header(&header)
             .write_rgb_nifti(&data)
+            .unwrap();
+
+        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
+        assert_eq!(
+            fs::read(path).unwrap(),
+            fs::read("resources/rgb/4D.nii").unwrap()
+        );
+    }
+
+    #[test]
+    fn write_4d_rgb_direct() {
+        let mut data = Array::from_elem((3, 3, 3, 2), [0u8, 0u8, 0u8]);
+        data[(0, 0, 0, 0)] = [55, 55, 0];
+        data[(0, 0, 1, 0)] = [55, 0, 55];
+        data[(0, 1, 0, 0)] = [0, 55, 55];
+        data[(0, 0, 0, 1)] = [55, 55, 0];
+        data[(0, 1, 0, 1)] = [55, 0, 55];
+        data[(1, 0, 0, 1)] = [0, 55, 55];
+
+        let path = get_temporary_path("rgb.nii");
+        let header = rgb_header_gt();
+        WriterOptions::new(&path)
+            .reference_header(&header)
+            .write_nifti_tt(&data, NiftiType::Rgb24)
+            .unwrap();
+
+        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
+        assert_eq!(
+            fs::read(path).unwrap(),
+            fs::read("resources/rgb/4D.nii").unwrap()
+        );
+    }
+
+    #[test]
+    fn write_4d_rgb2() {
+        let mut data = Array::from_elem((3, 3, 3, 2), NiftiRGB::new(0u8, 0u8, 0u8));
+
+        data[(0, 0, 0, 0)] = NiftiRGB::new(55, 55, 0);
+        data[(0, 0, 1, 0)] = NiftiRGB::new(55, 0, 55);
+        data[(0, 1, 0, 0)] = NiftiRGB::new(0, 55, 55);
+        data[(0, 0, 0, 1)] = NiftiRGB::new(55, 55, 0);
+        data[(0, 1, 0, 1)] = NiftiRGB::new(55, 0, 55);
+        data[(1, 0, 0, 1)] = NiftiRGB::new(0, 55, 55);
+
+        let path = get_temporary_path("rgb.nii");
+        let header = rgb_header_gt();
+        WriterOptions::new(&path)
+            .reference_header(&header)
+            .write_nifti(&data)
             .unwrap();
 
         // Until we are able to read RGB images, we simply compare the bytes of the newly created
