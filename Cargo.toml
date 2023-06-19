@@ -22,11 +22,10 @@ flate2 = "1.0"
 num-derive = "0.3"
 num-traits = "0.2"
 quick-error = "2.0"
-safe-transmute = "0.11"
 either = "1.6"
 num-complex = {version = "0.4.3", features=["bytemuck"]} 
 rgb = "0.8.36"
-bytemuck = "1.13.1"
+bytemuck = {version = "1.13.1", features=["extern_crate_alloc"]}
 
 [dependencies.nalgebra]
 optional = true

@@ -452,8 +452,9 @@ mod tests {
             .write_nifti_tt(&data, NiftiType::Rgba32)
             .unwrap();
 
-        // Until we are able to read RGB images, we simply compare the bytes of the newly created
-        // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
+        // Until we are able to read RGBA images, we simply compare the bytes of the newly created
+        // image to the bytes of the prepared 4D RGBA image in ressources/rgba/.
+        // Verify the binary identity to the nibabel generated file
         assert_eq!(
             fs::read(path).unwrap(),
             fs::read("resources/rgba/4D.nii").unwrap()
@@ -504,8 +505,9 @@ mod tests {
             .write_nifti(&data)
             .unwrap();
 
-        // Until we are able to read RGB images, we simply compare the bytes of the newly created
-        // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
+        // Until we are able to read RGBA images, we simply compare the bytes of the newly created
+        // image to the bytes of the prepared 4D RGBA image in ressources/rgba/.
+        // Verify the binary identity to the nibabel generated file
         assert_eq!(
             fs::read(path).unwrap(),
             fs::read("resources/rgba/4D.nii").unwrap()
@@ -526,6 +528,7 @@ mod tests {
             .reference_header(&header)
             .write_nifti(&data).unwrap();
 
+        // Verify the binary identity to the nibabel generated file
         assert_eq!(
             fs::read(path).unwrap(),
             fs::read("resources/complex/complex32.nii").unwrap()
@@ -546,6 +549,7 @@ mod tests {
             .reference_header(&header)
             .write_nifti(&data).unwrap();
 
+        // Verify the binary identity to the nibabel generated file
         assert_eq!(
             fs::read(path).unwrap(),
             fs::read("resources/complex/complex64.nii").unwrap()

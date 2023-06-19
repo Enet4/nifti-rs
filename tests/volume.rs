@@ -11,7 +11,6 @@ extern crate ndarray;
 #[cfg(feature = "ndarray_volumes")]
 extern crate num_traits;
 #[cfg(feature = "ndarray_volumes")]
-extern crate safe_transmute;
 
 use nifti::{InMemNiftiVolume, NiftiVolume, RandomAccessNiftiVolume};
 

@@ -10,11 +10,10 @@ use byteordered::{ByteOrdered, Endian};
 use num_complex::{Complex, Complex32, Complex64};
 use num_traits::cast::AsPrimitive;
 use rgb::*;
-use safe_transmute::transmute_vec;
 use std::io::Read;
 use std::mem::align_of;
 use std::ops::{Add, Mul};
-use safe_transmute::TriviallyTransmutable;
+use bytemuck::*;
 
 /// Interface for linear (affine) transformations to values. Multiple
 /// implementations are needed because the original type `T` may not have
@@ -549,7 +548,7 @@ impl DataElement for i8 {
     where
         E: Endian,
     {
-        Ok(transmute_vec(vec).unwrap())
+        Ok(try_cast_vec(vec).unwrap())
     }
 
     fn from_raw_vec_validated<E>(
