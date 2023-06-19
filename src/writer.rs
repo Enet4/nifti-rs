@@ -9,7 +9,7 @@ use byteordered::{ByteOrdered, Endian};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis};
-use safe_transmute::{transmute_to_bytes, TriviallyTransmutable};
+use bytemuck::{Pod, cast_slice};
 
 use crate::{
     header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
@@ -142,7 +142,7 @@ impl<'a> WriterOptions<'a> {
     pub fn write_nifti_tt<A, S, D>(&self, data: &ArrayBase<S, D>, datatype: NiftiType) -> Result<()>
     where
         S: Data<Elem = A>,
-        A: TriviallyTransmutable,
+        A: Pod,
         D: Dimension + RemoveAxis,
     {
 
@@ -210,8 +210,7 @@ impl<'a> WriterOptions<'a> {
     pub fn write_nifti<A, S, D>(&self, data: &ArrayBase<S, D>) -> Result<()>
     where
         S: Data<Elem = A>,
-        A: DataElement,
-        A: TriviallyTransmutable,
+        A: DataElement + Pod,
         D: Dimension + RemoveAxis,
     {
         self.write_nifti_tt(data, A::DATA_TYPE)
@@ -440,7 +439,7 @@ where
 fn write_data<A, B, S, D, W, E>(mut writer: ByteOrdered<W, E>, data: ArrayBase<S, D>) -> Result<()>
 where
     S: Data<Elem = A>,
-    A: TriviallyTransmutable,
+    A: Pod,
     D: Dimension + RemoveAxis,
     W: Write,
     E: Endian + Copy,
@@ -470,7 +469,7 @@ fn write_slice<A, B, S, D, W, E>(
 ) -> Result<()>
 where
     S: Data<Elem = A>,
-    A: Clone + TriviallyTransmutable,
+    A: Clone + Pod,
     D: Dimension,
     W: Write,
     E: Endian,
@@ -478,7 +477,7 @@ where
     let len = data.len();
     let arr_data = data.into_shape(len).unwrap();
     let slice = arr_data.as_slice().unwrap();
-    let bytes = transmute_to_bytes(slice);
+    let bytes = cast_slice(slice);
     let (writer, endianness) = writer.into_parts();
     let bytes = adapt_bytes::<B, _>(bytes, endianness);
     writer.write_all(&bytes)?;

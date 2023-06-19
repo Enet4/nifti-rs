@@ -9,6 +9,7 @@ extern crate tempfile;
 
 mod util;
 
+use num_complex::*;
 #[cfg(feature = "ndarray_volumes")]
 mod tests {
     use std::{
@@ -21,6 +22,7 @@ mod tests {
     use ndarray::{
         s, Array, Array1, Array2, Array3, Array4, Array5, Axis, Dimension, Ix2, IxDyn, ShapeBuilder,
     };
+    use rgb::{RGB8, RGBA8};
     use tempfile::tempdir;
 
     use nifti::{
@@ -28,7 +30,7 @@ mod tests {
         object::NiftiObject,
         volume::shape::Dim,
         writer::WriterOptions,
-        DataElement, IntoNdArray, NiftiHeader, NiftiType, ReaderOptions, volume::element::NiftiRGB,
+        DataElement, IntoNdArray, NiftiHeader, NiftiType, ReaderOptions,
     };
 
     use super::util::rgb_header_gt;
@@ -434,15 +436,40 @@ mod tests {
     }
 
     #[test]
-    fn write_4d_rgb2() {
-        let mut data = Array::from_elem((3, 3, 3, 2), NiftiRGB::new(0u8, 0u8, 0u8));
+    fn write_4d_rgba_direct() {
+        let mut data = Array::from_elem((3, 3, 3, 2), [0u8, 0u8, 0u8, 0u8]);
+        data[(0, 0, 0, 0)] = [55, 55, 0, 0];
+        data[(0, 0, 1, 0)] = [55, 0, 55, 0];
+        data[(0, 1, 0, 0)] = [0, 55, 55, 0];
+        data[(0, 0, 0, 1)] = [55, 55, 0, 0];
+        data[(0, 1, 0, 1)] = [55, 0, 55, 0];
+        data[(1, 0, 0, 1)] = [0, 55, 55, 0];
 
-        data[(0, 0, 0, 0)] = NiftiRGB::new(55, 55, 0);
-        data[(0, 0, 1, 0)] = NiftiRGB::new(55, 0, 55);
-        data[(0, 1, 0, 0)] = NiftiRGB::new(0, 55, 55);
-        data[(0, 0, 0, 1)] = NiftiRGB::new(55, 55, 0);
-        data[(0, 1, 0, 1)] = NiftiRGB::new(55, 0, 55);
-        data[(1, 0, 0, 1)] = NiftiRGB::new(0, 55, 55);
+        let path = get_temporary_path("rgb.nii");
+        let header = rgb_header_gt();
+        WriterOptions::new(&path)
+            .reference_header(&header)
+            .write_nifti_tt(&data, NiftiType::Rgba32)
+            .unwrap();
+
+        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
+        assert_eq!(
+            fs::read(path).unwrap(),
+            fs::read("resources/rgba/4D.nii").unwrap()
+        );
+    }
+
+    #[test]
+    fn write_4d_rgb_rgbtype() {
+        let mut data = Array::from_elem((3, 3, 3, 2), RGB8::new(0u8, 0u8, 0u8));
+
+        data[(0, 0, 0, 0)] = RGB8::new(55, 55, 0);
+        data[(0, 0, 1, 0)] = RGB8::new(55, 0, 55);
+        data[(0, 1, 0, 0)] = RGB8::new(0, 55, 55);
+        data[(0, 0, 0, 1)] = RGB8::new(55, 55, 0);
+        data[(0, 1, 0, 1)] = RGB8::new(55, 0, 55);
+        data[(1, 0, 0, 1)] = RGB8::new(0, 55, 55);
 
         let path = get_temporary_path("rgb.nii");
         let header = rgb_header_gt();
@@ -458,6 +485,73 @@ mod tests {
             fs::read("resources/rgb/4D.nii").unwrap()
         );
     }
+
+    #[test]
+    fn write_4d_rgb_rgbatype() {
+        let mut data = Array::from_elem((3, 3, 3, 2), RGBA8::new(0u8, 0u8, 0u8, 0u8));
+
+        data[(0, 0, 0, 0)] = RGBA8::new(55, 55, 0, 0);
+        data[(0, 0, 1, 0)] = RGBA8::new(55, 0, 55, 0);
+        data[(0, 1, 0, 0)] = RGBA8::new(0, 55, 55, 0);
+        data[(0, 0, 0, 1)] = RGBA8::new(55, 55, 0, 0);
+        data[(0, 1, 0, 1)] = RGBA8::new(55, 0, 55, 0);
+        data[(1, 0, 0, 1)] = RGBA8::new(0, 55, 55, 0);
+
+        let path = get_temporary_path("rgb.nii");
+        let header = rgb_header_gt();
+        WriterOptions::new(&path)
+            .reference_header(&header)
+            .write_nifti(&data)
+            .unwrap();
+
+        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
+        assert_eq!(
+            fs::read(path).unwrap(),
+            fs::read("resources/rgba/4D.nii").unwrap()
+        );
+    }
+
+    #[test]
+    fn write_2d_complex32() {
+        let mut data = Array::from_elem((3, 3), num_complex::Complex32::new(0.0, 0.0));
+        
+        data[(0, 0)] = num_complex::Complex32::new(1.0, 1.0);
+        data[(0, 1)] = num_complex::Complex32::new(2.0, 2.0);
+        data[(1, 0)] = num_complex::Complex32::new(3.0, 3.0);
+
+        let path = get_temporary_path("complex32.nii");
+        let header = generate_nifti_header([2, 3, 3, 1, 1, 1, 1, 1], 1.0, 0.0, NiftiType::Complex64);
+        WriterOptions::new(&path)
+            .reference_header(&header)
+            .write_nifti(&data).unwrap();
+
+        assert_eq!(
+            fs::read(path).unwrap(),
+            fs::read("resources/complex/complex32.nii").unwrap()
+        );
+    }
+
+    #[test]
+    fn write_2d_complex64() {
+        let mut data = Array::from_elem((3, 3), num_complex::Complex64::new(0.0, 0.0));
+        
+        data[(0, 0)] = num_complex::Complex64::new(1.0, 1.0);
+        data[(0, 1)] = num_complex::Complex64::new(2.0, 2.0);
+        data[(1, 0)] = num_complex::Complex64::new(3.0, 3.0);
+
+        let path = get_temporary_path("complex32.nii");
+        let header = generate_nifti_header([2, 3, 3, 1, 1, 1, 1, 1], 1.0, 0.0, NiftiType::Complex128);
+        WriterOptions::new(&path)
+            .reference_header(&header)
+            .write_nifti(&data).unwrap();
+
+        assert_eq!(
+            fs::read(path).unwrap(),
+            fs::read("resources/complex/complex32.nii").unwrap()
+        );
+    }
+
 
     #[test]
     fn write_extended_header() {
