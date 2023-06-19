@@ -548,7 +548,7 @@ mod tests {
 
         assert_eq!(
             fs::read(path).unwrap(),
-            fs::read("resources/complex/complex32.nii").unwrap()
+            fs::read("resources/complex/complex64.nii").unwrap()
         );
     }
 
