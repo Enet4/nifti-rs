@@ -15,38 +15,9 @@ use std::mem::align_of;
 use std::ops::{Add, Mul};
 use bytemuck::*;
 
-/// Interface for linear (affine) transformations to values. Multiple
-/// implementations are needed because the original type `T` may not have
-/// enough precision to obtain an appropriate outcome. For example,
-/// transforming a `u8` is always done through `f32`, but an `f64` is instead
-/// manipulated through its own type by first converting the slope and
-/// intercept arguments to `f64`.
-pub trait LinearTransform<T: 'static + Copy> {
-    /// Linearly transform a value with the given slope and intercept.
-    fn linear_transform(value: T, slope: f32, intercept: f32) -> T;
-
-    /// Linearly transform a sequence of values with the given slope and intercept into
-    /// a vector.
-    fn linear_transform_many(value: &[T], slope: f32, intercept: f32) -> Vec<T> {
-        value
-            .iter()
-            .map(|x| Self::linear_transform(*x, slope, intercept))
-            .collect()
-    }
-
-    /// Linearly transform a sequence of values inline, with the given slope and intercept.
-    fn linear_transform_many_inline(value: &mut [T], slope: f32, intercept: f32) {
-        for v in value.iter_mut() {
-            *v = Self::linear_transform(*v, slope, intercept);
-        }
-    }
-}
-
 pub trait NiftiDataRescaler<T: 'static + Copy> {
-    fn nifti_rescale(_value: T, _slope: f32, _intercept: f32) -> T {
-        unimplemented!()
-    }
-
+    fn nifti_rescale(_value: T, _slope: f32, _intercept: f32) -> T; 
+    
     fn nifti_rescale_many(value: &[T], slope: f32, intercept: f32) -> Vec<T> {
         value
             .iter()
@@ -134,6 +105,7 @@ impl NiftiDataRescaler<i64> for i64 {
     }
 }
 
+
 impl NiftiDataRescaler<f32> for f32 {
     fn nifti_rescale(value: f32, slope: f32, intercept: f32) -> f32 {
         if slope == 0. {
@@ -189,31 +161,31 @@ impl NiftiDataRescaler<RGBA8> for RGBA8 {
     }
 }
 
-/// A linear transformation in which the slope and intercept parameters are
-/// converted to the value's type for the affine transformation. Ideal
-/// for high precision or complex number types.
-#[derive(Debug)]
-pub struct LinearTransformViaOriginal;
+// This is some kind of implicit RGB for poor people, don't scale
+impl NiftiDataRescaler<[u8; 3]> for [u8; 3] {
+    fn nifti_rescale(value: [u8; 3], _slope: f32, _intercept: f32) -> [u8; 3] {
+        return value;
+    }
+}
 
-impl<T> LinearTransform<T> for LinearTransformViaOriginal
-where
-    T: 'static + Copy + DataElement + Mul<Output = T> + Add<Output = T> + NiftiDataRescaler<T>,
-{
-    fn linear_transform(value: T, slope: f32, intercept: f32) -> T {
-        T::nifti_rescale(value, slope, intercept)
+// This is some kind of implicit RGBA for poor people, don't scale
+impl NiftiDataRescaler<[u8; 4]> for [u8; 4] {
+    fn nifti_rescale(value: [u8; 4], _slope: f32, _intercept: f32) -> [u8; 4] {
+        return value;
     }
 }
 
 #[derive(Debug)]
-pub struct NoTransform;
-impl<T> LinearTransform<T> for NoTransform
+pub struct DataRescaler;
+
+impl<T> NiftiDataRescaler<T> for DataRescaler
 where
-    T: 'static + Copy + DataElement,
-{
-    fn linear_transform(value: T, _slope: f32, _intercept: f32) -> T {
-        value
+    T: 'static + Copy + DataElement + NiftiDataRescaler<T>,
+ {
+    fn nifti_rescale(value: T, _slope: f32, _intercept: f32) -> T {
+        T::nifti_rescale(value, _slope, _intercept)
     }
-}
+ }
 
 /// Trait type for characterizing a NIfTI data element, implemented for
 /// primitive numeric types which are used by the crate to represent voxel
@@ -224,8 +196,8 @@ pub trait DataElement: 'static + Sized + Copy
     /// The `datatype` mapped to the type T
     const DATA_TYPE: NiftiType;
 
-    /// For defining how this element is linearly transformed to another.
-    type Transform: LinearTransform<Self>;
+    /// Implement rescaling for the given data type
+    type DataRescaler: NiftiDataRescaler<Self>;
 
     /// Read a single element from the given byte source.
     fn from_raw<R: Read, E>(src: R, endianness: E) -> Result<Self>
@@ -280,16 +252,6 @@ pub trait DataElement: 'static + Sized + Copy
 
     /// Create a single element by converting a scalar value.
     fn from_f64(value: f64) -> Self {
-        unimplemented!()
-    }
-
-    /// Create a single element by converting a complex value
-    fn from_complex_f32(real: f32, imag: f32) -> Self {
-        unimplemented!()
-    }
-
-    /// Create a single element by converting a complex value
-    fn from_complex_f64(real: f64, imag: f64) -> Self {
         unimplemented!()
     }
 
@@ -367,25 +329,10 @@ macro_rules! fn_from_scalar {
         fn from_f64(value: f64) -> Self {
             value as $typ
         }
-
-        fn from_complex_f32(real: f32, imag: f32) -> Self {
-            ((real * real + imag * imag).sqrt() as $typ)
-        }
-
-        fn from_complex_f64(real: f64, imag: f64) -> Self {
-            ((real * real + imag * imag).sqrt() as $typ)
-        }
-
-        fn from_complex32(value: Complex32) -> Self {
-            (value.norm() as $typ)
-        }
-
-        fn from_complex64(value: Complex64) -> Self {
-            (value.norm() as $typ)
-        }
     };
 }
-macro_rules! fn_from_real_scalar {
+
+macro_rules! fn_cplx_from_scalar {
     ($typ: ty) => {
         fn from_u8(value: u8) -> Self {
             Complex::<$typ>::new(value as $typ, 0.)
@@ -426,75 +373,11 @@ macro_rules! fn_from_real_scalar {
         fn from_f64(value: f64) -> Self {
             Complex::<$typ>::new(value as $typ, 0.)
         }
-
-        fn from_complex_f32(real: f32, imag: f32) -> Self {
-            Complex::<$typ>::new(real as $typ, imag as $typ)
-        }
-
-        fn from_complex_f64(real: f64, imag: f64) -> Self {
-            Complex::<$typ>::new(real as $typ, imag as $typ)
-        }
-
-        fn from_complex32(value: Complex32) -> Self {
-            Complex::<$typ>::new(value.re as $typ, value.im as $typ)
-        }
-
-        fn from_complex64(value: Complex64) -> Self {
-            Complex::<$typ>::new(value.re as $typ, value.im as $typ)
-        }
     };
 }
 
-macro_rules! fn_from_real_scalar {
+macro_rules! fn_from_complex {
     ($typ: ty) => {
-        fn from_u8(value: u8) -> Self {
-            Complex::<$typ>::new(value as $typ, 0.)
-        }
-
-        fn from_i8(value: i8) -> Self {
-            Complex::<$typ>::new(value as $typ, 0.)
-        }
-
-        fn from_u16(value: u16) -> Self {
-            Complex::<$typ>::new(value as $typ, 0.)
-        }
-
-        fn from_i16(value: i16) -> Self {
-            Complex::<$typ>::new(value as $typ, 0.)
-        }
-
-        fn from_u32(value: u32) -> Self {
-            Complex::<$typ>::new(value as $typ, 0.)
-        }
-
-        fn from_i32(value: i32) -> Self {
-            Complex::<$typ>::new(value as $typ, 0.)
-        }
-
-        fn from_u64(value: u64) -> Self {
-            Complex::<$typ>::new(value as $typ, 0.)
-        }
-
-        fn from_i64(value: i64) -> Self {
-            Complex::<$typ>::new(value as $typ, 0.)
-        }
-
-        fn from_f32(value: f32) -> Self {
-            Complex::<$typ>::new(value as $typ, 0.)
-        }
-
-        fn from_f64(value: f64) -> Self {
-            Complex::<$typ>::new(value as $typ, 0.)
-        }
-
-        fn from_complex_f32(real: f32, imag: f32) -> Self {
-            Complex::<$typ>::new(real as $typ, imag as $typ)
-        }
-
-        fn from_complex_f64(real: f64, imag: f64) -> Self {
-            Complex::<$typ>::new(real as $typ, imag as $typ)
-        }
-
         fn from_complex32(value: Complex32) -> Self {
             Complex::<$typ>::new(value.re as $typ, value.im as $typ)
         }
@@ -507,7 +390,8 @@ macro_rules! fn_from_real_scalar {
 
 impl DataElement for u8 {
     const DATA_TYPE: NiftiType = NiftiType::Uint8;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
+
     fn from_raw_vec<E>(vec: Vec<u8>, _: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -543,7 +427,7 @@ impl DataElement for u8 {
 
 impl DataElement for i8 {
     const DATA_TYPE: NiftiType = NiftiType::Int8;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
     fn from_raw_vec<E>(vec: Vec<u8>, _: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -579,7 +463,7 @@ impl DataElement for i8 {
 
 impl DataElement for u16 {
     const DATA_TYPE: NiftiType = NiftiType::Uint16;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -615,7 +499,7 @@ impl DataElement for u16 {
 
 impl DataElement for i16 {
     const DATA_TYPE: NiftiType = NiftiType::Int16;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -651,7 +535,7 @@ impl DataElement for i16 {
 
 impl DataElement for u32 {
     const DATA_TYPE: NiftiType = NiftiType::Uint32;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -686,7 +570,7 @@ impl DataElement for u32 {
 
 impl DataElement for i32 {
     const DATA_TYPE: NiftiType = NiftiType::Int32;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -722,7 +606,7 @@ impl DataElement for i32 {
 
 impl DataElement for u64 {
     const DATA_TYPE: NiftiType = NiftiType::Uint64;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -758,7 +642,8 @@ impl DataElement for u64 {
 
 impl DataElement for i64 {
     const DATA_TYPE: NiftiType = NiftiType::Int64;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
+
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -794,7 +679,8 @@ impl DataElement for i64 {
 
 impl DataElement for f32 {
     const DATA_TYPE: NiftiType = NiftiType::Float32;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
+
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -830,7 +716,8 @@ impl DataElement for f32 {
 
 impl DataElement for f64 {
     const DATA_TYPE: NiftiType = NiftiType::Float64;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
+
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
         E: Endian,
@@ -866,7 +753,7 @@ impl DataElement for f64 {
 
 impl DataElement for Complex32 {
     const DATA_TYPE: NiftiType = NiftiType::Complex64;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
 
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
@@ -904,12 +791,13 @@ impl DataElement for Complex32 {
         Ok(Complex32::new(real, imag))
     }
 
-    fn_from_real_scalar!(f32);
+    fn_cplx_from_scalar!(f32);
+    fn_from_complex!(f32);
 }
 
 impl DataElement for Complex64 {
     const DATA_TYPE: NiftiType = NiftiType::Complex128;
-    type Transform = LinearTransformViaOriginal;
+    type DataRescaler = DataRescaler;
 
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
@@ -947,40 +835,14 @@ impl DataElement for Complex64 {
         Ok(Complex64::new(real, imag))
     }
 
-    fn_from_real_scalar!(f64);
+    fn_cplx_from_scalar!(f64);
+    fn_from_complex!(f64);
+
 }
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct NiftiRGB {
-    r: u8,
-    g: u8,
-    b: u8,
-}
-
-impl NiftiRGB {
-    pub fn new(r: u8, g: u8, b: u8) -> Self {
-        NiftiRGB { r, g, b }
-    }
-}
-
-impl Into<RGB8> for NiftiRGB {
-    fn into(self) -> RGB8 {
-        RGB8::new(self.r, self.g, self.b)
-    }
-}
-
-impl From<RGB8> for NiftiRGB {
-    fn from(rgb: RGB8) -> Self {
-        NiftiRGB::new(rgb.r, rgb.g, rgb.b)
-    }
-}
-
-
 
 impl DataElement for RGB8 {
     const DATA_TYPE: NiftiType = NiftiType::Rgb24;
-    type Transform = NoTransform;
+    type DataRescaler = DataRescaler;
 
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
@@ -1022,7 +884,7 @@ impl DataElement for RGB8 {
 
 impl DataElement for [u8; 3] {
     const DATA_TYPE: NiftiType = NiftiType::Rgb24;
-    type Transform = NoTransform;
+    type DataRescaler = DataRescaler;
 
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
@@ -1062,7 +924,7 @@ impl DataElement for [u8; 3] {
 
 impl DataElement for RGBA8 {
     const DATA_TYPE: NiftiType = NiftiType::Rgba32;
-    type Transform = NoTransform;
+    type DataRescaler = DataRescaler;
 
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where
@@ -1105,7 +967,7 @@ impl DataElement for RGBA8 {
 
 impl DataElement for [u8; 4] {
     const DATA_TYPE: NiftiType = NiftiType::Rgba32;
-    type Transform = NoTransform;
+    type DataRescaler = DataRescaler;
 
     fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
     where

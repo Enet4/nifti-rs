@@ -5,7 +5,7 @@
 //! converted to these types and vice-versa.
 
 use crate::error::{NiftiError, Result};
-use crate::volume::element::{DataElement, LinearTransform, NiftiDataRescaler};
+use crate::volume::element::{DataElement, NiftiDataRescaler};
 use byteordered::{Endian, Endianness};
 use num_complex::{Complex32, Complex64};
 use num_derive::FromPrimitive;
@@ -104,7 +104,7 @@ impl NiftiType {
             // TODO: check for slope == 0 at this level, should increase performance substantially
             NiftiType::Uint8 => {
                 let raw = u8::from_raw(source, endianness)?;
-                Ok(<u8 as DataElement>::Transform::linear_transform(
+                Ok(<u8 as DataElement>::DataRescaler::nifti_rescale(
                     T::from_u8(raw),
                     slope,
                     inter,
@@ -112,7 +112,7 @@ impl NiftiType {
             }
             NiftiType::Int8 => {
                 let raw = i8::from_raw(source, endianness)?;
-                Ok(<i8 as DataElement>::Transform::linear_transform(
+                Ok(<i8 as DataElement>::DataRescaler::nifti_rescale(
                     T::from_i8(raw),
                     slope,
                     inter,
@@ -120,7 +120,7 @@ impl NiftiType {
             }
             NiftiType::Uint16 => {
                 let raw = endianness.read_u16(source)?;
-                Ok(<u16 as DataElement>::Transform::linear_transform(
+                Ok(<u16 as DataElement>::DataRescaler::nifti_rescale(
                     T::from_u16(raw),
                     slope,
                     inter,
@@ -128,7 +128,7 @@ impl NiftiType {
             }
             NiftiType::Int16 => {
                 let raw = endianness.read_i16(source)?;
-                Ok(<i16 as DataElement>::Transform::linear_transform(
+                Ok(<i16 as DataElement>::DataRescaler::nifti_rescale(
                     T::from_i16(raw),
                     slope,
                     inter,
@@ -136,7 +136,7 @@ impl NiftiType {
             }
             NiftiType::Uint32 => {
                 let raw = endianness.read_u32(source)?;
-                Ok(<u32 as DataElement>::Transform::linear_transform(
+                Ok(<u32 as DataElement>::DataRescaler::nifti_rescale(
                     T::from_u32(raw),
                     slope,
                     inter,
@@ -144,7 +144,7 @@ impl NiftiType {
             }
             NiftiType::Int32 => {
                 let raw = endianness.read_i32(source)?;
-                Ok(<i32 as DataElement>::Transform::linear_transform(
+                Ok(<i32 as DataElement>::DataRescaler::nifti_rescale(
                     T::from_i32(raw),
                     slope,
                     inter,
@@ -152,7 +152,7 @@ impl NiftiType {
             }
             NiftiType::Uint64 => {
                 let raw = endianness.read_u64(source)?;
-                Ok(<u64 as DataElement>::Transform::linear_transform(
+                Ok(<u64 as DataElement>::DataRescaler::nifti_rescale(
                     T::from_u64(raw),
                     slope,
                     inter,
@@ -160,7 +160,7 @@ impl NiftiType {
             }
             NiftiType::Int64 => {
                 let raw = endianness.read_i64(source)?;
-                Ok(<i64 as DataElement>::Transform::linear_transform(
+                Ok(<i64 as DataElement>::DataRescaler::nifti_rescale(
                     T::from_i64(raw),
                     slope,
                     inter,
@@ -168,7 +168,7 @@ impl NiftiType {
             }
             NiftiType::Float32 => {
                 let raw = endianness.read_f32(source)?;
-                Ok(<f32 as DataElement>::Transform::linear_transform(
+                Ok(<f32 as DataElement>::DataRescaler::nifti_rescale(
                     T::from_f32(raw),
                     slope,
                     inter,
@@ -176,7 +176,7 @@ impl NiftiType {
             }
             NiftiType::Float64 => {
                 let raw = endianness.read_f64(source)?;
-                Ok(<f64 as DataElement>::Transform::linear_transform(
+                Ok(<f64 as DataElement>::DataRescaler::nifti_rescale(
                     T::from_f64(raw),
                     slope,
                     inter,
