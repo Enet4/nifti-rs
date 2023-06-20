@@ -7,9 +7,7 @@
 use crate::error::{NiftiError, Result};
 use crate::volume::element::{DataElement, NiftiDataRescaler};
 use byteordered::{Endian, Endianness};
-use num_complex::{Complex32, Complex64};
 use num_derive::FromPrimitive;
-use rgb::{RGB8, RGBA8};
 use std::io::Read;
 use std::ops::{Add, Mul};
 
@@ -88,7 +86,7 @@ impl NiftiType {
     /// Read a primitive voxel value from a source.
     pub fn read_primitive_value<S, T>(
         self,
-        mut source: S,
+        source: S,
         endianness: Endianness,
         slope: f32,
         inter: f32,

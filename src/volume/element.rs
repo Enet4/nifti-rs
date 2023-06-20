@@ -8,11 +8,9 @@ use crate::NiftiType;
 
 use byteordered::{ByteOrdered, Endian};
 use num_complex::{Complex, Complex32, Complex64};
-use num_traits::cast::AsPrimitive;
 use rgb::*;
 use std::io::Read;
 use std::mem::align_of;
-use std::ops::{Add, Mul};
 use bytemuck::*;
 
 pub trait NiftiDataRescaler<T: 'static + Copy> {
@@ -206,62 +204,62 @@ pub trait DataElement: 'static + Sized + Copy
         E: Endian;
 
     /// Create a single element by converting a scalar value.
-    fn from_u8(value: u8) -> Self {
+    fn from_u8(_value: u8) -> Self {
         unimplemented!()
     }
 
     /// Create a single element by converting a scalar value.
-    fn from_i8(value: i8) -> Self {
+    fn from_i8(_value: i8) -> Self {
         unimplemented!()
     }
 
     /// Create a single element by converting a scalar value.
-    fn from_u16(value: u16) -> Self {
+    fn from_u16(_value: u16) -> Self {
         unimplemented!()
     }
 
     /// Create a single element by converting a scalar value.
-    fn from_i16(value: i16) -> Self {
+    fn from_i16(_value: i16) -> Self {
         unimplemented!()
     }
 
     /// Create a single element by converting a scalar value.
-    fn from_u32(value: u32) -> Self {
+    fn from_u32(_value: u32) -> Self {
         unimplemented!()
     }
 
     /// Create a single element by converting a scalar value.
-    fn from_i32(value: i32) -> Self {
+    fn from_i32(_value: i32) -> Self {
         unimplemented!()
     }
 
     /// Create a single element by converting a scalar value.
-    fn from_u64(value: u64) -> Self {
+    fn from_u64(_value: u64) -> Self {
         unimplemented!()
     }
 
     /// Create a single element by converting a scalar value.
-    fn from_i64(value: i64) -> Self {
+    fn from_i64(_value: i64) -> Self {
         unimplemented!()
     }
 
     /// Create a single element by converting a scalar value.
-    fn from_f32(value: f32) -> Self {
+    fn from_f32(_value: f32) -> Self {
         unimplemented!()
     }
 
     /// Create a single element by converting a scalar value.
-    fn from_f64(value: f64) -> Self {
+    fn from_f64(_value: f64) -> Self {
         unimplemented!()
     }
 
     /// Create a single element by converting a complex value
-    fn from_complex32(value: Complex32) -> Self {
+    fn from_complex32(_value: Complex32) -> Self {
         unimplemented!()
     }
 
     /// Create a single element by converting a complex value
-    fn from_complex64(value: Complex64) -> Self {
+    fn from_complex64(_value: Complex64) -> Self {
         unimplemented!()
     }
 

@@ -10,7 +10,6 @@ use crate::volume::element::{DataElement, NiftiDataRescaler};
 use crate::volume::{FromSource, FromSourceOptions, NiftiVolume, RandomAccessNiftiVolume};
 use byteordered::Endianness;
 use flate2::bufread::GzDecoder;
-use num_complex::Complex32;
 use num_traits::Num;
 use std::fs::File;
 use std::io::{BufReader, Read};

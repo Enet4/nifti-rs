@@ -9,7 +9,6 @@ extern crate tempfile;
 
 mod util;
 
-use num_complex::*;
 #[cfg(feature = "ndarray_volumes")]
 mod tests {
     use std::{
