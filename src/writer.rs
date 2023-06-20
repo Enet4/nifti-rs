@@ -138,7 +138,7 @@ impl<'a> WriterOptions<'a> {
         self
     }
 
-    /// Write a nifti file (.nii or .nii.gz) from an NdArray of any TriviallyTransmutable type
+    /// Write a nifti file (.nii or .nii.gz) from an NdArray of any Pod type
     pub fn write_nifti_tt<A, S, D>(&self, data: &ArrayBase<S, D>, datatype: NiftiType) -> Result<()>
     where
         S: Data<Elem = A>,
@@ -221,59 +221,7 @@ impl<'a> WriterOptions<'a> {
         S: Data<Elem = [u8; 3]>,
         D: Dimension + RemoveAxis,
     {
-        let header = self.prepare_header(data, NiftiType::Rgb24)?;
-        let (header_path, data_path) = self.output_paths();
-
-        // Need the transpose for fortran used in nifti file format.
-        let data = data.t();
-
-        let header_file = File::create(header_path)?;
-        if header.vox_offset > 0.0 {
-            if let Some(compression_level) = self.compression {
-                let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(header_file, compression_level),
-                    header.endianness,
-                );
-                write_header(writer.as_mut(), &header)?;
-                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
-                write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
-                let _ = writer.into_inner().finish()?;
-            } else {
-                let mut writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
-                write_header(writer.as_mut(), &header)?;
-                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
-                write_data::<_, u8, _, _, _, _>(writer, data)?;
-            }
-        } else {
-            let data_file = File::create(data_path)?;
-            if let Some(compression_level) = self.compression {
-                let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(header_file, compression_level),
-                    header.endianness,
-                );
-                write_header(writer.as_mut(), &header)?;
-                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
-                let _ = writer.into_inner().finish()?;
-
-                let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(data_file, compression_level),
-                    header.endianness,
-                );
-                write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
-                let _ = writer.into_inner().finish()?;
-            } else {
-                let mut header_writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
-                write_header(header_writer.as_mut(), &header)?;
-                write_extensions(header_writer.as_mut(), self.extension_sequence.as_ref())?;
-                let data_writer =
-                    ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
-                write_data::<_, u8, _, _, _, _>(data_writer, data)?;
-            }
-        }
-
-        Ok(())
+        self.write_nifti_tt(data, NiftiType::Rgb24)
     }
 
     fn prepare_header<T, D>(
