@@ -51,6 +51,7 @@ mod ndarray_volumes {
         ReaderOptions, ReaderStreamedOptions,
     };
     use rgb::{RGB8, RGBA8};
+    use num_complex::{Complex32, Complex64};
     use std::fmt;
     use std::ops::{Add, Mul};
 
@@ -302,6 +303,7 @@ mod ndarray_volumes {
         assert_eq!(volume.shape(), [3, 3, 3, 2].as_ref());
     }
 
+    #[test]
     fn test_read_rgba8() {
         const FILE_NAME: &str = "resources/rgba/4D.nii";
         let volume = ReaderOptions::new()
@@ -311,7 +313,7 @@ mod ndarray_volumes {
         assert_eq!(volume.data_type(), NiftiType::Rgba32);
         assert_eq!(volume.dim(), [3, 3, 3, 2].as_ref());
 
-        let v: Vec<RGB8> = volume.into_nifti_typed_data().unwrap();
+        let v: Vec<RGBA8> = volume.into_nifti_typed_data().unwrap();
     
         assert_eq!(v.len(), 54);
     }
@@ -329,4 +331,75 @@ mod ndarray_volumes {
 
         assert_eq!(volume.shape(), [3, 3, 3, 2].as_ref());
     }
+
+    #[test]
+    fn test_read_complex32() {
+        const FILE_NAME: &str = "resources/complex/complex32.nii";
+        let volume = ReaderOptions::new()
+            .read_file(FILE_NAME)
+            .unwrap()
+            .into_volume();
+        assert_eq!(volume.data_type(), NiftiType::Complex64);
+        assert_eq!(volume.dim(), [3, 3].as_ref());
+        let v: Vec<Complex32> = volume.into_nifti_typed_data().unwrap();
+
+        assert_eq!(v.len(), 9);
+        // this is a column-major storage!!!
+        assert_eq!(v[0], Complex32::new(1.0, 1.0));
+        assert_eq!(v[1], Complex32::new(3.0, 3.0));
+        assert_eq!(v[3], Complex32::new(2.0, 2.0));
+    } 
+
+    #[test]
+    fn test_read_complex32_ndarray() {
+        const FILE_NAME: &str = "resources/complex/complex32.nii";
+        let volume = ReaderOptions::new()
+            .read_file(FILE_NAME)
+            .unwrap()
+            .into_volume();
+        assert_eq!(volume.data_type(), NiftiType::Complex64);
+        assert_eq!(volume.dim(), [3, 3].as_ref());
+        let volume = volume.into_ndarray::<Complex32>().unwrap();
+
+        assert_eq!(volume.shape(), [3, 3].as_ref());
+
+        assert_eq!(volume[[0, 0]], Complex32::new(1.0, 1.0));
+        assert_eq!(volume[[0, 1]], Complex32::new(2.0, 2.0));
+        assert_eq!(volume[[1, 0]], Complex32::new(3.0, 3.0));
+    } 
+
+    #[test]
+    fn test_read_complex64() {
+        const FILE_NAME: &str = "resources/complex/complex64.nii";
+        let volume = ReaderOptions::new()
+            .read_file(FILE_NAME)
+            .unwrap()
+            .into_volume();
+        assert_eq!(volume.data_type(), NiftiType::Complex128);
+        assert_eq!(volume.dim(), [3, 3].as_ref());
+        let v: Vec<Complex64> = volume.into_nifti_typed_data().unwrap();
+
+        assert_eq!(v.len(), 9);
+        // this is a column-major storage!!!
+        assert_eq!(v[0], Complex64::new(1.0, 1.0));
+        assert_eq!(v[1], Complex64::new(3.0, 3.0));
+        assert_eq!(v[3], Complex64::new(2.0, 2.0));
+    } 
+    #[test]
+    fn test_read_complex64_ndarray() {
+        const FILE_NAME: &str = "resources/complex/complex64.nii";
+        let volume = ReaderOptions::new()
+            .read_file(FILE_NAME)
+            .unwrap()
+            .into_volume();
+        assert_eq!(volume.data_type(), NiftiType::Complex128);
+        assert_eq!(volume.dim(), [3, 3].as_ref());
+        let volume = volume.into_ndarray::<Complex64>().unwrap();
+
+        assert_eq!(volume.shape(), [3, 3].as_ref());
+
+        assert_eq!(volume[[0, 0]], Complex64::new(1.0, 1.0));
+        assert_eq!(volume[[0, 1]], Complex64::new(2.0, 2.0));
+        assert_eq!(volume[[1, 0]], Complex64::new(3.0, 3.0));
+    } 
 }

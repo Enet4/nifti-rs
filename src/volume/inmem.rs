@@ -221,11 +221,18 @@ impl InMemNiftiVolume {
     {
         let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
 
+        let mut data: Vec<_> = <T as DataElement>::from_raw_vec(self.raw_data, self.endianness)?;
         // corresponding to the declared datatype
-        let data: Vec<_> = <T as DataElement>::from_raw_vec(self.raw_data, self.endianness)?;
+        if self.datatype != NiftiType::Rgb24 && self.datatype != NiftiType::Rgba32 && self.scl_slope != 0.0 {
+            <T as DataElement>::DataRescaler::nifti_rescale_many_inline(
+                &mut data,
+                self.scl_slope,
+                self.scl_inter,
+            );
+        }
         Ok(Array::from_shape_vec(IxDyn(&dim).f(), data).expect("Inconsistent raw data size"))
     }
-    
+
 }
 
 impl FromSourceOptions for InMemNiftiVolume {
