@@ -50,8 +50,8 @@ mod ndarray_volumes {
         DataElement, InMemNiftiVolume, IntoNdArray, NiftiObject, NiftiType, NiftiVolume,
         ReaderOptions, ReaderStreamedOptions,
     };
-    use rgb::{RGB8, RGBA8};
     use num_complex::{Complex32, Complex64};
+    use rgb::{RGB8, RGBA8};
     use std::fmt;
     use std::ops::{Add, Mul};
 
@@ -285,7 +285,7 @@ mod ndarray_volumes {
         assert_eq!(volume.dim(), [3, 3, 3, 2].as_ref());
 
         let v: Vec<RGB8> = volume.into_nifti_typed_data().unwrap();
-    
+
         assert_eq!(v.len(), 54);
     }
 
@@ -302,10 +302,10 @@ mod ndarray_volumes {
 
         assert_eq!(volume.shape(), [3, 3, 3, 2].as_ref());
 
-        assert_eq!(volume[[0, 0, 0, 0]], RGB8::new(55,55, 0));
+        assert_eq!(volume[[0, 0, 0, 0]], RGB8::new(55, 55, 0));
         assert_eq!(volume[[0, 0, 1, 0]], RGB8::new(55, 0, 55));
         assert_eq!(volume[[0, 1, 0, 0]], RGB8::new(0, 55, 55));
-        assert_eq!(volume[[0, 0, 0, 1]], RGB8::new(55,55, 0));
+        assert_eq!(volume[[0, 0, 0, 1]], RGB8::new(55, 55, 0));
         assert_eq!(volume[[0, 1, 0, 1]], RGB8::new(55, 0, 55));
         assert_eq!(volume[[1, 0, 0, 1]], RGB8::new(0, 55, 55));
     }
@@ -321,7 +321,7 @@ mod ndarray_volumes {
         assert_eq!(volume.dim(), [3, 3, 3, 2].as_ref());
 
         let v: Vec<RGBA8> = volume.into_nifti_typed_data().unwrap();
-    
+
         assert_eq!(v.len(), 54);
     }
 
@@ -338,13 +338,12 @@ mod ndarray_volumes {
 
         assert_eq!(volume.shape(), [3, 3, 3, 2].as_ref());
 
-        assert_eq!(volume[[0, 0, 0, 0]], RGBA8::new(55,55, 0, 0));
+        assert_eq!(volume[[0, 0, 0, 0]], RGBA8::new(55, 55, 0, 0));
         assert_eq!(volume[[0, 0, 1, 0]], RGBA8::new(55, 0, 55, 0));
         assert_eq!(volume[[0, 1, 0, 0]], RGBA8::new(0, 55, 55, 0));
-        assert_eq!(volume[[0, 0, 0, 1]], RGBA8::new(55,55, 0, 0));
+        assert_eq!(volume[[0, 0, 0, 1]], RGBA8::new(55, 55, 0, 0));
         assert_eq!(volume[[0, 1, 0, 1]], RGBA8::new(55, 0, 55, 0));
         assert_eq!(volume[[1, 0, 0, 1]], RGBA8::new(0, 55, 55, 0));
-
     }
 
     #[test]
@@ -363,7 +362,7 @@ mod ndarray_volumes {
         assert_eq!(v[0], Complex32::new(1.0, 1.0));
         assert_eq!(v[1], Complex32::new(3.0, 3.0));
         assert_eq!(v[3], Complex32::new(2.0, 2.0));
-    } 
+    }
 
     #[test]
     fn test_read_complex32_ndarray() {
@@ -381,7 +380,7 @@ mod ndarray_volumes {
         assert_eq!(volume[[0, 0]], Complex32::new(1.0, 1.0));
         assert_eq!(volume[[0, 1]], Complex32::new(2.0, 2.0));
         assert_eq!(volume[[1, 0]], Complex32::new(3.0, 3.0));
-    } 
+    }
 
     #[test]
     fn test_read_complex64() {
@@ -399,7 +398,7 @@ mod ndarray_volumes {
         assert_eq!(v[0], Complex64::new(1.0, 1.0));
         assert_eq!(v[1], Complex64::new(3.0, 3.0));
         assert_eq!(v[3], Complex64::new(2.0, 2.0));
-    } 
+    }
     #[test]
     fn test_read_complex64_ndarray() {
         const FILE_NAME: &str = "resources/complex/complex64.nii";
@@ -416,5 +415,5 @@ mod ndarray_volumes {
         assert_eq!(volume[[0, 0]], Complex64::new(1.0, 1.0));
         assert_eq!(volume[[0, 1]], Complex64::new(2.0, 2.0));
         assert_eq!(volume[[1, 0]], Complex64::new(3.0, 3.0));
-    } 
+    }
 }
