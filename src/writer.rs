@@ -139,7 +139,11 @@ impl<'a> WriterOptions<'a> {
     }
 
     /// Write a nifti file (.nii or .nii.gz) from an NdArray of any Pod type
-    pub fn write_nifti_tt<A, S, D>(&self, data: &ArrayBase<S, D>, datatype: NiftiType) -> Result<()>
+    pub fn write_nifti_with_type<A, S, D>(
+        &self,
+        data: &ArrayBase<S, D>,
+        datatype: NiftiType,
+    ) -> Result<()>
     where
         S: Data<Elem = A>,
         A: Pod,
@@ -212,7 +216,7 @@ impl<'a> WriterOptions<'a> {
         A: DataElement + Pod,
         D: Dimension + RemoveAxis,
     {
-        self.write_nifti_tt(data, A::DATA_TYPE)
+        self.write_nifti_with_type(data, A::DATA_TYPE)
     }
 
     /// Write a RGB nifti file (.nii or .nii.gz).
@@ -221,7 +225,7 @@ impl<'a> WriterOptions<'a> {
         S: Data<Elem = [u8; 3]>,
         D: Dimension + RemoveAxis,
     {
-        self.write_nifti_tt(data, NiftiType::Rgb24)
+        self.write_nifti_with_type(data, NiftiType::Rgb24)
     }
 
     fn prepare_header<T, D>(

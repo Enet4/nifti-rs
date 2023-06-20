@@ -423,7 +423,7 @@ mod tests {
         let header = rgb_header_gt();
         WriterOptions::new(&path)
             .reference_header(&header)
-            .write_nifti_tt(&data, NiftiType::Rgb24)
+            .write_nifti_with_type(&data, NiftiType::Rgb24)
             .unwrap();
 
         // Simply compare the bytes of the newly created
@@ -448,7 +448,7 @@ mod tests {
         let header = rgb_header_gt();
         WriterOptions::new(&path)
             .reference_header(&header)
-            .write_nifti_tt(&data, NiftiType::Rgba32)
+            .write_nifti_with_type(&data, NiftiType::Rgba32)
             .unwrap();
 
         // Simply compare the bytes of the newly created
