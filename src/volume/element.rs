@@ -16,7 +16,7 @@ use std::mem::align_of;
 /// NiftiDataRescaler, a trait for rescaling data elements according to the Nifti 1.1 specification
 pub trait NiftiDataRescaler<T: 'static + Copy> {
     /// Rescale a single value with the given slope and intercept.
-    fn nifti_rescale(_value: T, _slope: f32, _intercept: f32) -> T;
+    fn nifti_rescale(value: T, slope: f32, intercept: f32) -> T;
 
     /// Rescale a slice of values, with the given slope and intercept.
     fn nifti_rescale_many(value: &[T], slope: f32, intercept: f32) -> Vec<T> {
