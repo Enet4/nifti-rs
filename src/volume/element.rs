@@ -184,8 +184,8 @@ impl<T> NiftiDataRescaler<T> for DataRescaler
 where
     T: 'static + Copy + DataElement + NiftiDataRescaler<T>,
 {
-    fn nifti_rescale(value: T, _slope: f32, _intercept: f32) -> T {
-        T::nifti_rescale(value, _slope, _intercept)
+    fn nifti_rescale(value: T, slope: f32, intercept: f32) -> T {
+        T::nifti_rescale(value, slope, intercept)
     }
 }
 
