@@ -3,6 +3,7 @@ use super::error::NiftiError;
 use super::typedef::NiftiType;
 use crate::error::Result;
 use crate::NiftiHeader;
+use bytemuck;
 use byteordered::Endian;
 use either::Either;
 use flate2::bufread::GzDecoder;
@@ -11,7 +12,6 @@ use std::fs::File;
 use std::io::{BufReader, Read, Result as IoResult, Seek};
 use std::mem;
 use std::path::{Path, PathBuf};
-use bytemuck;
 /// A trait that is both Read and Seek.
 pub trait ReadSeek: Read + Seek {}
 impl<T: Read + Seek> ReadSeek for T {}

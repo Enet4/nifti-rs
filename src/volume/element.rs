@@ -6,16 +6,19 @@ use crate::util::convert_bytes_to;
 use crate::NiftiError;
 use crate::NiftiType;
 
+use bytemuck::*;
 use byteordered::{ByteOrdered, Endian};
 use num_complex::{Complex, Complex32, Complex64};
 use rgb::*;
 use std::io::Read;
 use std::mem::align_of;
-use bytemuck::*;
 
+/// NiftiDataRescaler, a trait for rescaling data elements according to the Nifti 1.1 specification
 pub trait NiftiDataRescaler<T: 'static + Copy> {
-    fn nifti_rescale(_value: T, _slope: f32, _intercept: f32) -> T; 
-    
+    /// Rescale a single value with the given slope and intercept.
+    fn nifti_rescale(_value: T, _slope: f32, _intercept: f32) -> T;
+
+    /// Rescale a slice of values, with the given slope and intercept.
     fn nifti_rescale_many(value: &[T], slope: f32, intercept: f32) -> Vec<T> {
         value
             .iter()
@@ -23,7 +26,7 @@ pub trait NiftiDataRescaler<T: 'static + Copy> {
             .collect()
     }
 
-    /// Linearly transform a sequence of values inline, with the given slope and intercept.
+    /// Rescale a slice of values inline (inplace), with the given slope and intercept.
     fn nifti_rescale_many_inline(value: &mut [T], slope: f32, intercept: f32) {
         for v in value.iter_mut() {
             *v = Self::nifti_rescale(*v, slope, intercept);
@@ -103,7 +106,6 @@ impl NiftiDataRescaler<i64> for i64 {
     }
 }
 
-
 impl NiftiDataRescaler<f32> for f32 {
     fn nifti_rescale(value: f32, slope: f32, intercept: f32) -> f32 {
         if slope == 0. {
@@ -173,17 +175,18 @@ impl NiftiDataRescaler<[u8; 4]> for [u8; 4] {
     }
 }
 
+/// A vessel to host the NiftiDataRescaler trait
 #[derive(Debug)]
 pub struct DataRescaler;
 
 impl<T> NiftiDataRescaler<T> for DataRescaler
 where
     T: 'static + Copy + DataElement + NiftiDataRescaler<T>,
- {
+{
     fn nifti_rescale(value: T, _slope: f32, _intercept: f32) -> T {
         T::nifti_rescale(value, _slope, _intercept)
     }
- }
+}
 
 /// Trait type for characterizing a NIfTI data element, implemented for
 /// primitive numeric types which are used by the crate to represent voxel
@@ -276,6 +279,7 @@ pub trait DataElement: 'static + Sized + Copy
             .collect()
     }
 
+    /// Return a vector of data elements of the native type indicated in the Nifti file with runtime check
     fn from_raw_vec_validated<E>(
         vec: Vec<u8>,
         endianness: E,
@@ -835,7 +839,6 @@ impl DataElement for Complex64 {
 
     fn_cplx_from_scalar!(f64);
     fn_from_complex!(f64);
-
 }
 
 impl DataElement for RGB8 {
@@ -918,7 +921,6 @@ impl DataElement for [u8; 3] {
         Ok([r, g, b])
     }
 }
-
 
 impl DataElement for RGBA8 {
     const DATA_TYPE: NiftiType = NiftiType::Rgba32;

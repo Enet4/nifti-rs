@@ -516,16 +516,18 @@ mod tests {
     #[test]
     fn write_2d_complex32() {
         let mut data = Array::from_elem((3, 3), num_complex::Complex32::new(0.0, 0.0));
-        
+
         data[(0, 0)] = num_complex::Complex32::new(1.0, 1.0);
         data[(0, 1)] = num_complex::Complex32::new(2.0, 2.0);
         data[(1, 0)] = num_complex::Complex32::new(3.0, 3.0);
 
         let path = get_temporary_path("complex32.nii");
-        let header = generate_nifti_header([2, 3, 3, 1, 1, 1, 1, 1], 1.0, 0.0, NiftiType::Complex64);
+        let header =
+            generate_nifti_header([2, 3, 3, 1, 1, 1, 1, 1], 1.0, 0.0, NiftiType::Complex64);
         WriterOptions::new(&path)
             .reference_header(&header)
-            .write_nifti(&data).unwrap();
+            .write_nifti(&data)
+            .unwrap();
 
         // Verify the binary identity to the nibabel generated file
         assert_eq!(
@@ -537,16 +539,18 @@ mod tests {
     #[test]
     fn write_2d_complex64() {
         let mut data = Array::from_elem((3, 3), num_complex::Complex64::new(0.0, 0.0));
-        
+
         data[(0, 0)] = num_complex::Complex64::new(1.0, 1.0);
         data[(0, 1)] = num_complex::Complex64::new(2.0, 2.0);
         data[(1, 0)] = num_complex::Complex64::new(3.0, 3.0);
 
         let path = get_temporary_path("complex32.nii");
-        let header = generate_nifti_header([2, 3, 3, 1, 1, 1, 1, 1], 1.0, 0.0, NiftiType::Complex128);
+        let header =
+            generate_nifti_header([2, 3, 3, 1, 1, 1, 1, 1], 1.0, 0.0, NiftiType::Complex128);
         WriterOptions::new(&path)
             .reference_header(&header)
-            .write_nifti(&data).unwrap();
+            .write_nifti(&data)
+            .unwrap();
 
         // Verify the binary identity to the nibabel generated file
         assert_eq!(
@@ -554,7 +558,6 @@ mod tests {
             fs::read("resources/complex/complex64.nii").unwrap()
         );
     }
-
 
     #[test]
     fn write_extended_header() {

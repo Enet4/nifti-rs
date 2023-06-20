@@ -2,14 +2,14 @@
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::path::{Path, PathBuf};
 use std::mem::size_of;
+use std::path::{Path, PathBuf};
 
+use bytemuck::{cast_slice, Pod};
 use byteordered::{ByteOrdered, Endian};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis};
-use bytemuck::{Pod, cast_slice};
 
 use crate::{
     header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
@@ -145,7 +145,6 @@ impl<'a> WriterOptions<'a> {
         A: Pod,
         D: Dimension + RemoveAxis,
     {
-
         // do a basic size check
         if size_of::<A>() != datatype.size_of() {
             return Err(crate::error::NiftiError::UnsupportedDataType(datatype));

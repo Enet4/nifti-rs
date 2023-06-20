@@ -28,7 +28,6 @@ macro_rules! fn_convert_and_cast {
         where
             O: DataElement,
         {
-
             let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
 
             // cast the raw data buffer to the DataElement
@@ -404,7 +403,6 @@ mod tests {
         let v = vol.get_f32(&[3, 1, 0]).unwrap();
         assert_eq!(v, 9.);
 
-        
         let v = vol.get_f32(&[3, 3, 3]).unwrap();
         assert_eq!(v, 121.);
 
@@ -412,7 +410,6 @@ mod tests {
         assert_eq!(v, 39.);
 
         assert!(vol.get_f32(&[4, 0, 0]).is_err());
-
     }
 
     #[test]
