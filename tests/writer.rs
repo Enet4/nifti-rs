@@ -347,7 +347,7 @@ mod tests {
             .write_rgb_nifti(&data)
             .unwrap();
 
-        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // Simply compare the bytes of the newly created
         // image to the bytes of the prepared 3D RGB image in ressources/rgb/. However, we need to
         // set the bytes of vox_offset to 0.0 and of magic to MAGIC_CODE_NI1. The data bytes should
         // be identical though.
@@ -376,7 +376,7 @@ mod tests {
             .write_rgb_nifti(&data)
             .unwrap();
 
-        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // Simply compare the bytes of the newly created
         // image to the bytes of the prepared 3D RGB image in ressources/rgb/.
         assert_eq!(
             fs::read(path).unwrap(),
@@ -401,7 +401,7 @@ mod tests {
             .write_rgb_nifti(&data)
             .unwrap();
 
-        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // Simply compare the bytes of the newly created
         // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
         assert_eq!(
             fs::read(path).unwrap(),
@@ -426,7 +426,7 @@ mod tests {
             .write_nifti_tt(&data, NiftiType::Rgb24)
             .unwrap();
 
-        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // Simply compare the bytes of the newly created
         // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
         assert_eq!(
             fs::read(path).unwrap(),
@@ -451,7 +451,7 @@ mod tests {
             .write_nifti_tt(&data, NiftiType::Rgba32)
             .unwrap();
 
-        // Until we are able to read RGBA images, we simply compare the bytes of the newly created
+        // Simply compare the bytes of the newly created
         // image to the bytes of the prepared 4D RGBA image in ressources/rgba/.
         // Verify the binary identity to the nibabel generated file
         assert_eq!(
@@ -478,7 +478,7 @@ mod tests {
             .write_nifti(&data)
             .unwrap();
 
-        // Until we are able to read RGB images, we simply compare the bytes of the newly created
+        // Simply compare the bytes of the newly created
         // image to the bytes of the prepared 4D RGB image in ressources/rgb/.
         assert_eq!(
             fs::read(path).unwrap(),
@@ -504,7 +504,7 @@ mod tests {
             .write_nifti(&data)
             .unwrap();
 
-        // Until we are able to read RGBA images, we simply compare the bytes of the newly created
+        // Simply compare the bytes of the newly created
         // image to the bytes of the prepared 4D RGBA image in ressources/rgba/.
         // Verify the binary identity to the nibabel generated file
         assert_eq!(
