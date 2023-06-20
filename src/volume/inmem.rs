@@ -215,6 +215,7 @@ impl InMemNiftiVolume {
     //fn_convert_and_cast!(convert_and_cast_Complex64, Complex32, DataElement::from_Complex64);
 
     // no casting here
+    #[cfg(feature = "ndarray_volumes")]
     fn no_cast_convert_to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
     where
         T: DataElement,
