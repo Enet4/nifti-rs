@@ -84,6 +84,7 @@ quick_error! {
             source(err)
         }
 
+        /// Attempted a type conversion that is not supported by this crate
         InvalidTypeConversion(from: NiftiType, to: &'static str) {
             display("Invalid type conversion from {:?} to {}", from, to)
         }
