@@ -50,6 +50,7 @@ mod ndarray_volumes {
         DataElement, InMemNiftiVolume, IntoNdArray, NiftiObject, NiftiType, NiftiVolume,
         ReaderOptions, ReaderStreamedOptions,
     };
+    use rgb::{RGB8, RGBA8};
     use std::fmt;
     use std::ops::{Add, Mul};
 
@@ -270,5 +271,62 @@ mod ndarray_volumes {
         for (idx, val) in data.iter().enumerate() {
             assert_eq!(T::from_u64(idx as u64), *val);
         }
+    }
+
+    #[test]
+    fn test_read_rgb8() {
+        const FILE_NAME: &str = "resources/rgb/4D.nii";
+        let volume = ReaderOptions::new()
+            .read_file(FILE_NAME)
+            .unwrap()
+            .into_volume();
+        assert_eq!(volume.data_type(), NiftiType::Rgb24);
+        assert_eq!(volume.dim(), [3, 3, 3, 2].as_ref());
+
+        let v: Vec<RGB8> = volume.into_nifti_typed_data().unwrap();
+    
+        assert_eq!(v.len(), 54);
+    }
+
+    #[test]
+    fn test_read_rgb8_ndarray() {
+        const FILE_NAME: &str = "resources/rgb/4D.nii";
+        let volume = ReaderOptions::new()
+            .read_file(FILE_NAME)
+            .unwrap()
+            .into_volume();
+        assert_eq!(volume.data_type(), NiftiType::Rgb24);
+        assert_eq!(volume.dim(), [3, 3, 3, 2].as_ref());
+        let volume = volume.into_ndarray::<RGB8>().unwrap();
+
+        assert_eq!(volume.shape(), [3, 3, 3, 2].as_ref());
+    }
+
+    fn test_read_rgba8() {
+        const FILE_NAME: &str = "resources/rgba/4D.nii";
+        let volume = ReaderOptions::new()
+            .read_file(FILE_NAME)
+            .unwrap()
+            .into_volume();
+        assert_eq!(volume.data_type(), NiftiType::Rgba32);
+        assert_eq!(volume.dim(), [3, 3, 3, 2].as_ref());
+
+        let v: Vec<RGB8> = volume.into_nifti_typed_data().unwrap();
+    
+        assert_eq!(v.len(), 54);
+    }
+
+    #[test]
+    fn test_read_rgba8_ndarray() {
+        const FILE_NAME: &str = "resources/rgba/4D.nii";
+        let volume = ReaderOptions::new()
+            .read_file(FILE_NAME)
+            .unwrap()
+            .into_volume();
+        assert_eq!(volume.data_type(), NiftiType::Rgba32);
+        assert_eq!(volume.dim(), [3, 3, 3, 2].as_ref());
+        let volume = volume.into_ndarray::<RGBA8>().unwrap();
+
+        assert_eq!(volume.shape(), [3, 3, 3, 2].as_ref());
     }
 }
