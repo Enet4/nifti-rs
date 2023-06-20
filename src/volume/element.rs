@@ -37,9 +37,10 @@ pub trait NiftiDataRescaler<T: 'static + Copy> {
 impl NiftiDataRescaler<u8> for u8 {
     fn nifti_rescale(value: u8, slope: f32, intercept: f32) -> u8 {
         if slope == 0. {
-            return value;
+            value
+        } else {
+            (value as f32 * slope + intercept) as u8
         }
-        (value as f32 * slope + intercept) as u8
     }
 }
 
@@ -150,28 +151,28 @@ impl NiftiDataRescaler<Complex64> for Complex64 {
 // Nifti 1.1 specifies that RGB data must NOT be rescaled
 impl NiftiDataRescaler<RGB8> for RGB8 {
     fn nifti_rescale(value: RGB8, _slope: f32, _intercept: f32) -> RGB8 {
-        return value;
+        value
     }
 }
 
 // Nifti 1.1 specifies that RGB(A) data must NOT be rescaled
 impl NiftiDataRescaler<RGBA8> for RGBA8 {
     fn nifti_rescale(value: RGBA8, _slope: f32, _intercept: f32) -> RGBA8 {
-        return value;
+        value
     }
 }
 
 // This is some kind of implicit RGB for poor people, don't scale
 impl NiftiDataRescaler<[u8; 3]> for [u8; 3] {
     fn nifti_rescale(value: [u8; 3], _slope: f32, _intercept: f32) -> [u8; 3] {
-        return value;
+        value
     }
 }
 
 // This is some kind of implicit RGBA for poor people, don't scale
 impl NiftiDataRescaler<[u8; 4]> for [u8; 4] {
     fn nifti_rescale(value: [u8; 4], _slope: f32, _intercept: f32) -> [u8; 4] {
-        return value;
+        value
     }
 }
 

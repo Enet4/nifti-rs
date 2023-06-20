@@ -3,7 +3,6 @@ use super::error::NiftiError;
 use super::typedef::NiftiType;
 use crate::error::Result;
 use crate::NiftiHeader;
-use bytemuck;
 use byteordered::Endian;
 use either::Either;
 use flate2::bufread::GzDecoder;
