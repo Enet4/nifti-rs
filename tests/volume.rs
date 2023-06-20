@@ -301,6 +301,13 @@ mod ndarray_volumes {
         let volume = volume.into_ndarray::<RGB8>().unwrap();
 
         assert_eq!(volume.shape(), [3, 3, 3, 2].as_ref());
+
+        assert_eq!(volume[[0, 0, 0, 0]], RGB8::new(55,55, 0));
+        assert_eq!(volume[[0, 0, 1, 0]], RGB8::new(55, 0, 55));
+        assert_eq!(volume[[0, 1, 0, 0]], RGB8::new(0, 55, 55));
+        assert_eq!(volume[[0, 0, 0, 1]], RGB8::new(55,55, 0));
+        assert_eq!(volume[[0, 1, 0, 1]], RGB8::new(55, 0, 55));
+        assert_eq!(volume[[1, 0, 0, 1]], RGB8::new(0, 55, 55));
     }
 
     #[test]
@@ -330,6 +337,14 @@ mod ndarray_volumes {
         let volume = volume.into_ndarray::<RGBA8>().unwrap();
 
         assert_eq!(volume.shape(), [3, 3, 3, 2].as_ref());
+
+        assert_eq!(volume[[0, 0, 0, 0]], RGBA8::new(55,55, 0, 0));
+        assert_eq!(volume[[0, 0, 1, 0]], RGBA8::new(55, 0, 55, 0));
+        assert_eq!(volume[[0, 1, 0, 0]], RGBA8::new(0, 55, 55, 0));
+        assert_eq!(volume[[0, 0, 0, 1]], RGBA8::new(55,55, 0, 0));
+        assert_eq!(volume[[0, 1, 0, 1]], RGBA8::new(55, 0, 55, 0));
+        assert_eq!(volume[[1, 0, 0, 1]], RGBA8::new(0, 55, 55, 0));
+
     }
 
     #[test]
