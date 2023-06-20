@@ -211,8 +211,6 @@ impl InMemNiftiVolume {
     fn_convert_and_cast!(convert_and_cast_i64, i64, DataElement::from_i64);
     fn_convert_and_cast!(convert_and_cast_f32, f32, DataElement::from_f32);
     fn_convert_and_cast!(convert_and_cast_f64, f64, DataElement::from_f64);
-    //fn_convert_and_cast!(convert_and_cast_Complex32, Complex32, DataElement::from_Complex32);
-    //fn_convert_and_cast!(convert_and_cast_Complex64, Complex32, DataElement::from_Complex64);
 
     // no casting here
     #[cfg(feature = "ndarray_volumes")]
