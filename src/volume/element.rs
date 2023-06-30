@@ -192,9 +192,7 @@ where
 /// Trait type for characterizing a NIfTI data element, implemented for
 /// primitive numeric types which are used by the crate to represent voxel
 /// values.
-pub trait DataElement: 'static + Sized + Copy
-//+ AsPrimitive<u8> + AsPrimitive<f32> + AsPrimitive<f64>
-{
+pub trait DataElement: 'static + Sized + Copy {
     /// The `datatype` mapped to the type T
     const DATA_TYPE: NiftiType;
 

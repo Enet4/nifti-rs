@@ -99,7 +99,6 @@ impl NiftiType {
         T: NiftiDataRescaler<T>,
     {
         match self {
-            // TODO: check for slope == 0 at this level, should increase performance substantially
             NiftiType::Uint8 => {
                 let raw = u8::from_raw(source, endianness)?;
                 Ok(<u8 as DataElement>::DataRescaler::nifti_rescale(

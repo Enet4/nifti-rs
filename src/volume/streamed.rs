@@ -309,8 +309,7 @@ fn calculate_total_slices(dim: &Dim, slice_rank: u16) -> usize {
 #[cfg(test)]
 mod tests {
 
-    use super::super::NiftiVolume;
-    use super::super::RandomAccessNiftiVolume;
+    use super::super::{NiftiVolume, RandomAccessNiftiVolume};
     use super::StreamedNiftiVolume;
     use crate::typedef::NiftiType;
     use crate::NiftiHeader;
