@@ -6,7 +6,7 @@ use crate::error::{NiftiError, Result};
 use crate::header::NiftiHeader;
 use crate::typedef::NiftiType;
 use crate::util::{nb_bytes_for_data, nb_bytes_for_dim_datatype};
-use crate::volume::element::DataElement;
+use crate::volume::element::{DataElement, NiftiDataRescaler};
 use crate::volume::{FromSource, FromSourceOptions, NiftiVolume, RandomAccessNiftiVolume};
 use byteordered::Endianness;
 use flate2::bufread::GzDecoder;
@@ -28,8 +28,6 @@ macro_rules! fn_convert_and_cast {
         where
             O: DataElement,
         {
-            use crate::volume::element::LinearTransform;
-
             let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
 
             // cast the raw data buffer to the DataElement
@@ -38,7 +36,7 @@ macro_rules! fn_convert_and_cast {
             // cast elements to the requested output type
             let mut data: Vec<O> = data.into_iter().map($converter).collect();
             // apply slope and inter before creating the final ndarray
-            <O as DataElement>::Transform::linear_transform_many_inline(
+            <O as DataElement>::DataRescaler::nifti_rescale_many_inline(
                 &mut data,
                 self.scl_slope,
                 self.scl_inter,
@@ -180,9 +178,18 @@ impl InMemNiftiVolume {
         &mut self.raw_data
     }
 
+    /// Retrieve the raw data, typed as specified in the volume's header, consuming the volume
+    pub fn into_nifti_typed_data<T>(self) -> Result<Vec<T>>
+    where
+        T: DataElement,
+    {
+        T::from_raw_vec_validated(self.raw_data, self.endianness, self.datatype)
+    }
+
     fn get_prim<T>(&self, coords: &[u16]) -> Result<T>
     where
         T: DataElement,
+        T: NiftiDataRescaler<T>,
         T: Num,
         T: Copy,
         T: Mul<Output = T>,
@@ -204,6 +211,29 @@ impl InMemNiftiVolume {
     fn_convert_and_cast!(convert_and_cast_i64, i64, DataElement::from_i64);
     fn_convert_and_cast!(convert_and_cast_f32, f32, DataElement::from_f32);
     fn_convert_and_cast!(convert_and_cast_f64, f64, DataElement::from_f64);
+
+    // no casting here
+    #[cfg(feature = "ndarray_volumes")]
+    fn no_cast_convert_to_ndarray<T>(self) -> Result<Array<T, IxDyn>>
+    where
+        T: DataElement,
+    {
+        let dim: Vec<_> = self.dim().iter().map(|d| *d as Ix).collect();
+
+        let mut data: Vec<_> = <T as DataElement>::from_raw_vec(self.raw_data, self.endianness)?;
+        // corresponding to the declared datatype
+        if self.datatype != NiftiType::Rgb24
+            && self.datatype != NiftiType::Rgba32
+            && self.scl_slope != 0.0
+        {
+            <T as DataElement>::DataRescaler::nifti_rescale_many_inline(
+                &mut data,
+                self.scl_slope,
+                self.scl_inter,
+            );
+        }
+        Ok(Array::from_shape_vec(IxDyn(&dim).f(), data).expect("Inconsistent raw data size"))
+    }
 }
 
 impl FromSourceOptions for InMemNiftiVolume {
@@ -238,11 +268,11 @@ impl IntoNdArray for InMemNiftiVolume {
             NiftiType::Float32 => self.convert_and_cast_f32::<T>(),
             NiftiType::Float64 => self.convert_and_cast_f64::<T>(),
             //NiftiType::Float128 => {}
-            //NiftiType::Complex64 => {}
-            //NiftiType::Complex128 => {}
+            NiftiType::Complex64 => self.no_cast_convert_to_ndarray::<T>(),
+            NiftiType::Complex128 => self.no_cast_convert_to_ndarray::<T>(),
             //NiftiType::Complex256 => {}
-            //NiftiType::Rgb24 => {}
-            //NiftiType::Rgba32 => {}
+            NiftiType::Rgb24 => self.no_cast_convert_to_ndarray::<T>(),
+            NiftiType::Rgba32 => self.no_cast_convert_to_ndarray::<T>(),
             _ => Err(NiftiError::UnsupportedDataType(self.datatype)),
         }
     }

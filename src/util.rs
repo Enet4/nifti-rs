@@ -6,28 +6,24 @@ use crate::NiftiHeader;
 use byteordered::Endian;
 use either::Either;
 use flate2::bufread::GzDecoder;
-use safe_transmute::{transmute_vec, TriviallyTransmutable};
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufReader, Read, Result as IoResult, Seek};
 use std::mem;
 use std::path::{Path, PathBuf};
-
 /// A trait that is both Read and Seek.
 pub trait ReadSeek: Read + Seek {}
 impl<T: Read + Seek> ReadSeek for T {}
 
 pub fn convert_bytes_to<T, E>(mut a: Vec<u8>, e: E) -> Vec<T>
 where
-    T: TriviallyTransmutable,
+    T: bytemuck::Pod,
     E: Endian,
 {
     adapt_bytes_inline::<T, _>(&mut a, e);
-    match transmute_vec(a) {
+    match bytemuck::allocation::try_cast_vec(a) {
         Ok(v) => v,
-        Err(safe_transmute::Error::IncompatibleVecTarget(e)) => e.copy(),
-        Err(safe_transmute::Error::Unaligned(e)) => e.copy(),
-        _ => unreachable!(),
+        Err((_, v)) => bytemuck::allocation::pod_collect_to_vec(&v),
     }
 }
 

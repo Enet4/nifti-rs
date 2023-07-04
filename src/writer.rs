@@ -2,13 +2,14 @@
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
+use std::mem::size_of;
 use std::path::{Path, PathBuf};
 
+use bytemuck::{cast_slice, Pod};
 use byteordered::{ByteOrdered, Endian};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use ndarray::{ArrayBase, Axis, Data, Dimension, RemoveAxis};
-use safe_transmute::{transmute_to_bytes, TriviallyTransmutable};
 
 use crate::{
     header::{MAGIC_CODE_NI1, MAGIC_CODE_NIP1},
@@ -137,15 +138,23 @@ impl<'a> WriterOptions<'a> {
         self
     }
 
-    /// Write a nifti file (.nii or .nii.gz).
-    pub fn write_nifti<A, S, D>(&self, data: &ArrayBase<S, D>) -> Result<()>
+    /// Write a nifti file (.nii or .nii.gz) from an NdArray of any Pod type
+    pub fn write_nifti_with_type<A, S, D>(
+        &self,
+        data: &ArrayBase<S, D>,
+        datatype: NiftiType,
+    ) -> Result<()>
     where
         S: Data<Elem = A>,
-        A: DataElement,
-        A: TriviallyTransmutable,
+        A: Pod,
         D: Dimension + RemoveAxis,
     {
-        let header = self.prepare_header(data, A::DATA_TYPE)?;
+        // do a basic size check
+        if size_of::<A>() != datatype.size_of() {
+            return Err(crate::error::NiftiError::UnsupportedDataType(datatype));
+        }
+
+        let header = self.prepare_header(data, datatype)?;
         let (header_path, data_path) = self.output_paths();
 
         // Need the transpose for fortran ordering used in nifti file format.
@@ -200,65 +209,23 @@ impl<'a> WriterOptions<'a> {
         Ok(())
     }
 
+    /// Write a nifti file (.nii or .nii.gz) from an NdArray of DataElements
+    pub fn write_nifti<A, S, D>(&self, data: &ArrayBase<S, D>) -> Result<()>
+    where
+        S: Data<Elem = A>,
+        A: DataElement + Pod,
+        D: Dimension + RemoveAxis,
+    {
+        self.write_nifti_with_type(data, A::DATA_TYPE)
+    }
+
     /// Write a RGB nifti file (.nii or .nii.gz).
     pub fn write_rgb_nifti<S, D>(&self, data: &ArrayBase<S, D>) -> Result<()>
     where
         S: Data<Elem = [u8; 3]>,
         D: Dimension + RemoveAxis,
     {
-        let header = self.prepare_header(data, NiftiType::Rgb24)?;
-        let (header_path, data_path) = self.output_paths();
-
-        // Need the transpose for fortran used in nifti file format.
-        let data = data.t();
-
-        let header_file = File::create(header_path)?;
-        if header.vox_offset > 0.0 {
-            if let Some(compression_level) = self.compression {
-                let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(header_file, compression_level),
-                    header.endianness,
-                );
-                write_header(writer.as_mut(), &header)?;
-                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
-                write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
-                let _ = writer.into_inner().finish()?;
-            } else {
-                let mut writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
-                write_header(writer.as_mut(), &header)?;
-                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
-                write_data::<_, u8, _, _, _, _>(writer, data)?;
-            }
-        } else {
-            let data_file = File::create(data_path)?;
-            if let Some(compression_level) = self.compression {
-                let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(header_file, compression_level),
-                    header.endianness,
-                );
-                write_header(writer.as_mut(), &header)?;
-                write_extensions(writer.as_mut(), self.extension_sequence.as_ref())?;
-                let _ = writer.into_inner().finish()?;
-
-                let mut writer = ByteOrdered::runtime(
-                    GzEncoder::new(data_file, compression_level),
-                    header.endianness,
-                );
-                write_data::<_, u8, _, _, _, _>(writer.as_mut(), data)?;
-                let _ = writer.into_inner().finish()?;
-            } else {
-                let mut header_writer =
-                    ByteOrdered::runtime(BufWriter::new(header_file), header.endianness);
-                write_header(header_writer.as_mut(), &header)?;
-                write_extensions(header_writer.as_mut(), self.extension_sequence.as_ref())?;
-                let data_writer =
-                    ByteOrdered::runtime(BufWriter::new(data_file), header.endianness);
-                write_data::<_, u8, _, _, _, _>(data_writer, data)?;
-            }
-        }
-
-        Ok(())
+        self.write_nifti_with_type(data, NiftiType::Rgb24)
     }
 
     fn prepare_header<T, D>(
@@ -423,7 +390,7 @@ where
 fn write_data<A, B, S, D, W, E>(mut writer: ByteOrdered<W, E>, data: ArrayBase<S, D>) -> Result<()>
 where
     S: Data<Elem = A>,
-    A: TriviallyTransmutable,
+    A: Pod,
     D: Dimension + RemoveAxis,
     W: Write,
     E: Endian + Copy,
@@ -453,7 +420,7 @@ fn write_slice<A, B, S, D, W, E>(
 ) -> Result<()>
 where
     S: Data<Elem = A>,
-    A: Clone + TriviallyTransmutable,
+    A: Clone + Pod,
     D: Dimension,
     W: Write,
     E: Endian,
@@ -461,7 +428,7 @@ where
     let len = data.len();
     let arr_data = data.into_shape(len).unwrap();
     let slice = arr_data.as_slice().unwrap();
-    let bytes = transmute_to_bytes(slice);
+    let bytes = cast_slice(slice);
     let (writer, endianness) = writer.into_parts();
     let bytes = adapt_bytes::<B, _>(bytes, endianness);
     writer.write_all(&bytes)?;
