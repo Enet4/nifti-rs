@@ -162,20 +162,6 @@ impl NiftiDataRescaler<RGBA8> for RGBA8 {
     }
 }
 
-// This is some kind of implicit RGB for poor people, don't scale
-impl NiftiDataRescaler<[u8; 3]> for [u8; 3] {
-    fn nifti_rescale(value: [u8; 3], _slope: f32, _intercept: f32) -> [u8; 3] {
-        value
-    }
-}
-
-// This is some kind of implicit RGBA for poor people, don't scale
-impl NiftiDataRescaler<[u8; 4]> for [u8; 4] {
-    fn nifti_rescale(value: [u8; 4], _slope: f32, _intercept: f32) -> [u8; 4] {
-        value
-    }
-}
-
 /// A vessel to host the NiftiDataRescaler trait
 #[derive(Debug)]
 pub struct DataRescaler;
@@ -882,45 +868,6 @@ impl DataElement for RGB8 {
     }
 }
 
-impl DataElement for [u8; 3] {
-    const DATA_TYPE: NiftiType = NiftiType::Rgb24;
-    type DataRescaler = DataRescaler;
-
-    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
-    where
-        E: Endian,
-    {
-        Ok(convert_bytes_to::<[u8; 3], _>(vec, e))
-    }
-
-    fn from_raw_vec_validated<E>(
-        vec: Vec<u8>,
-        endianness: E,
-        datatype: NiftiType,
-    ) -> Result<Vec<Self>>
-    where
-        E: Endian,
-    {
-        if datatype == NiftiType::Rgb24 {
-            Self::from_raw_vec(vec, endianness)
-        } else {
-            Err(NiftiError::InvalidTypeConversion(datatype, "[u8; 3]"))
-        }
-    }
-
-    fn from_raw<R, E>(mut src: R, _: E) -> Result<Self>
-    where
-        R: Read,
-        E: Endian,
-    {
-        let r = ByteOrdered::native(&mut src).read_u8()?;
-        let g = ByteOrdered::native(&mut src).read_u8()?;
-        let b = ByteOrdered::native(&mut src).read_u8()?;
-
-        Ok([r, g, b])
-    }
-}
-
 impl DataElement for RGBA8 {
     const DATA_TYPE: NiftiType = NiftiType::Rgba32;
     type DataRescaler = DataRescaler;
@@ -961,45 +908,5 @@ impl DataElement for RGBA8 {
         let a = ByteOrdered::native(&mut src).read_u8()?;
 
         Ok(RGBA8::new(r, g, b, a))
-    }
-}
-
-impl DataElement for [u8; 4] {
-    const DATA_TYPE: NiftiType = NiftiType::Rgba32;
-    type DataRescaler = DataRescaler;
-
-    fn from_raw_vec<E>(vec: Vec<u8>, e: E) -> Result<Vec<Self>>
-    where
-        E: Endian,
-    {
-        Ok(convert_bytes_to::<[u8; 4], _>(vec, e))
-    }
-
-    fn from_raw_vec_validated<E>(
-        vec: Vec<u8>,
-        endianness: E,
-        datatype: NiftiType,
-    ) -> Result<Vec<Self>>
-    where
-        E: Endian,
-    {
-        if datatype == NiftiType::Rgba32 {
-            Self::from_raw_vec(vec, endianness)
-        } else {
-            Err(NiftiError::InvalidTypeConversion(datatype, "[u8; 4]"))
-        }
-    }
-
-    fn from_raw<R, E>(mut src: R, _: E) -> Result<Self>
-    where
-        R: Read,
-        E: Endian,
-    {
-        let r = ByteOrdered::native(&mut src).read_u8()?;
-        let g = ByteOrdered::native(&mut src).read_u8()?;
-        let b = ByteOrdered::native(&mut src).read_u8()?;
-        let a = ByteOrdered::native(&mut src).read_u8()?;
-
-        Ok([r, g, b, a])
     }
 }
