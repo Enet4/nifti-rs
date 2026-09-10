@@ -180,7 +180,7 @@ impl ExtensionSequence {
     }
 
     /// Obtain an iterator to the extensions.
-    pub fn iter(&self) -> ::std::slice::Iter<Extension> {
+    pub fn iter(&self) -> ::std::slice::Iter<'_, Extension> {
         self.extensions.iter()
     }
 
