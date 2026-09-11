@@ -231,7 +231,7 @@ impl Iterator for DimIter {
                 dbg!((Some(out), DimIterState::Middle(out)))
             }
             DimIterState::Fused => dbg!((None, DimIterState::Fused)),
-            DimIterState::Middle(mut current) => {
+            DimIterState::Middle(current) => {
                 let mut good = false;
                 for (c, s) in Iterator::zip(current.as_mut().iter_mut(), self.shape.as_ref().iter())
                 {
@@ -243,7 +243,10 @@ impl Iterator for DimIter {
                     *c = 0;
                 }
                 if good {
-                    dbg!((Some(current), DimIterState::Middle(current)))
+                    dbg!((
+                        Some(current.to_owned()),
+                        DimIterState::Middle(current.to_owned())
+                    ))
                 } else {
                     dbg!((None, DimIterState::Fused))
                 }

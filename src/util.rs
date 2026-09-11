@@ -47,7 +47,7 @@ where
 /// by swapping bytes if the given endianness is not native. If no
 /// swapping is needed, the same byte slice is returned.
 #[cfg_attr(not(feature = "ndarray_volumes"), allow(dead_code))]
-pub fn adapt_bytes<T, E>(bytes: &[u8], e: E) -> Cow<[u8]>
+pub fn adapt_bytes<T, E>(bytes: &[u8], e: E) -> Cow<'_, [u8]>
 where
     E: Endian,
 {

@@ -3,7 +3,7 @@ authors = ["Eduardo Pinho <enet4mikeenet@gmail.com>"]
 categories = ["parser-implementations"]
 description = "Rust implementation of the NIfTI file format"
 documentation = "https://docs.rs/crate/nifti"
-edition = "2021"
+edition = "2024"
 keywords = ["nifti", "neuroimaging", "standard", "parser"]
 license = "MIT OR Apache-2.0"
 name = "nifti"
@@ -19,7 +19,7 @@ features = ["ndarray_volumes", "nalgebra_affine"]
 approx = "0.5"
 byteordered = "0.6"
 flate2 = "1.1"
-num-derive = "0.4"
+num-derive = "0.5"
 num-traits = "0.2"
 quick-error = "2.0"
 either = "1.15"
@@ -29,17 +29,17 @@ bytemuck = { version = "1.23", features = ["extern_crate_alloc"] }
 
 [dependencies.nalgebra]
 optional = true
-version = "0.33"
+version = "0.35"
 
 [dependencies.ndarray]
 optional = true
-version = "0.16"
+version = "0.17"
 features = ["approx"]
 
 [dependencies.simba]
 default-features = false
 optional = true
-version = "0.9"
+version = "0.10"
 
 [dev-dependencies]
 pretty_assertions = "1.4"
